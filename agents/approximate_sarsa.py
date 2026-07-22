@@ -59,17 +59,28 @@ class LinearTileQFunction:
     def weights(self) -> np.ndarray:
         return self._weights.copy()
 
+    def features(self, state: ContinuousState) -> tuple[int, ...]:
+        return self.tile_coder.active_features(state)
+
     def value(self, state: ContinuousState, action: VelocityAction) -> float:
-        feats = self.tile_coder.active_features(state)
-        return float(self._weights[int(action), feats].sum())
+        return float(self._weights[int(action), self.features(state)].sum())
+
+    def value_at(self, feats: tuple[int, ...], action: int) -> float:
+        return float(self._weights[action, feats].sum())
 
     def action_values(self, state: ContinuousState) -> np.ndarray:
         feats = self.tile_coder.active_features(state)
-        return np.array([self._weights[a, feats].sum() for a in range(self.n_actions)])
+        return self._weights[:, feats].sum(axis=1)
+
+    def action_values_at(self, feats: tuple[int, ...]) -> np.ndarray:
+        return self._weights[:, feats].sum(axis=1)
 
     def update(self, state: ContinuousState, action: VelocityAction, scaled_td_error: float) -> None:
         feats = self.tile_coder.active_features(state)
         self._weights[int(action), feats] += scaled_td_error
+
+    def update_at(self, feats: tuple[int, ...], action: int, scaled_td_error: float) -> None:
+        self._weights[action, feats] += scaled_td_error
 
 
 def rollout_approximate_policy(
@@ -202,40 +213,46 @@ class ApproximateSarsaAgent:
             env_seed = int(env_rng.integers(0, 2**31))
             env = self.env_factory()
             state = env.reset(seed=env_seed)
-            av = q_func.action_values(state)
+            state_feats = q_func.features(state)
+            av = q_func.action_values_at(state_feats)
             action = _select_continuous_action(av, epsilon, policy_rng, self.actions_list)
+            action_int = int(action)
 
             ep_reward = 0.0
             ep_collisions = 0
             ep_td_errors: list[float] = []
             step_count = 0
             start_pos = state
+            norm = config.alpha / config.tile_coding.num_tilings
 
             while True:
-                result = env.step(int(action))
+                result = env.step(action_int)
                 step_count += 1
                 ep_reward += result.reward
                 if result.info.get("collision"):
                     ep_collisions += 1
 
+                nxt = result.next_state
+                nxt_feats = q_func.features(nxt)
+
                 if result.terminated or result.truncated:
-                    target = result.reward
-                    av_next = q_func.action_values(result.next_state)
-                    next_action = None
-                    td_error = target - q_func.value(state, action)
-                    q_func.update(state, action, config.alpha * td_error / config.tile_coding.num_tilings)
+                    td_error = result.reward - q_func.value_at(state_feats, action_int)
+                    q_func.update_at(state_feats, action_int, norm * td_error)
                     ep_td_errors.append(td_error)
                     break
 
-                av_next = q_func.action_values(result.next_state)
+                av_next = q_func.action_values_at(nxt_feats)
                 next_action = _select_continuous_action(av_next, epsilon, policy_rng, self.actions_list)
-                target = result.reward + config.gamma * q_func.value(result.next_state, next_action)
-                td_error = target - q_func.value(state, action)
-                q_func.update(state, action, config.alpha * td_error / config.tile_coding.num_tilings)
+                next_action_int = int(next_action)
+                target = result.reward + config.gamma * q_func.value_at(nxt_feats, next_action_int)
+                td_error = target - q_func.value_at(state_feats, action_int)
+                q_func.update_at(state_feats, action_int, norm * td_error)
                 ep_td_errors.append(td_error)
 
-                state = result.next_state
+                state = nxt
+                state_feats = nxt_feats
                 action = next_action
+                action_int = next_action_int
 
             final_dist = math.sqrt(
                 (state[0] - env.motion.exit_center[0]) ** 2
