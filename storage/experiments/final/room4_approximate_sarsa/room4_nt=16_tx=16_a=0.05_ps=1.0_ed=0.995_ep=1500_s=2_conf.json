@@ -1,0 +1,117 @@
+{
+  "trial_id": "room4_nt=16_tx=16_a=0.05_ps=1.0_ed=0.995_ep=1500_s=2_conf",
+  "stage": "confirmation",
+  "algorithm": "Approximate SARSA",
+  "room": "Room4Continuous",
+  "config": {
+    "num_tilings": 16,
+    "tiles_xy": 16,
+    "alpha": 0.05,
+    "progress_scale": 1.0,
+    "epsilon_decay": 0.995,
+    "episodes": 1500,
+    "seed": 2
+  },
+  "categories": {
+    "fixed_training_start": {
+      "n_episodes": 25,
+      "success_rate": 1.0,
+      "mean_return": 107.71234564943573,
+      "std_return": 1.4210854715202004e-14,
+      "mean_steps": 469.0,
+      "mean_successful_steps": 469.0,
+      "truncated_count": 0,
+      "total_collisions": 0,
+      "mean_distance_travelled_m": 13.008510806388182
+    },
+    "unseen_start_0_5_5_0_0_0": {
+      "n_episodes": 5,
+      "success_rate": 0.0,
+      "mean_return": -32.499999999999886,
+      "std_return": 0.0,
+      "mean_steps": 750.0,
+      "mean_successful_steps": null,
+      "truncated_count": 5,
+      "total_collisions": 0,
+      "mean_distance_travelled_m": 0.0
+    },
+    "unseen_start_5_0_0_5_0_0": {
+      "n_episodes": 5,
+      "success_rate": 0.0,
+      "mean_return": -32.499999999999886,
+      "std_return": 0.0,
+      "mean_steps": 750.0,
+      "mean_successful_steps": null,
+      "truncated_count": 5,
+      "total_collisions": 0,
+      "mean_distance_travelled_m": 0.0
+    },
+    "unseen_start_2_0_7_0_0_0": {
+      "n_episodes": 5,
+      "success_rate": 0.0,
+      "mean_return": -32.499999999999886,
+      "std_return": 0.0,
+      "mean_steps": 750.0,
+      "mean_successful_steps": null,
+      "truncated_count": 5,
+      "total_collisions": 0,
+      "mean_distance_travelled_m": 0.0
+    },
+    "unseen_start_7_0_2_0_0_0": {
+      "n_episodes": 5,
+      "success_rate": 0.0,
+      "mean_return": -32.499999999999886,
+      "std_return": 0.0,
+      "mean_steps": 750.0,
+      "mean_successful_steps": null,
+      "truncated_count": 5,
+      "total_collisions": 0,
+      "mean_distance_travelled_m": 0.0
+    },
+    "unseen_start_5_0_5_0_0_0": {
+      "n_episodes": 5,
+      "success_rate": 1.0,
+      "mean_return": 103.82220088086612,
+      "std_return": 0.0,
+      "mean_steps": 220.0,
+      "mean_successful_steps": 220.0,
+      "truncated_count": 0,
+      "total_collisions": 0,
+      "mean_distance_travelled_m": 6.205971131946709
+    },
+    "fixed_unseen_starts": {
+      "n_episodes": 25,
+      "success_rate": 0.2,
+      "mean_return": -5.235559823826685,
+      "std_return": 54.528880352346405,
+      "mean_steps": 644.0,
+      "mean_successful_steps": 220.0,
+      "truncated_count": 20,
+      "total_collisions": 0,
+      "mean_distance_travelled_m": 1.2411942263893416
+    },
+    "random_lower_left": {
+      "n_episodes": 25,
+      "success_rate": 0.64,
+      "mean_return": 56.98117843542935,
+      "std_return": 66.18077306275845,
+      "mean_steps": 529.84,
+      "mean_successful_steps": 406.0,
+      "truncated_count": 9,
+      "total_collisions": 0,
+      "mean_distance_travelled_m": 8.871957277321757
+    },
+    "random_room": {
+      "n_episodes": 25,
+      "success_rate": 0.2,
+      "mean_return": -26.449020855801017,
+      "std_return": 95.97091736722679,
+      "mean_steps": 634.48,
+      "mean_successful_steps": 172.4,
+      "truncated_count": 20,
+      "total_collisions": 535,
+      "mean_distance_travelled_m": 4.406178178200511
+    }
+  },
+  "runtime_seconds": 156.00172090530396
+}
