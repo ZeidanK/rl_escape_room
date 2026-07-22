@@ -16,3 +16,7 @@ storage/experiments/*
 !storage/experiments/.gitkeep
 !storage/experiments/final/
 !storage/experiments/final/**
+
+# Debug output
+page_debug.html
+*.html~
