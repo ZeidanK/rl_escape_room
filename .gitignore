@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.DS_Store
+.pytest_cache/
+.streamlit/secrets.toml
+storage/models/*
+!storage/models/.gitkeep
+storage/episodes/*
+!storage/episodes/.gitkeep
+storage/metrics/*
+!storage/metrics/.gitkeep
+storage/experiments/*
+!storage/experiments/.gitkeep

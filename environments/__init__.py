@@ -1,0 +1,6 @@
+from environments.base_environment import BaseEnvironment
+from environments.grid_environment import GridEnvironment
+from environments.room1_dp import Room1DP
+from environments.room2_sarsa import Room2SARSA
+from environments.room3_qlearning import Room3QLearning
+from environments.room4_continuous import Room4Continuous
