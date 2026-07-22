@@ -35,7 +35,7 @@ The four rooms form a narrative of escaping a research facility. This theme prov
 
 ### Common Environment API
 `reset(seed=None)`, `step(action)`, `render()` on all environments.
-Room 1 adds `get_transition_model()` for known-model methods only.
+Room 1 adds `get_transition_distribution()` via `KnownModelGridEnvironment`.
 
 ### Random Seed Handling
 `numpy.random.Generator` via `np.random.default_rng(seed)`.
@@ -48,11 +48,11 @@ No constants scattered across files.
 ### Reward Configurator
 Single `RewardConfig` dataclass with all reward values.
 Environments accept it as a constructor parameter.
-Algorithms never hard-code reward values.
+Rewards are additive: `total = step_penalty + event_penalty`.
 
 ### State Representation
-Rooms 1-2: `(row, col)` tuples.
-Room 3: `(row, col, has_key)` tuple.
+Rooms 1-2: `(row, col)` tuples via `_encode_state()` hook.
+Room 3: `(row, col, has_key)` tuple via `_encode_state()` override.
 Room 4: `(X, Y, Vx, Vy)` numpy array.
 
 ### Velocity Interpretation for Room 4
@@ -62,6 +62,41 @@ This avoids continuous control complexity in early phases.
 ### Exit Detection (Room 4)
 Circular region instead of exact coordinate match.
 Default centre `(9.5, 9.5)`, radius `0.3m`.
+
+## Phase 2 Decisions
+
+### Terminated vs Truncated
+- `terminated` is only `True` on successful exit (or locked-exit with key in Room 3).
+- `truncated` is only `True` when `step_count >= max_steps` without success.
+- `step()` raises `RuntimeError` after either outcome; `reset()` is required.
+
+### Slippery-cell Semantics
+- Stochastic transitions apply only when the agent is currently standing on a `SLIPPERY` cell.
+- Default probabilities: intended=0.80, left=0.10, right=0.10.
+- Configurable via `SlipConfig` dataclass (validated to sum to 1.0).
+
+### Additive Reward Composition
+Every action starts with `step_penalty`. Event penalties are added:
+- Ordinary step: `-1`
+- Wall collision: `-1 + -3 = -4`
+- Trap: `-1 + -20 = -21`
+- Exit: `-1 + 100 = 99`
+
+### Trap Non-Terminal Default
+Traps are traversable and apply an additive penalty but do not terminate the episode.
+
+### Known-Model Interface Separation
+- `GridEnvironment` is the base for unknown-model rooms.
+- `KnownModelGridEnvironment` adds `get_transition_distribution()` for Room 1.
+- The method is pure (no state mutation) and excludes timeout from the DP model.
+
+### Goal-count Validation
+Each room validates its own terminal cell type via `_terminal_cell_types()`:
+- Rooms 1-2 check for exactly one `EXIT`.
+- Room 3 checks for `EXIT` and `LOCKED_EXIT`.
+
+### Key Reward Issued Once
+Room 3 sets `_key_collected = True` on first key pickup and clears the grid cell, preventing double rewards.
 
 ## Room 4 Movement Assumptions
 

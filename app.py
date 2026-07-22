@@ -1,58 +1,75 @@
 import streamlit as st
 
-from config.rooms import ROOM_SPECS
+from core.types import Action, StepResult
+from environments.room1_dp import Room1DP
+from environments.room2_sarsa import Room2SARSA
+from environments.room3_qlearning import Room3QLearning
 
-st.set_page_config(page_title="RL Escape Room — Phase 1", layout="centered")
+ROOM_CLASSES = {
+    "Room 1 — Ice Maze (DP)": Room1DP,
+    "Room 2 — Laser Corridor (SARSA)": Room2SARSA,
+    "Room 3 — Key Vault (Q-Learning)": Room3QLearning,
+}
 
-st.title("Reinforcement Learning Escape Room")
-st.markdown("---")
-st.info("This application is in **Phase 1** (scaffold and design). No algorithms have been implemented yet. Training controls will appear in Phase 2+.")
+ACTION_BUTTONS = {
+    "UP": Action.UP,
+    "RIGHT": Action.RIGHT,
+    "DOWN": Action.DOWN,
+    "LEFT": Action.LEFT,
+}
 
-st.header("Planned Rooms")
+st.set_page_config(page_title="RL Escape Room — Grid Demo", layout="wide")
+st.title("RL Escape Room — Manual Grid Demonstrator")
 
-room_data = [
-    (spec.name, spec.algorithm, spec.state_description, spec.action_description)
-    for spec in ROOM_SPECS.values()
-]
+if "env" not in st.session_state:
+    st.session_state.env = None
+if "last_result" not in st.session_state:
+    st.session_state.last_result = None
+if "room_key" not in st.session_state:
+    st.session_state.room_key = None
 
-st.table(
-    {
-        "Room": [r[0] for r in room_data],
-        "Algorithm": [r[1] for r in room_data],
-        "State": [r[2] for r in room_data],
-        "Actions": [r[3] for r in room_data],
-    }
-)
+with st.sidebar:
+    st.header("Controls")
+    room_name = st.selectbox("Room", list(ROOM_CLASSES.keys()), key="room_selector")
+    seed = st.number_input("Seed", min_value=0, max_value=2**31 - 1, value=42, step=1)
+    if st.button("Reset") or st.session_state.room_key != room_name:
+        cls = ROOM_CLASSES[room_name]
+        st.session_state.env = cls(seed=seed)
+        st.session_state.last_result = st.session_state.env.reset()
+        st.session_state.room_key = room_name
+        st.rerun()
 
-st.markdown("---")
-st.subheader("Configuration")
+    env = st.session_state.env
+    if env is not None:
+        st.markdown("---")
+        st.markdown("**Actions**")
+        disabled = env.is_done
+        cols = st.columns(4)
+        for i, (label, action) in enumerate(ACTION_BUTTONS.items()):
+            if cols[i].button(label, disabled=disabled, key=f"btn_{action}"):
+                result: StepResult = env.step(action)
+                st.session_state.last_result = result
+                st.rerun()
 
-st.code(
-    """
-import streamlit run app.py
-""",
-    language="bash",
-)
+        st.markdown("---")
+        st.markdown("**Status**")
+        st.metric("Step", env.step_count)
+        if st.session_state.last_result is not None:
+            r = st.session_state.last_result
+            st.metric("Last Reward", f"{r.reward:.1f}")
+            if isinstance(r.info, dict):
+                st.markdown(f"**Requested:** {Action(r.info.get('requested_action', '?')).name}")
+                st.markdown(f"**Effective:** {Action(r.info.get('effective_action', '?')).name}")
+                st.markdown(f"**Slipped:** {r.info.get('slipped', False)}")
+                st.markdown(f"**Collision:** {r.info.get('collision', '—')}")
+                st.markdown(f"**Event:** {r.info.get('event', '—')}")
+        if env.is_done:
+            if env._terminated:
+                st.success("EXIT REACHED — episode terminated")
+            elif env._truncated:
+                st.error("TIMEOUT — episode truncated")
 
-room_choice = st.selectbox("Select a room to view its spec:", list(ROOM_SPECS.keys()))
-spec = ROOM_SPECS[room_choice]
-
-st.markdown(f"### {spec.name}")
-st.markdown(f"**Algorithm:** {spec.algorithm}")
-st.markdown(f"**Kind:** {'Continuous' if spec.is_continuous else 'Grid'}")
-if spec.grid_size:
-    st.markdown(f"**Grid size:** {spec.grid_size[0]}×{spec.grid_size[1]}")
-if spec.continuous_size:
-    st.markdown(f"**Room size:** {spec.continuous_size[0]}×{spec.continuous_size[1]} metres")
-    st.markdown(f"**Time step:** {spec.dt}s")
-    st.markdown(f"**Velocity values:** {spec.velocity_values}")
-st.markdown(f"**State:** {spec.state_description}")
-st.markdown(f"**Actions:** {spec.action_description}")
-st.markdown(f"**Description:** {spec.description}")
-
-st.markdown("#### Reward Defaults")
-r = spec.rewards
-st.table({
-    "Event": ["Step", "Exit", "Wall", "Trap", "Key", "Locked exit (no key)", "Time bonus scale"],
-    "Default value": [r.step_penalty, r.exit_reward, r.wall_penalty, r.trap_penalty, r.key_reward, r.locked_exit_penalty, r.time_bonus_scale],
-})
+if env is not None:
+    st.subheader("Grid")
+    grid_str = env.render_ansi()
+    st.code(grid_str, language="text")

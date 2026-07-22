@@ -1,25 +1,38 @@
 import numpy as np
 
-from core.types import CellType, RewardConfig
-from environments.grid_environment import GridEnvironment
+from core.types import RewardConfig, SlipConfig
+from environments.grid_environment import parse_grid_map, GridEnvironment
 
 
-ROOM2_GRID = np.array([
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 2, 4, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 1, 1, 0, 1, 1, 1, 0, 1],
-    [1, 0, 1, 5, 0, 0, 4, 1, 0, 1],
-    [1, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-    [1, 1, 1, 1, 0, 1, 0, 1, 0, 1],
-    [1, 4, 0, 0, 0, 0, 0, 1, 0, 1],
-    [1, 0, 1, 1, 1, 1, 0, 1, 0, 1],
-    [1, 0, 0, 0, 4, 0, 0, 0, 0, 3],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-])
+ROOM2_MAP = [
+    "##########",
+    "#SI......#",
+    "#.##.###.#",
+    "#.#T..I#.#",
+    "#....#...#",
+    "####.#.#.#",
+    "#I.....#.#",
+    "#.####.#.#",
+    "#...I....E",
+    "##########",
+]
+
+ROOM2_GRID = parse_grid_map(ROOM2_MAP)
 
 
 class Room2SARSA(GridEnvironment):
-    def __init__(self, slip_prob: float = 0.2, max_steps: int = 200,
-                 rewards: RewardConfig | None = None, seed: int | None = None):
+    def __init__(
+        self,
+        max_steps: int = 200,
+        reward_config: RewardConfig | None = None,
+        slip_config: SlipConfig | None = None,
+        seed: int | None = None,
+    ):
         grid = ROOM2_GRID.copy()
-        super().__init__(grid, slip_prob=slip_prob, max_steps=max_steps, rewards=rewards, seed=seed)
+        super().__init__(
+            grid=grid,
+            reward_config=reward_config,
+            max_steps=max_steps,
+            slip_config=slip_config,
+            seed=seed,
+        )

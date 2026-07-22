@@ -13,20 +13,33 @@
 | Design | Short risky path near ice; long safe path available |
 
 ### Grid Legend
-- `0` Empty — walkable
-- `1` Wall — impassable
-- `2` Start — agent starting position
-- `3` Exit — terminal, ends episode
-- `4` Slippery — stochastic transitions
-- `5` Trap — heavy penalty (not used in Room 1)
+- `.` Empty — walkable
+- `#` Wall — impassable
+- `S` Start — agent starting position
+- `E` Exit — terminal, ends episode
+- `I` Slippery — stochastic transitions
+- `T` Trap — heavy penalty (not used in Room 1)
+
+### Default Grid
+```
+##########
+S....I...#
+#.###.##.#
+#.#I.....#
+#.#.####.#
+#....I...#
+#####.##.#
+#...I....#
+#......E.#
+##########
+```
 
 ### Rewards
-| Event | Default |
-|-------|--------:|
-| Normal step | -1.0 |
-| Reach exit | +100.0 |
-| Hit wall/boundary | -3.0 |
-| Enter trap | -20.0 |
+| Event | Formula | Default |
+|-------|---------|--------:|
+| Normal step | `step_penalty` | -1.0 |
+| Reach exit | `step_penalty + exit_reward` | +99.0 |
+| Hit wall/boundary | `step_penalty + wall_penalty` | -4.0 |
 
 ---
 
@@ -43,10 +56,29 @@
 | Terminal condition | Reaching the exit cell |
 
 ### Grid Legend
-Same as Room 1, with trap cells (`5`) placed near risky shortcuts.
+Same as Room 1, with trap cells (`T`) placed near risky shortcuts.
+
+### Default Grid
+```
+##########
+#SI......#
+#.##.###.#
+#.#T..I#.#
+#....#...#
+####.#.#.#
+#I.....#.#
+#.####.#.#
+#...I....E
+##########
+```
 
 ### Rewards
-Same defaults as Room 1.
+| Event | Formula | Default |
+|-------|---------|--------:|
+| Normal step | `step_penalty` | -1.0 |
+| Reach exit | `step_penalty + exit_reward` | +99.0 |
+| Hit wall/boundary | `step_penalty + wall_penalty` | -4.0 |
+| Enter trap | `step_penalty + trap_penalty` | -21.0 |
 
 ---
 
@@ -64,18 +96,32 @@ Same defaults as Room 1.
 
 ### Grid Legend
 - Same as Room 1, plus:
-- `7` Key — collectable; sets `has_key = True`
-- `8` Locked Exit — acts as exit only when `has_key == True`
+- `K` Key — collectable; sets `has_key = True`
+- `L` Locked Exit — acts as exit only when `has_key == True`
+
+### Default Grid
+```
+##########
+#S..#...K#
+#.#.#.##.#
+#.#....#.#
+#...##.#.#
+###.#I...#
+#......#.#
+#.####.#.#
+#...I....L
+##########
+```
 
 ### Rewards
-| Event | Default |
-|-------|--------:|
-| Normal step | -1.0 |
-| Reach exit (with key) | +100.0 |
-| Hit wall/boundary | -3.0 |
-| Enter trap | -20.0 |
-| Collect key | +10.0 |
-| Attempt locked exit (no key) | -5.0 |
+| Event | Formula | Default |
+|-------|---------|--------:|
+| Normal step | `step_penalty` | -1.0 |
+| Reach exit (with key) | `step_penalty + exit_reward` | +99.0 |
+| Hit wall/boundary | `step_penalty + wall_penalty` | -4.0 |
+| Enter trap | `step_penalty + trap_penalty` | -21.0 |
+| Collect key | `step_penalty + key_reward` | +9.0 |
+| Attempt locked exit (no key) | `step_penalty + locked_exit_penalty` | -6.0 |
 
 ---
 

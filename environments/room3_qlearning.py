@@ -1,77 +1,66 @@
+from typing import Any
+
 import numpy as np
 
-from core.types import CellType, Action, RewardConfig
-from environments.grid_environment import GridEnvironment
+from core.types import CellType, Position, RewardConfig, SlipConfig
+from environments.grid_environment import parse_grid_map, GridEnvironment
 
 
-ROOM3_GRID = np.array([
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 2, 0, 0, 1, 0, 0, 0, 7, 1],
-    [1, 0, 1, 0, 1, 0, 1, 1, 0, 1],
-    [1, 0, 1, 0, 0, 0, 0, 1, 0, 1],
-    [1, 0, 0, 0, 1, 1, 0, 1, 0, 1],
-    [1, 1, 1, 0, 1, 4, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 1, 0, 1],
-    [1, 0, 1, 1, 1, 1, 0, 1, 0, 1],
-    [1, 0, 0, 0, 4, 0, 0, 0, 0, 8],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-])
+ROOM3_MAP = [
+    "##########",
+    "#S..#...K#",
+    "#.#.#.##.#",
+    "#.#....#.#",
+    "#...##.#.#",
+    "###.#I...#",
+    "#......#.#",
+    "#.####.#.#",
+    "#...I....L",
+    "##########",
+]
+
+ROOM3_GRID = parse_grid_map(ROOM3_MAP)
 
 
 class Room3QLearning(GridEnvironment):
-    def __init__(self, slip_prob: float = 0.2, max_steps: int = 300,
-                 rewards: RewardConfig | None = None, seed: int | None = None):
+    def __init__(
+        self,
+        max_steps: int = 300,
+        reward_config: RewardConfig | None = None,
+        slip_config: SlipConfig | None = None,
+        seed: int | None = None,
+    ):
         grid = ROOM3_GRID.copy()
-        super().__init__(grid, slip_prob=slip_prob, max_steps=max_steps, rewards=rewards, seed=seed)
-        self.has_key = False
+        super().__init__(
+            grid=grid,
+            reward_config=reward_config,
+            max_steps=max_steps,
+            slip_config=slip_config,
+            seed=seed,
+        )
+        self._key_collected = False
 
-    def reset(self, seed: int | None = None) -> tuple[int, int, bool]:
-        state = super().reset(seed=seed)
-        self.has_key = False
-        return (*state, self.has_key)
+    def _terminal_cell_types(self) -> set[CellType]:
+        return {CellType.EXIT, CellType.LOCKED_EXIT}
 
-    def step(self, action: int) -> tuple[tuple[int, int, bool], float, bool, dict]:
-        self.step_count += 1
-        actual_action = self._apply_slippery(action)
+    def _encode_state(self) -> tuple[int, int, bool]:
+        r, c = self._agent_pos
+        return (r, c, self._key_collected)
 
-        dr, dc = ACTION_DELTAS[Action(actual_action)]
-        new_pos = (self.agent_pos[0] + dr, self.agent_pos[1] + dc)
-        r, c = new_pos
-        info = {"timeout": False, "key_collected": False}
+    def reset(self, seed: int | None = None) -> Any:
+        self._key_collected = False
+        return super().reset(seed=seed)
 
-        if not (0 <= r < self.rows and 0 <= c < self.cols):
-            reward, terminated = self.rewards.wall_penalty, False
-        else:
-            cell = self.grid[r, c]
-            if cell == CellType.WALL:
-                reward, terminated = self.rewards.wall_penalty, False
-                r, c = self.agent_pos
-            elif cell == CellType.TRAP:
-                reward, terminated = self.rewards.trap_penalty, False
-                self.agent_pos = (r, c)
-            elif cell == CellType.KEY:
-                self.has_key = True
-                self.grid[r, c] = CellType.EMPTY
-                reward, terminated = self.rewards.key_reward, False
-                self.agent_pos = (r, c)
-                info["key_collected"] = True
-            elif cell == CellType.LOCKED_EXIT:
-                if self.has_key:
-                    reward = self.rewards.compute_exit_reward(self.max_steps, self.step_count)
-                    terminated = True
-                    self.agent_pos = (r, c)
-                else:
-                    reward, terminated = self.rewards.locked_exit_penalty, False
-            elif cell == CellType.EXIT:
-                reward = self.rewards.compute_exit_reward(self.max_steps, self.step_count)
-                terminated = True
-                self.agent_pos = (r, c)
-            else:
-                reward, terminated = self.rewards.step_penalty, False
-                self.agent_pos = (r, c)
-
-        if self.step_count >= self.max_steps and not terminated:
-            terminated = True
-            info["timeout"] = True
-
-        return (*self.agent_pos, self.has_key), reward, terminated, info
+    def _on_enter_cell(self, position: Position, cell: CellType) -> tuple[float, bool, dict]:
+        if cell == CellType.KEY:
+            if not self._key_collected:
+                self._key_collected = True
+                self._grid[position] = int(CellType.EMPTY)
+                return self.reward_config.key_reward, False, {"event": "key", "key_collected": True}
+            return 0.0, False, {"event": "key_already_collected"}
+        elif cell == CellType.LOCKED_EXIT:
+            if self._key_collected:
+                exit_reward = self.reward_config.compute_exit_reward(self.max_steps, self._step_count)
+                return exit_reward, True, {"event": "exit", "success": True}
+            return self.reward_config.locked_exit_penalty, False, {"event": "locked_exit"}
+        return super()._on_enter_cell(position, cell)
