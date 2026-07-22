@@ -1,247 +1,130 @@
 # Reinforcement Learning Escape Room
 
-A Python-based reinforcement learning escape-room application with four rooms, each using a different RL method.
+A Python-based reinforcement learning escape-room application with four rooms of
+increasing difficulty, each solved by a different RL algorithm.
 
-## Rooms
+**Deployment: pending**
 
-| Room | Name | Algorithm | Environment |
-|------|------|-----------|-------------|
-| 1 | Ice Maze | Value Iteration (DP) | Known 10×10 stochastic grid |
-| 2 | Laser Corridor | SARSA | Unknown 10×10 stochastic grid |
-| 3 | Key Vault | Q-Learning | Unknown 10×10 grid with key mechanic |
-| 4 | Momentum Chamber | Semi-gradient SARSA + tile coding | Continuous 10×10 metre room |
+## Project Objective
 
-## Value Iteration (Room 1)
+Apply four reinforcement learning algorithms — Value Iteration, SARSA,
+Q-Learning, and semi-gradient SARSA with tile coding — to navigate a series of
+grid-world and continuous control environments. Each room introduces a new
+challenge: stochastic transitions, trap cells, key-collection mechanics, and
+continuous state spaces.
 
-Room 1 uses **Value Iteration** — a dynamic-programming algorithm for known MDPs.
+## Assignment Requirements
 
-**Bellman update (synchronous):**
-```
-V_new(s) = max_a Σ P(s'|s,a) × [r + (0 if terminated else γV(s'))]
-```
+| # | Requirement                                                                  | Status |
+|---|------------------------------------------------------------------------------|--------|
+| 1 | Four or more rooms with different tasks                                      | Done   |
+| 2 | Each room has a final state (exit / timeout)                                 | Done   |
+| 3 | Faster completion yields higher reward                                       | Done   |
+| 4 | Rooms 1–3 use a 10×10 grid                                                   | Done   |
+| 5 | Room 1 uses DP with a known model                                            | Done   |
+| 6 | Room 2 uses SARSA with slippery cells and traps                              | Done   |
+| 7 | Room 3 uses Q-Learning with key-collection mechanic                          | Done   |
+| 8 | Room 4 uses a non-grid, continuous state space (X, Y, Vx, Vy)                | Done   |
+| 9 | Room 4 is a 10×10 metre room                                                 | Done   |
+| 10 | All agents run on the same platform (Streamlit)                              | Done   |
+| 11 | Reproducible experiments with seeded RNG streams                             | Done   |
+| 12 | Published as a public Streamlit app                                          | Pending |
+| 13 | Defence presentation with oral questions                                     | Prepared |
 
-- Terminal states (exit): `V = 0`, `policy = None` (no bootstrap).
-- Iteration stops when `max_s |V_new(s) - V(s)| < tolerance`.
-- If `max_iterations` reached without convergence, `converged = False`.
-- Tie-breaking: UP → RIGHT → DOWN → LEFT (enum order).
-- Pure: `solve()` uses only `get_transition_distribution()` — never calls `step()`, never mutates the environment, never samples RNG.
+## Four-Room Overview
 
-**To run from Streamlit:**
-1. Select `Room 1 — DP` from the mode dropdown.
-2. Adjust gamma, tolerance, max_iterations, and slip probabilities in the sidebar.
-3. Click **Solve** to run Value Iteration.
-4. View convergence, value grid, policy arrows, rollouts, and evaluation results in the tabs.
+| Room | Name               | Algorithm                  | State Space          | Model Known | On/Off Policy |
+|------|--------------------|----------------------------|----------------------|-------------|---------------|
+| 1    | Ice Maze           | Value Iteration (DP)       | 10×10 grid           | Yes         | —             |
+| 2    | Laser Corridor     | SARSA                      | 10×10 grid           | No          | On-policy     |
+| 3    | Key Vault          | Q-Learning                 | Grid × {has_key}     | No          | Off-policy    |
+| 4    | Momentum Chamber   | Semi-gradient SARSA + TC   | Continuous (X,Y,Vx,Vy) | No        | On-policy     |
 
-**Running experiments:**
-```bash
-python -c "from training.dp_experiments import run_room1_experiments; results = run_room1_experiments()"
-```
+### Room 1 — Ice Maze (Value Iteration)
 
-Results are saved to `storage/experiments/room1_dp/`.
+- **State**: 10×10 grid cell (row, col).
+- **Actions**: UP, RIGHT, DOWN, LEFT.
+- **Rewards**: step=−1, wall=−4, exit=+99, trap=−21, timeout=−31.
+- **Terminal**: exit cell.
+- **Transition model**: known; stochastic on slippery cells (intended=0.80,
+  left=0.10, right=0.10).
+- **Algorithm**: synchronous Value Iteration.
+- **Update**: `V_new(s) = max_a Σ P(s'|s,a) × [r + (terminated ? 0 : γV(s'))]`.
+- **Stop condition**: `max_s |V_new(s) − V(s)| < tolerance` or max iterations.
 
-**Running tests:**
-```bash
-pytest tests/test_dynamic_programming.py -v
-```
+### Room 2 — Laser Corridor (SARSA)
 
-## SARSA (Room 2)
+- **State**: 10×10 grid cell (row, col).
+- **Actions**: UP, RIGHT, DOWN, LEFT.
+- **Rewards**: same additive structure as Room 1 + trap penalty.
+- **Terminal**: exit cell; truncated at max_steps.
+- **Transition model**: unknown; agent learns from sampled experience.
+- **Algorithm**: SARSA (on-policy TD control).
+- **Update**: `Q(s,a) ← Q(s,a) + α[r + γQ(s',a') − Q(s,a)]`.
+- **Exploration**: epsilon-greedy with exponential decay.
 
-Room 2 uses **SARSA** — an on-policy TD control algorithm that learns Q-values from sampled experience.
+### Room 3 — Key Vault (Q-Learning)
 
-**SARSA update:**
-```
-Q(s,a) ← Q(s,a) + α[r + γQ(s',a') − Q(s,a)]
-```
+- **State**: (row, col, has_key) — Cartesian product of non-wall cells × {False, True}.
+- **Actions**: UP, RIGHT, DOWN, LEFT.
+- **Rewards**: same as Room 2 + key_reward=+10 when first collecting the key.
+- **Terminal**: exit cell **with key**; locked exit without key is not terminal.
+- **Transition model**: unknown.
+- **Algorithm**: Q-Learning (off-policy TD control).
+- **Update**: `Q(s,a) ← Q(s,a) + α[r + γ max_{a'} Q(s',a') − Q(s,a)]`.
+- **Exploration**: epsilon-greedy.
 
-- Non-terminal: full bootstrap with `γQ(s',a')`.
-- Terminal: `target = reward` (no bootstrap).
-- Truncated (timeout): `target = reward` — truncation does **not** bootstrap.
-- Epsilon-greedy exploration with configurable decay (constant, exponential, linear).
-- Greedy action selection uses **seeded uniform random tie-breaking** among tied maxima.
-- Separate seeded RNG streams for environment, policy, snapshots, and bookkeeping.
-- Snapshots capture Q-table + evaluation rollout at configurable episode milestones.
-- Model persistence: versioned JSON metadata + aligned `.npz` array with map-signature validation.
+### Room 4 — Momentum Chamber (Approximate SARSA)
 
-**To run from Streamlit:**
-1. Select `Room 2 — SARSA` from the mode dropdown.
-2. Adjust alpha, gamma, max_steps, epsilon schedule, and episodes in the sidebar.
-3. Click **Train** to run SARSA.
-4. View metrics, Q-values, greedy policy, evaluation, and trajectory in the tabs.
+- **State**: (X, Y, Vx, Vy) — continuous position [0,10]², integer velocity {−1,0,1}.
+- **Actions**: 9 velocity vectors (STOP + 4 cardinal + 4 diagonal).
+- **Rewards**: step=−0.01, exit=+100, boundary=−1, timeout=−25,
+  progress_scale×distance_gain.
+- **Terminal**: within 0.35 m of exit centre (9.5, 9.5); truncated at 750 steps.
+- **Transition model**: unknown.
+- **Algorithm**: semi-gradient SARSA with tile coding & linear approximation.
+- **Update**: `δ = r + γQ(s',a') − Q(s,a)`; `w[a] += (α/n) · δ · x(s)`.
+- **Feature representation**: tile coding — multi-scale overlapping tilings
+  with velocity categories.
 
-**Running SARSA experiments:**
-```bash
-python -c "from training.sarsa_experiments import run_screening_experiments; run_screening_experiments()"
-```
+## Increasing Difficulty
 
-Results are saved to `storage/experiments/room2_sarsa/`.
+1. **Room 1** – Known MDP, solved via dynamic programming (exact, no sampling).
+2. **Room 2** – Unknown MDP with stochastic transitions; on-policy TD learns
+   risk-aware behaviour.
+3. **Room 3** – Extended state space (key flag); off-policy Q-Learning learns
+   optimal value despite exploratory actions.
+4. **Room 4** – Continuous state; function approximation generalises across
+   infinitely many states; semi-gradient update trades bias for variance.
 
-## Q-Learning (Room 3)
-
-Room 3 uses **Q-Learning** — an off-policy TD control algorithm for the Key Vault map.
-
-**Augmented state:** `(row, column, has_key)` — Cartesian product of non-wall cells × `{False, True}`.
-
-**Q-Learning update (off-policy):**
-```
-Q(s,a) ← Q(s,a) + α[r + γ maxₐ' Q(s',a') − Q(s,a)]
-```
-
-- The target uses the greedy maximum over next-state actions, **not** the behaviour action (off-policy).
-- Terminal: `target = reward` (no bootstrap).
-- Truncated (timeout): `target = reward` — no bootstrap.
-- The locked exit without the key is **not** terminal; the agent must collect the key first.
-- Key reward is issued exactly once per episode.
-- Epsilon-greedy behaviour policy (same schedule as SARSA).
-- Snapshots capture Q-table + evaluation rollout at episode milestones.
-- Two policy views: without key and with key.
-- Model persistence with schema version, algorithm tag, map signature, and state schema validation.
-
-**To run from Streamlit:**
-1. Select `Room 3 — Q-Learning` from the mode dropdown.
-2. Adjust alpha, gamma, max_steps, epsilon schedule, and episodes in the sidebar.
-3. Click **Train** to run Q-Learning.
-4. View training progress, policies (with/without key), Q-values, replay, and evaluation in the tabs.
-
-**Running Q-Learning experiments:**
-```bash
-python -c "from training.q_learning_experiments import run_screening_experiments; run_screening_experiments()"
-```
-
-## Function Approximation — Room 4: Momentum Chamber
-
-Room 4 uses **semi-gradient SARSA** with **tile coding** and a **linear action-value function** for a continuous 10×10 metre room.
-
-**State:** `(X, Y, Vx, Vy)` — continuous position, integer velocity in {-1, 0, 1}.
-
-**Actions:** 9 velocity vectors (STOP, 4 cardinal, 4 diagonal). Diagonal movement has magnitude √2 per step. Velocity is set instantaneously (no acceleration).
-
-**Tile coding:** Default 8 tilings × 10×10 tiles × 3×3 velocity categories = 7200 deterministic features. Exactly one tile active per tiling. Nearby states share features; distant states do not.
-
-**Update equation:**
-```
-δ = r + γQ(s′,a′) − Q(s,a)        # for non-terminal S'
-δ = r − Q(s,a)                     # for terminal or truncated S'
-w[a] += α/n · δ · x(s)             # per active feature, per action weight vector
-```
-
-**Reward components:**
-- `step = -0.01` per time step
-- `exit = +100.0` when within 0.35m of exit centre (9.5, 9.5)
-- `boundary_collision = -1.0` when movement would exit [0, 10]²; blocked velocity component zeroed
-- `timeout = -25.0` at max_steps (default 750)
-- `distance_progress_scale × (dist_before − dist_after)` configurable (0.0, 0.5, 1.0)
-
-**Start modes:** `FIXED` (0.5, 0.5, 0, 0), `RANDOM_LOWER_LEFT` (X,Y ∈ [0.25, 3.0]²), `RANDOM_ROOM` (any valid position outside exit). Training default is RANDOM_LOWER_LEFT.
-
-**Evaluation** includes fixed-start, fixed unseen starts, and random-start metrics.
-
-**To run from Streamlit:** Select `Room 4 — Function Approximation` mode.
-
-**Running experiments:**
-```bash
-python -c "from training.approximate_sarsa_experiments import run_screening_stage_a; results = run_screening_stage_a()"
-```
-
-## Algorithm Comparison
-
-Compare SARSA, Q-Learning, and Approximate SARSA on benchmarks:
-
-- **Comparison A (tabular)**: SARSA vs Q-Learning on Room 2 benchmark with identical hyperparameters and paired training seeds.
-- **Comparison B (tabular)**: Each algorithm's best-tuned configuration on Room 2.
-- **Comparison C (continuous)**: Approximate SARSA with tile coding on Room 4.
-- Reports success rate, return, steps, collisions, side-by-side.
-
-**To run from Streamlit:** Select `Algorithm Comparison` mode.
-
-**Running all tests:**
-```bash
-pytest -v
-```
-
-## Cell Symbols
-
-```bash
-pip install -r requirements.txt
-streamlit run app.py
-```
-
-## Manual Grid Mode
-
-Use the Streamlit app to manually explore Rooms 1–3:
-
-1. Select a room from the dropdown.
-2. Enter a seed and click **Reset**.
-3. Click **UP / RIGHT / DOWN / LEFT** to move the agent.
-4. Observe step count, rewards, slip events, collisions, and terminal states.
-
-No training or RL algorithms are included in this mode.
-
-## Cell Symbols
-
-| Symbol | Cell Type |
-|--------|-----------|
-| `.` | Empty (walkable) |
-| `#` | Wall (impassable) |
-| `S` | Start |
-| `E` | Exit |
-| `I` | Slippery (stochastic transitions) |
-| `T` | Trap (additive penalty, traversable) |
-| `K` | Key |
-| `L` | Locked exit |
-| `A` | Agent (render only) |
-
-## Movement Rules
-
-- Actions: `UP (0)`, `RIGHT (1)`, `DOWN (2)`, `LEFT (3)`.
-- Candidate cell is calculated via `ACTION_DELTAS`.
-- If candidate is a wall or outside grid → agent stays in place + wall penalty added.
-- Otherwise → agent moves to candidate cell.
-
-## Slippery-cell Semantics
-
-- Stochastic transitions apply **only** when the agent is currently standing on a `SLIPPERY` cell.
-- Default probabilities: intended=0.80, left=0.10, right=0.10.
-- Configurable via `SlipConfig` dataclass.
-- `info["slipped"]` is `True` when the effective action differs from the requested action.
-
-## Additive Rewards
-
-Rewards are additive. Each action starts with `step_penalty`, then event penalties are added:
-
-| Event | Formula | Default |
-|-------|---------|--------:|
-| Ordinary step | `step_penalty` | -1.0 |
-| Wall collision | `step_penalty + wall_penalty` | -4.0 |
-| Trap | `step_penalty + trap_penalty` | -21.0 |
-| Exit | `step_penalty + exit_reward` | +99.0 |
-| Timeout | `step_penalty + step_limit_penalty` | -31.0 |
-| Key collection | `step_penalty + key_reward` | +9.0 |
-| Locked exit (no key) | `step_penalty + locked_exit_penalty` | -6.0 |
-
-## Terminated vs Truncated
-
-| Outcome | `terminated` | `truncated` | `info["event"]` |
-|---------|:-----------:|:----------:|:--------------:|
-| Exit reached | `True` | `False` | `"exit"` |
-| Max steps exceeded | `False` | `True` | `"timeout"` |
-
-Calling `step()` after either outcome raises `RuntimeError`. Call `reset()` first.
-
-## Project Structure
+## Project Architecture
 
 ```
 rl_escape_room/
-├── app.py                 # Streamlit app (manual mode + 5 RL modes)
-├── config/                # Configuration dataclasses and room specs
-├── core/                  # Shared types (RewardConfig, StepResult, enums, all configs)
-├── environments/          # Room environments (grid-based Room 1–3, continuous Room 4)
-├── agents/                # RL algorithms (DP, SARSA, Q-Learning, Approximate SARSA)
-├── features/              # Tile coding for function approximation (NEW)
-├── training/              # Training pipelines and experiment runners
-├── visualization/         # Policy symbols, Q-value tables, trajectory overlays, action fields
-├── storage/               # Saved models, metrics, episodes, experiment results
-├── tests/                 # Comprehensive tests (263 tests: 44 env + 41 DP + 49 SARSA + 54 Q-Learning + 75 Approx SARSA)
-└── docs/                  # Design documents
+├── app.py                 # Streamlit web interface (7 modes: Home + 6 RL modes)
+├── requirements.txt       # Python dependencies
+├── core/                  # Shared types, configs, enums
+├── environments/          # Room environments (grid Room 1–3, continuous Room 4)
+├── agents/                # RL algorithms (DP, SARSA, Q-Learning, Approx SARSA)
+├── features/              # Tile coding for function approximation
+├── training/              # Experiment pipelines, comparisons, utilities
+├── visualization/         # Policy arrows, Q-tables, training curves, action fields
+├── storage/               # Saved models, experiment results, metrics
+├── tests/                 # 263 tests across all components
+├── docs/                  # Design docs, defence prep, screenshots
+└── tools/                 # Screenshot capture, result extraction
+```
+
+## Installation
+
+```bash
+pip install -r requirements.txt
+```
+
+## Local Run
+
+```bash
+streamlit run app.py
 ```
 
 ## Running Tests
@@ -250,17 +133,145 @@ rl_escape_room/
 pytest -v
 ```
 
-## Design Documents
+**Exact test count: 263 tests (current local result).**
 
-- `docs/ROOM_SPECS.md` — Detailed specifications for each room.
-- `docs/DECISIONS.md` — Design decisions and rationale.
-- `PHASE_1_AGENT_BRIEF.md` — Original Phase 1 requirements.
+## Best Measured Parameters
 
-## Team
+| Room | Algorithm          | Best Config                                                                  |
+|------|--------------------|------------------------------------------------------------------------------|
+| 1    | Value Iteration    | gamma=0.8, tolerance=0.01, slip=deterministic                                |
+| 2    | SARSA              | alpha=0.05, gamma=0.95, epsilon_decay=0.99, episodes=5000                    |
+| 3    | Q-Learning         | alpha=0.50, gamma=0.99, epsilon_decay=0.999, episodes=5000                   |
+| 4    | Approximate SARSA  | tilings=16, tiles_xy=16, alpha=0.05, progress_scale=1.0, epsilon_decay=0.995 |
+
+## Final Local Measured Results
+
+| Room | Algorithm          | Success Rate | Mean Return | Mean Steps | Notes                      |
+|------|--------------------|:------------:|:-----------:|:----------:|----------------------------|
+| 1    | Value Iteration    | 100.00%      | 86.0        | 14.0       | Deterministic slip config  |
+| 2    | SARSA              | 100.00%      | 84.8        | 15.1       | 5 seeds, 100 eval episodes |
+| 3    | Q-Learning         | 100.00%      | 91.0        | 19.0       | 5 seeds, 100 eval episodes |
+| 4    | Approximate SARSA  | 60.00%       | —           | —          | Fixed training start       |
+
+Room 4 generalisation: fixed unseen=8.00%, random lower-left=32.80%,
+random room=14.40%.
+
+## Matched SARSA vs Q-Learning Comparison
+
+Room 2 benchmark, identical hyperparameters (α=0.10, γ=0.95, ε_decay=0.995,
+2000 episodes), paired seeds 0–4, 100 eval episodes each.
+
+| Metric            | SARSA     | Q-Learning |
+|-------------------|:---------:|:----------:|
+| Success rate      | 100.00%   | 100.00%    |
+| Mean return       | 83.8      | 85.0       |
+| Mean steps        | 15.3      | 15.0       |
+| Total collisions  | 150       | 0          |
+| Total traps       | 0         | 0          |
+| Paired SR diff    | —         | 0.0000     |
+
+Both algorithms reach 100% success on Room 2. Q-Learning achieves slightly
+higher return and fewer collisions. SARSA learns risk-aware behaviour (it
+collides more because it explores; the on-policy objective includes
+exploratory actions in the backup).
+
+## Tuned Comparison
+
+Each algorithm's best-tuned configuration on Room 2 (5000 episodes, 5 seeds,
+100 eval episodes):
+
+| Algorithm   | Config                            | SR       | Return | Steps |
+|-------------|-----------------------------------|:--------:|:------:|:-----:|
+| SARSA       | α=0.05, γ=0.95, ed=0.99          | 100.00%  | 84.8   | 15.1  |
+| Q-Learning  | α=0.50, γ=0.99, ed=0.999         | 100.00%  | 85.0   | 15.0  |
+
+Both algorithms achieve perfect success with very similar return and steps.
+No single algorithm dominates across all metrics.
+
+## Experiment Methodology
+
+- **Room 1**: Sweep over gamma (0.8, 0.9, 0.99), tolerance (0.001, 0.01, 0.1),
+  and slip configuration (deterministic, stochastic). Rank by success rate.
+- **Room 2–3**: Two-stage screening. Stage 1: 36 configs (4 α × 3 γ × 3 decay)
+  at 2000/1000 episodes. Top 5 advance to confirmation: 5 seeds × 5000 episodes,
+  evaluation on 100 seeds.
+- **Room 4**: Staged search. Stage A: 15 one-factor-at-a-time configs at 250
+  episodes. Stage B: combine best 2 per factor (32 combos) at 500 episodes.
+  Top 5 advance to confirmation: 5 seeds × 1500 episodes, 4 start categories.
+- **Comparison**: Matched (identical parameters) and tuned (best per-algorithm)
+  on Room 2.
+
+## Reproducibility and Seeds
+
+- Independent RNG streams per component (env, policy, snapshots, bookkeeping)
+  via `numpy.random.SeedSequence`.
+- Every experiment records Git commit, map signature, parameter set, and
+  training seeds.
+- Rolling back to the same commit with the same seed reproduces results
+  exactly.
+
+## Persistence and Model Loading
+
+- SARSA/Q-Learning: JSON metadata + `.npz` Q-table array.
+- Approximate SARSA: JSON metadata + `.npz` weight matrix.
+- Map signature validation prevents loading models on incompatible maps.
+- Algorithm tag prevents loading a SARSA model as Q-Learning.
+- All experiment results stored in `storage/experiments/final/`.
+
+## Screenshots
+
+Screenshots from the local Streamlit application:
+
+| Mode                          | Screenshot                        |
+|-------------------------------|-----------------------------------|
+| Home page                     | `docs/screenshots/home.png`       |
+| Room 1 value/policy           | `docs/screenshots/room1_value_policy.png` |
+| Room 2 training graphs        | `docs/screenshots/room2_training.png` |
+| Room 3 policy (no key)        | `docs/screenshots/room3_policy_no_key.png` |
+| Room 4 trajectory             | `docs/screenshots/room4_trajectory.png` |
+| Algorithm comparison          | `docs/screenshots/comparison.png` |
+
+## Known Limitations
+
+- Room 4 success rate (60%) is lower than tabular rooms. The continuous
+  control task is inherently harder; generalisation to unseen starts is poor
+  (8–33%).
+- Tile coding parameters were tuned only via a staged-search on a limited
+  budget. More exhaustive tuning or alternative representations (RBFs, deep
+  nets) may improve performance.
+- Algorithm comparison uses Room 2 as the sole benchmark. Results may not
+  generalise to other grid configurations.
+- The comparison does not include Room 4 (function approximation) because
+  SARSA and Q-Learning in their tabular forms cannot handle the continuous
+  state space.
+
+## Future Work
+
+- Room 5 — Deep Q-Network with experience replay and target network on
+  a partially observable grid (stub only, not implemented).
+- Deploy to Streamlit Community Cloud.
+- Replace screenshots with public-site screenshots after deployment.
+- Extended hyperparameter search for Room 4 (Bayesian optimisation, more
+  tilings configurations).
+- Cross-validation across multiple room maps.
+
+## Team Responsibilities
 
 | Member | Primary Responsibility |
-|--------|----------------------|
+|--------|------------------------|
 | Member A | Shared grid, Dynamic Programming, SARSA, Testing |
 | Member B | Q-Learning, Experiments |
 | Member C | Room 4, Streamlit, Deployment |
-| Everyone | Documentation, Defense |
+| Everyone | Documentation, Defence |
+
+## Defence Preparation
+
+See `docs/DEFENSE_PREP.md` for detailed answers covering Bellman equations,
+Value Iteration, SARSA, Q-Learning, tile coding, semi-gradient updates,
+hyperparameters, reproducibility, and comparison methodology.
+
+## Deployment
+
+```text
+Deployment: pending
+```
