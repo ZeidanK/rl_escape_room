@@ -1,0 +1,1921 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-22T13:47:57.075042Z",
+  "git_commit": "9c6c37ba99069b44ef38aeeecc7cb84ba74ee4fd",
+  "python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "package_versions": {
+    "numpy": "1.26.4",
+    "streamlit": "1.60.0",
+    "pytest": "9.1.1"
+  },
+  "algorithm": "Q-Learning",
+  "room": "Room3QLearning",
+  "map_signature": "310e580706b75178",
+  "config": {
+    "alpha_values": [
+      0.05,
+      0.1,
+      0.3,
+      0.5
+    ],
+    "gamma_values": [
+      0.9,
+      0.95,
+      0.99
+    ],
+    "decay_values": [
+      0.99,
+      0.995,
+      0.999
+    ],
+    "screening_episodes": 1000,
+    "confirmation_episodes": 5000
+  },
+  "reward_config": {},
+  "motion_config": {},
+  "training_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "evaluation_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91,
+    92,
+    93,
+    94,
+    95,
+    96,
+    97,
+    98,
+    99
+  ],
+  "ranking_criteria": [
+    "mean_success_rate",
+    "mean_key_collection_rate",
+    "-std_success_rate",
+    "-mean_successful_steps",
+    "-mean_key_collection_step",
+    "mean_return",
+    "config_tuple"
+  ],
+  "retained_rollouts": false,
+  "screening_results": [
+    {
+      "trial_id": "q_a=0.05_g=0.95_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.95,
+        "decay": 0.995,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.5637454986572266
+    },
+    {
+      "trial_id": "q_a=0.05_g=0.95_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.95,
+        "decay": 0.999,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.7224597930908203
+    },
+    {
+      "trial_id": "q_a=0.05_g=0.95_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.95,
+        "decay": 0.99,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.4326698780059814
+    },
+    {
+      "trial_id": "q_a=0.05_g=0.99_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.99,
+        "decay": 0.995,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.656250476837158
+    },
+    {
+      "trial_id": "q_a=0.05_g=0.99_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.99,
+        "decay": 0.999,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.7977612018585205
+    },
+    {
+      "trial_id": "q_a=0.05_g=0.99_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.99,
+        "decay": 0.99,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.5798728466033936
+    },
+    {
+      "trial_id": "q_a=0.05_g=0.9_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.9,
+        "decay": 0.995,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.644082546234131
+    },
+    {
+      "trial_id": "q_a=0.05_g=0.9_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.9,
+        "decay": 0.999,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.7515361309051514
+    },
+    {
+      "trial_id": "q_a=0.05_g=0.9_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.9,
+        "decay": 0.99,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.5295679569244385
+    },
+    {
+      "trial_id": "q_a=0.1_g=0.95_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.95,
+        "decay": 0.995,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.564035415649414
+    },
+    {
+      "trial_id": "q_a=0.1_g=0.95_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.95,
+        "decay": 0.999,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.708719253540039
+    },
+    {
+      "trial_id": "q_a=0.1_g=0.95_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.95,
+        "decay": 0.99,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.3874149322509766
+    },
+    {
+      "trial_id": "q_a=0.1_g=0.99_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.99,
+        "decay": 0.995,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.6108479499816895
+    },
+    {
+      "trial_id": "q_a=0.1_g=0.99_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.99,
+        "decay": 0.999,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.774976968765259
+    },
+    {
+      "trial_id": "q_a=0.1_g=0.99_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.99,
+        "decay": 0.99,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.464649200439453
+    },
+    {
+      "trial_id": "q_a=0.1_g=0.9_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.9,
+        "decay": 0.995,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.4547348022460938
+    },
+    {
+      "trial_id": "q_a=0.1_g=0.9_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.9,
+        "decay": 0.999,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.775576591491699
+    },
+    {
+      "trial_id": "q_a=0.1_g=0.9_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.9,
+        "decay": 0.99,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.4075746536254883
+    },
+    {
+      "trial_id": "q_a=0.3_g=0.95_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.95,
+        "decay": 0.995,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.386817216873169
+    },
+    {
+      "trial_id": "q_a=0.3_g=0.95_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.95,
+        "decay": 0.999,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.7101831436157227
+    },
+    {
+      "trial_id": "q_a=0.3_g=0.95_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.95,
+        "decay": 0.99,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.256573438644409
+    },
+    {
+      "trial_id": "q_a=0.3_g=0.99_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.99,
+        "decay": 0.995,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.4892280101776123
+    },
+    {
+      "trial_id": "q_a=0.3_g=0.99_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.99,
+        "decay": 0.999,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.6684730052948
+    },
+    {
+      "trial_id": "q_a=0.3_g=0.99_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.99,
+        "decay": 0.99,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.208238124847412
+    },
+    {
+      "trial_id": "q_a=0.3_g=0.9_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.9,
+        "decay": 0.995,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.4980452060699463
+    },
+    {
+      "trial_id": "q_a=0.3_g=0.9_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.9,
+        "decay": 0.999,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.73549747467041
+    },
+    {
+      "trial_id": "q_a=0.3_g=0.9_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.9,
+        "decay": 0.99,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.3477632999420166
+    },
+    {
+      "trial_id": "q_a=0.5_g=0.95_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.95,
+        "decay": 0.995,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.385902166366577
+    },
+    {
+      "trial_id": "q_a=0.5_g=0.95_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.95,
+        "decay": 0.999,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.843940019607544
+    },
+    {
+      "trial_id": "q_a=0.5_g=0.95_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.95,
+        "decay": 0.99,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.2816803455352783
+    },
+    {
+      "trial_id": "q_a=0.5_g=0.99_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.99,
+        "decay": 0.995,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.571122646331787
+    },
+    {
+      "trial_id": "q_a=0.5_g=0.99_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.99,
+        "decay": 0.999,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.683877944946289
+    },
+    {
+      "trial_id": "q_a=0.5_g=0.99_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.99,
+        "decay": 0.99,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.3469154834747314
+    },
+    {
+      "trial_id": "q_a=0.5_g=0.9_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.9,
+        "decay": 0.995,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.382974147796631
+    },
+    {
+      "trial_id": "q_a=0.5_g=0.9_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.9,
+        "decay": 0.999,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.6391632556915283
+    },
+    {
+      "trial_id": "q_a=0.5_g=0.9_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "Q-Learning",
+      "room": "Room3QLearning",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.9,
+        "decay": 0.99,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 91.0,
+        "std_return": 0.0,
+        "mean_steps": 19.0,
+        "mean_successful_steps": 19.0,
+        "key_collection_rate": 1.0,
+        "mean_key_collection_step": 10.0,
+        "total_locked_exit_attempts": 0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 2.284862995147705
+    }
+  ],
+  "confirmation_results": [
+    {
+      "config_tuple": [
+        0.5,
+        0.99,
+        0.999
+      ],
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.99,
+        "decay": 0.999,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "n_seeds": 5,
+      "mean_success_rate": 1.0,
+      "std_success_rate": 0.0,
+      "mean_key_collection_rate": 1.0,
+      "mean_key_collection_step": 10.0,
+      "mean_successful_steps": 19.0,
+      "mean_return": 91.0,
+      "per_seed": [
+        {
+          "trial_id": "q_a=0.5_g=0.99_d=0.999_s=0_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.999,
+            "episodes": 5000,
+            "seed": 0
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 12.43448805809021
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.99_d=0.999_s=1_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.999,
+            "episodes": 5000,
+            "seed": 1
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 11.94031572341919
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.99_d=0.999_s=2_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.999,
+            "episodes": 5000,
+            "seed": 2
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 12.100715160369873
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.99_d=0.999_s=3_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.999,
+            "episodes": 5000,
+            "seed": 3
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 11.919030904769897
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.99_d=0.999_s=4_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.999,
+            "episodes": 5000,
+            "seed": 4
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 12.008566856384277
+        }
+      ]
+    },
+    {
+      "config_tuple": [
+        0.5,
+        0.99,
+        0.995
+      ],
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.99,
+        "decay": 0.995,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "n_seeds": 5,
+      "mean_success_rate": 1.0,
+      "std_success_rate": 0.0,
+      "mean_key_collection_rate": 1.0,
+      "mean_key_collection_step": 10.0,
+      "mean_successful_steps": 19.0,
+      "mean_return": 91.0,
+      "per_seed": [
+        {
+          "trial_id": "q_a=0.5_g=0.99_d=0.995_s=0_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 0
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 10.802705526351929
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.99_d=0.995_s=1_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 1
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 10.843262910842896
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.99_d=0.995_s=2_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 2
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 10.608156442642212
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.99_d=0.995_s=3_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 3
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 10.842464208602905
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.99_d=0.995_s=4_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 4
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 10.648182392120361
+        }
+      ]
+    },
+    {
+      "config_tuple": [
+        0.5,
+        0.99,
+        0.99
+      ],
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.99,
+        "decay": 0.99,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "n_seeds": 5,
+      "mean_success_rate": 1.0,
+      "std_success_rate": 0.0,
+      "mean_key_collection_rate": 1.0,
+      "mean_key_collection_step": 10.0,
+      "mean_successful_steps": 19.0,
+      "mean_return": 91.0,
+      "per_seed": [
+        {
+          "trial_id": "q_a=0.5_g=0.99_d=0.99_s=0_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.99,
+            "episodes": 5000,
+            "seed": 0
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 10.517555236816406
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.99_d=0.99_s=1_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.99,
+            "episodes": 5000,
+            "seed": 1
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 10.50761866569519
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.99_d=0.99_s=2_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.99,
+            "episodes": 5000,
+            "seed": 2
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 10.47626519203186
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.99_d=0.99_s=3_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.99,
+            "episodes": 5000,
+            "seed": 3
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 10.455473899841309
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.99_d=0.99_s=4_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.99,
+            "episodes": 5000,
+            "seed": 4
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 10.523872137069702
+        }
+      ]
+    },
+    {
+      "config_tuple": [
+        0.5,
+        0.95,
+        0.999
+      ],
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.95,
+        "decay": 0.999,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "n_seeds": 5,
+      "mean_success_rate": 1.0,
+      "std_success_rate": 0.0,
+      "mean_key_collection_rate": 1.0,
+      "mean_key_collection_step": 10.0,
+      "mean_successful_steps": 19.0,
+      "mean_return": 91.0,
+      "per_seed": [
+        {
+          "trial_id": "q_a=0.5_g=0.95_d=0.999_s=0_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.95,
+            "decay": 0.999,
+            "episodes": 5000,
+            "seed": 0
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 11.917710065841675
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.95_d=0.999_s=1_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.95,
+            "decay": 0.999,
+            "episodes": 5000,
+            "seed": 1
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 12.011128187179565
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.95_d=0.999_s=2_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.95,
+            "decay": 0.999,
+            "episodes": 5000,
+            "seed": 2
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 11.930745601654053
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.95_d=0.999_s=3_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.95,
+            "decay": 0.999,
+            "episodes": 5000,
+            "seed": 3
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 12.124775171279907
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.95_d=0.999_s=4_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.95,
+            "decay": 0.999,
+            "episodes": 5000,
+            "seed": 4
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 12.02310848236084
+        }
+      ]
+    },
+    {
+      "config_tuple": [
+        0.5,
+        0.95,
+        0.995
+      ],
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.95,
+        "decay": 0.995,
+        "episodes": 1000,
+        "seed": 42
+      },
+      "n_seeds": 5,
+      "mean_success_rate": 1.0,
+      "std_success_rate": 0.0,
+      "mean_key_collection_rate": 1.0,
+      "mean_key_collection_step": 10.0,
+      "mean_successful_steps": 19.0,
+      "mean_return": 91.0,
+      "per_seed": [
+        {
+          "trial_id": "q_a=0.5_g=0.95_d=0.995_s=0_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.95,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 0
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 10.786690950393677
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.95_d=0.995_s=1_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.95,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 1
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 10.494991302490234
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.95_d=0.995_s=2_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.95,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 2
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 10.572277069091797
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.95_d=0.995_s=3_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.95,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 3
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 10.755945444107056
+        },
+        {
+          "trial_id": "q_a=0.5_g=0.95_d=0.995_s=4_conf",
+          "stage": "confirmation",
+          "algorithm": "Q-Learning",
+          "room": "Room3QLearning",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.95,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 4
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 91.0,
+            "std_return": 0.0,
+            "mean_steps": 19.0,
+            "mean_successful_steps": 19.0,
+            "key_collection_rate": 1.0,
+            "mean_key_collection_step": 10.0,
+            "total_locked_exit_attempts": 0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 10.550415277481079
+        }
+      ]
+    }
+  ]
+}

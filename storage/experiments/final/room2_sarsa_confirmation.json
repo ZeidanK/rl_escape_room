@@ -1,0 +1,1727 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-22T13:47:56.917686Z",
+  "git_commit": "9c6c37ba99069b44ef38aeeecc7cb84ba74ee4fd",
+  "python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "package_versions": {
+    "numpy": "1.26.4",
+    "streamlit": "1.60.0",
+    "pytest": "9.1.1"
+  },
+  "algorithm": "SARSA",
+  "room": "Room2SARSA",
+  "map_signature": "570dd5ce4ac004ab",
+  "config": {
+    "alpha_values": [
+      0.05,
+      0.1,
+      0.3,
+      0.5
+    ],
+    "gamma_values": [
+      0.9,
+      0.95,
+      0.99
+    ],
+    "decay_values": [
+      0.99,
+      0.995,
+      0.999
+    ],
+    "screening_episodes": 2000,
+    "confirmation_episodes": 5000
+  },
+  "reward_config": {},
+  "motion_config": {},
+  "training_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "evaluation_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91,
+    92,
+    93,
+    94,
+    95,
+    96,
+    97,
+    98,
+    99
+  ],
+  "ranking_criteria": [
+    "mean_success_rate",
+    "-std_success_rate",
+    "-mean_successful_steps",
+    "mean_return",
+    "mean_improvement",
+    "config_tuple"
+  ],
+  "retained_rollouts": false,
+  "screening_results": [
+    {
+      "trial_id": "sarsa_a=0.05_g=0.95_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.95,
+        "decay": 0.995,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.6517748832702637
+    },
+    {
+      "trial_id": "sarsa_a=0.05_g=0.95_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.95,
+        "decay": 0.999,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 4.356133699417114
+    },
+    {
+      "trial_id": "sarsa_a=0.05_g=0.95_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.95,
+        "decay": 0.99,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 85.0,
+        "std_return": 0.0,
+        "mean_steps": 15.0,
+        "mean_successful_steps": 15.0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.6200907230377197
+    },
+    {
+      "trial_id": "sarsa_a=0.05_g=0.99_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.99,
+        "decay": 0.995,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 85.0,
+        "std_return": 0.0,
+        "mean_steps": 15.0,
+        "mean_successful_steps": 15.0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.5701839923858643
+    },
+    {
+      "trial_id": "sarsa_a=0.05_g=0.99_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.99,
+        "decay": 0.999,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 4.362054824829102
+    },
+    {
+      "trial_id": "sarsa_a=0.05_g=0.99_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.99,
+        "decay": 0.99,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.6857211589813232
+    },
+    {
+      "trial_id": "sarsa_a=0.05_g=0.9_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.9,
+        "decay": 0.995,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.6466262340545654
+    },
+    {
+      "trial_id": "sarsa_a=0.05_g=0.9_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.9,
+        "decay": 0.999,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 4.385663270950317
+    },
+    {
+      "trial_id": "sarsa_a=0.05_g=0.9_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.9,
+        "decay": 0.99,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.6739768981933594
+    },
+    {
+      "trial_id": "sarsa_a=0.1_g=0.95_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.95,
+        "decay": 0.995,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.5643625259399414
+    },
+    {
+      "trial_id": "sarsa_a=0.1_g=0.95_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.95,
+        "decay": 0.999,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 4.4192938804626465
+    },
+    {
+      "trial_id": "sarsa_a=0.1_g=0.95_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.95,
+        "decay": 0.99,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.4541244506835938
+    },
+    {
+      "trial_id": "sarsa_a=0.1_g=0.99_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.99,
+        "decay": 0.995,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 85.0,
+        "std_return": 0.0,
+        "mean_steps": 15.0,
+        "mean_successful_steps": 15.0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.5764193534851074
+    },
+    {
+      "trial_id": "sarsa_a=0.1_g=0.99_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.99,
+        "decay": 0.999,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 4.297253847122192
+    },
+    {
+      "trial_id": "sarsa_a=0.1_g=0.99_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.99,
+        "decay": 0.99,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.4839529991149902
+    },
+    {
+      "trial_id": "sarsa_a=0.1_g=0.9_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.9,
+        "decay": 0.995,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.5372345447540283
+    },
+    {
+      "trial_id": "sarsa_a=0.1_g=0.9_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.9,
+        "decay": 0.999,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 4.346503734588623
+    },
+    {
+      "trial_id": "sarsa_a=0.1_g=0.9_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.9,
+        "decay": 0.99,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.2,
+        "std_return": 2.7349588662354707,
+        "mean_steps": 15.63,
+        "mean_successful_steps": 15.63,
+        "total_collisions": 39,
+        "total_slipped_actions": 51,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.417695999145508
+    },
+    {
+      "trial_id": "sarsa_a=0.3_g=0.95_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.95,
+        "decay": 0.995,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.5456690788269043
+    },
+    {
+      "trial_id": "sarsa_a=0.3_g=0.95_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.95,
+        "decay": 0.999,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 4.519640922546387
+    },
+    {
+      "trial_id": "sarsa_a=0.3_g=0.95_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.95,
+        "decay": 0.99,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 63.08,
+        "std_return": 20.776756243456287,
+        "mean_steps": 32.6,
+        "mean_successful_steps": 32.6,
+        "total_collisions": 144,
+        "total_slipped_actions": 244,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.4678735733032227
+    },
+    {
+      "trial_id": "sarsa_a=0.3_g=0.99_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.99,
+        "decay": 0.995,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.466564416885376
+    },
+    {
+      "trial_id": "sarsa_a=0.3_g=0.99_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.99,
+        "decay": 0.999,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 4.2715301513671875
+    },
+    {
+      "trial_id": "sarsa_a=0.3_g=0.99_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.99,
+        "decay": 0.99,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.417513132095337
+    },
+    {
+      "trial_id": "sarsa_a=0.3_g=0.9_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.9,
+        "decay": 0.995,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.52946138381958
+    },
+    {
+      "trial_id": "sarsa_a=0.3_g=0.9_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.9,
+        "decay": 0.999,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 4.4987688064575195
+    },
+    {
+      "trial_id": "sarsa_a=0.3_g=0.9_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.3,
+        "gamma": 0.9,
+        "decay": 0.99,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.499117612838745
+    },
+    {
+      "trial_id": "sarsa_a=0.5_g=0.95_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.95,
+        "decay": 0.995,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.6397016048431396
+    },
+    {
+      "trial_id": "sarsa_a=0.5_g=0.95_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.95,
+        "decay": 0.999,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 4.647994756698608
+    },
+    {
+      "trial_id": "sarsa_a=0.5_g=0.95_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.95,
+        "decay": 0.99,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.5159993171691895
+    },
+    {
+      "trial_id": "sarsa_a=0.5_g=0.99_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.99,
+        "decay": 0.995,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.655099630355835
+    },
+    {
+      "trial_id": "sarsa_a=0.5_g=0.99_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.99,
+        "decay": 0.999,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 4.5977184772491455
+    },
+    {
+      "trial_id": "sarsa_a=0.5_g=0.99_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.99,
+        "decay": 0.99,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 0.0,
+        "mean_return": -815.0,
+        "std_return": 0.0,
+        "mean_steps": 200.0,
+        "mean_successful_steps": null,
+        "total_collisions": 19500,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.5829012393951416
+    },
+    {
+      "trial_id": "sarsa_a=0.5_g=0.9_d=0.995_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.9,
+        "decay": 0.995,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.693530559539795
+    },
+    {
+      "trial_id": "sarsa_a=0.5_g=0.9_d=0.999_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.9,
+        "decay": 0.999,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 4.705296277999878
+    },
+    {
+      "trial_id": "sarsa_a=0.5_g=0.9_d=0.99_s=42",
+      "stage": "screening",
+      "algorithm": "SARSA",
+      "room": "Room2SARSA",
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.9,
+        "decay": 0.99,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "metrics": {
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0
+      },
+      "runtime_seconds": 3.539156913757324
+    }
+  ],
+  "confirmation_results": [
+    {
+      "config_tuple": [
+        0.05,
+        0.95,
+        0.99
+      ],
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.95,
+        "decay": 0.99,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "n_seeds": 5,
+      "mean_success_rate": 1.0,
+      "std_success_rate": 0.0,
+      "mean_successful_steps": 15.059999999999999,
+      "mean_return": 84.76,
+      "per_seed": [
+        {
+          "trial_id": "sarsa_a=0.05_g=0.95_d=0.99_s=0_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.05,
+            "gamma": 0.95,
+            "decay": 0.99,
+            "episodes": 5000,
+            "seed": 0
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 85.0,
+            "std_return": 0.0,
+            "mean_steps": 15.0,
+            "mean_successful_steps": 15.0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.313896417617798
+        },
+        {
+          "trial_id": "sarsa_a=0.05_g=0.95_d=0.99_s=1_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.05,
+            "gamma": 0.95,
+            "decay": 0.99,
+            "episodes": 5000,
+            "seed": 1
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 85.0,
+            "std_return": 0.0,
+            "mean_steps": 15.0,
+            "mean_successful_steps": 15.0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.51007604598999
+        },
+        {
+          "trial_id": "sarsa_a=0.05_g=0.95_d=0.99_s=2_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.05,
+            "gamma": 0.95,
+            "decay": 0.99,
+            "episodes": 5000,
+            "seed": 2
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 85.0,
+            "std_return": 0.0,
+            "mean_steps": 15.0,
+            "mean_successful_steps": 15.0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.248600244522095
+        },
+        {
+          "trial_id": "sarsa_a=0.05_g=0.95_d=0.99_s=3_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.05,
+            "gamma": 0.95,
+            "decay": 0.99,
+            "episodes": 5000,
+            "seed": 3
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 85.0,
+            "std_return": 0.0,
+            "mean_steps": 15.0,
+            "mean_successful_steps": 15.0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.303775310516357
+        },
+        {
+          "trial_id": "sarsa_a=0.05_g=0.95_d=0.99_s=4_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.05,
+            "gamma": 0.95,
+            "decay": 0.99,
+            "episodes": 5000,
+            "seed": 4
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 83.8,
+            "std_return": 2.4979991993593598,
+            "mean_steps": 15.3,
+            "mean_successful_steps": 15.3,
+            "total_collisions": 30,
+            "total_slipped_actions": 30,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.395910263061523
+        }
+      ]
+    },
+    {
+      "config_tuple": [
+        0.05,
+        0.99,
+        0.995
+      ],
+      "config": {
+        "alpha": 0.05,
+        "gamma": 0.99,
+        "decay": 0.995,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "n_seeds": 5,
+      "mean_success_rate": 1.0,
+      "std_success_rate": 0.0,
+      "mean_successful_steps": 15.126,
+      "mean_return": 84.64,
+      "per_seed": [
+        {
+          "trial_id": "sarsa_a=0.05_g=0.99_d=0.995_s=0_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.05,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 0
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 83.2,
+            "std_return": 2.7349588662354707,
+            "mean_steps": 15.63,
+            "mean_successful_steps": 15.63,
+            "total_collisions": 39,
+            "total_slipped_actions": 51,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.73765254020691
+        },
+        {
+          "trial_id": "sarsa_a=0.05_g=0.99_d=0.995_s=1_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.05,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 1
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 85.0,
+            "std_return": 0.0,
+            "mean_steps": 15.0,
+            "mean_successful_steps": 15.0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.684155702590942
+        },
+        {
+          "trial_id": "sarsa_a=0.05_g=0.99_d=0.995_s=2_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.05,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 2
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 85.0,
+            "std_return": 0.0,
+            "mean_steps": 15.0,
+            "mean_successful_steps": 15.0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.565301179885864
+        },
+        {
+          "trial_id": "sarsa_a=0.05_g=0.99_d=0.995_s=3_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.05,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 3
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 85.0,
+            "std_return": 0.0,
+            "mean_steps": 15.0,
+            "mean_successful_steps": 15.0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.463682413101196
+        },
+        {
+          "trial_id": "sarsa_a=0.05_g=0.99_d=0.995_s=4_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.05,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 4
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 85.0,
+            "std_return": 0.0,
+            "mean_steps": 15.0,
+            "mean_successful_steps": 15.0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.490872144699097
+        }
+      ]
+    },
+    {
+      "config_tuple": [
+        0.1,
+        0.99,
+        0.995
+      ],
+      "config": {
+        "alpha": 0.1,
+        "gamma": 0.99,
+        "decay": 0.995,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "n_seeds": 5,
+      "mean_success_rate": 1.0,
+      "std_success_rate": 0.0,
+      "mean_successful_steps": 15.24,
+      "mean_return": 84.03999999999999,
+      "per_seed": [
+        {
+          "trial_id": "sarsa_a=0.1_g=0.99_d=0.995_s=0_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.1,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 0
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 83.8,
+            "std_return": 2.4979991993593598,
+            "mean_steps": 15.3,
+            "mean_successful_steps": 15.3,
+            "total_collisions": 30,
+            "total_slipped_actions": 30,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.694956541061401
+        },
+        {
+          "trial_id": "sarsa_a=0.1_g=0.99_d=0.995_s=1_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.1,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 1
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 83.8,
+            "std_return": 2.4979991993593598,
+            "mean_steps": 15.3,
+            "mean_successful_steps": 15.3,
+            "total_collisions": 30,
+            "total_slipped_actions": 30,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.562769412994385
+        },
+        {
+          "trial_id": "sarsa_a=0.1_g=0.99_d=0.995_s=2_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.1,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 2
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 83.8,
+            "std_return": 2.4979991993593598,
+            "mean_steps": 15.3,
+            "mean_successful_steps": 15.3,
+            "total_collisions": 30,
+            "total_slipped_actions": 30,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.502106189727783
+        },
+        {
+          "trial_id": "sarsa_a=0.1_g=0.99_d=0.995_s=3_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.1,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 3
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 83.8,
+            "std_return": 2.4979991993593598,
+            "mean_steps": 15.3,
+            "mean_successful_steps": 15.3,
+            "total_collisions": 30,
+            "total_slipped_actions": 30,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.697611808776855
+        },
+        {
+          "trial_id": "sarsa_a=0.1_g=0.99_d=0.995_s=4_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.1,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 4
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 85.0,
+            "std_return": 0.0,
+            "mean_steps": 15.0,
+            "mean_successful_steps": 15.0,
+            "total_collisions": 0,
+            "total_slipped_actions": 0,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.53154444694519
+        }
+      ]
+    },
+    {
+      "config_tuple": [
+        0.5,
+        0.99,
+        0.995
+      ],
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.99,
+        "decay": 0.995,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "n_seeds": 5,
+      "mean_success_rate": 1.0,
+      "std_success_rate": 0.0,
+      "mean_successful_steps": 15.3,
+      "mean_return": 83.8,
+      "per_seed": [
+        {
+          "trial_id": "sarsa_a=0.5_g=0.99_d=0.995_s=0_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 0
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 83.8,
+            "std_return": 2.4979991993593598,
+            "mean_steps": 15.3,
+            "mean_successful_steps": 15.3,
+            "total_collisions": 30,
+            "total_slipped_actions": 30,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.914425611495972
+        },
+        {
+          "trial_id": "sarsa_a=0.5_g=0.99_d=0.995_s=1_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 1
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 83.8,
+            "std_return": 2.4979991993593598,
+            "mean_steps": 15.3,
+            "mean_successful_steps": 15.3,
+            "total_collisions": 30,
+            "total_slipped_actions": 30,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.628701448440552
+        },
+        {
+          "trial_id": "sarsa_a=0.5_g=0.99_d=0.995_s=2_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 2
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 83.8,
+            "std_return": 2.4979991993593598,
+            "mean_steps": 15.3,
+            "mean_successful_steps": 15.3,
+            "total_collisions": 30,
+            "total_slipped_actions": 30,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.542072057723999
+        },
+        {
+          "trial_id": "sarsa_a=0.5_g=0.99_d=0.995_s=3_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 3
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 83.8,
+            "std_return": 2.4979991993593598,
+            "mean_steps": 15.3,
+            "mean_successful_steps": 15.3,
+            "total_collisions": 30,
+            "total_slipped_actions": 30,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.75422739982605
+        },
+        {
+          "trial_id": "sarsa_a=0.5_g=0.99_d=0.995_s=4_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.995,
+            "episodes": 5000,
+            "seed": 4
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 83.8,
+            "std_return": 2.4979991993593598,
+            "mean_steps": 15.3,
+            "mean_successful_steps": 15.3,
+            "total_collisions": 30,
+            "total_slipped_actions": 30,
+            "total_traps": 0
+          },
+          "runtime_seconds": 8.610501050949097
+        }
+      ]
+    },
+    {
+      "config_tuple": [
+        0.5,
+        0.99,
+        0.999
+      ],
+      "config": {
+        "alpha": 0.5,
+        "gamma": 0.99,
+        "decay": 0.999,
+        "episodes": 2000,
+        "seed": 42
+      },
+      "n_seeds": 5,
+      "mean_success_rate": 1.0,
+      "std_success_rate": 0.0,
+      "mean_successful_steps": 16.774,
+      "mean_return": 78.708,
+      "per_seed": [
+        {
+          "trial_id": "sarsa_a=0.5_g=0.99_d=0.999_s=0_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.999,
+            "episodes": 5000,
+            "seed": 0
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 83.8,
+            "std_return": 2.4979991993593598,
+            "mean_steps": 15.3,
+            "mean_successful_steps": 15.3,
+            "total_collisions": 30,
+            "total_slipped_actions": 30,
+            "total_traps": 0
+          },
+          "runtime_seconds": 9.386805772781372
+        },
+        {
+          "trial_id": "sarsa_a=0.5_g=0.99_d=0.999_s=1_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.999,
+            "episodes": 5000,
+            "seed": 1
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 83.8,
+            "std_return": 2.4979991993593598,
+            "mean_steps": 15.3,
+            "mean_successful_steps": 15.3,
+            "total_collisions": 30,
+            "total_slipped_actions": 30,
+            "total_traps": 0
+          },
+          "runtime_seconds": 9.528658628463745
+        },
+        {
+          "trial_id": "sarsa_a=0.5_g=0.99_d=0.999_s=2_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.999,
+            "episodes": 5000,
+            "seed": 2
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 58.34,
+            "std_return": 25.290401341220342,
+            "mean_steps": 22.67,
+            "mean_successful_steps": 22.67,
+            "total_collisions": 633,
+            "total_slipped_actions": 167,
+            "total_traps": 0
+          },
+          "runtime_seconds": 9.397656440734863
+        },
+        {
+          "trial_id": "sarsa_a=0.5_g=0.99_d=0.999_s=3_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.999,
+            "episodes": 5000,
+            "seed": 3
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 83.8,
+            "std_return": 2.4979991993593598,
+            "mean_steps": 15.3,
+            "mean_successful_steps": 15.3,
+            "total_collisions": 30,
+            "total_slipped_actions": 30,
+            "total_traps": 0
+          },
+          "runtime_seconds": 9.64946174621582
+        },
+        {
+          "trial_id": "sarsa_a=0.5_g=0.99_d=0.999_s=4_conf",
+          "stage": "confirmation",
+          "algorithm": "SARSA",
+          "room": "Room2SARSA",
+          "config": {
+            "alpha": 0.5,
+            "gamma": 0.99,
+            "decay": 0.999,
+            "episodes": 5000,
+            "seed": 4
+          },
+          "metrics": {
+            "success_rate": 1.0,
+            "mean_return": 83.8,
+            "std_return": 2.4979991993593598,
+            "mean_steps": 15.3,
+            "mean_successful_steps": 15.3,
+            "total_collisions": 30,
+            "total_slipped_actions": 30,
+            "total_traps": 0
+          },
+          "runtime_seconds": 9.501439571380615
+        }
+      ]
+    }
+  ]
+}

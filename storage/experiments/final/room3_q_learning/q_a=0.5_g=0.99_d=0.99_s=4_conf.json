@@ -1,0 +1,27 @@
+{
+  "trial_id": "q_a=0.5_g=0.99_d=0.99_s=4_conf",
+  "stage": "confirmation",
+  "algorithm": "Q-Learning",
+  "room": "Room3QLearning",
+  "config": {
+    "alpha": 0.5,
+    "gamma": 0.99,
+    "decay": 0.99,
+    "episodes": 5000,
+    "seed": 4
+  },
+  "metrics": {
+    "success_rate": 1.0,
+    "mean_return": 91.0,
+    "std_return": 0.0,
+    "mean_steps": 19.0,
+    "mean_successful_steps": 19.0,
+    "key_collection_rate": 1.0,
+    "mean_key_collection_step": 10.0,
+    "total_locked_exit_attempts": 0,
+    "total_collisions": 0,
+    "total_slipped_actions": 0,
+    "total_traps": 0
+  },
+  "runtime_seconds": 10.523872137069702
+}

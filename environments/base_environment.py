@@ -3,7 +3,7 @@ from typing import Any
 
 import numpy as np
 
-from core.types import Position
+from core.types import Position, StepResult
 
 
 class BaseEnvironment(ABC):
@@ -25,7 +25,7 @@ class BaseEnvironment(ABC):
         pass
 
     @abstractmethod
-    def step(self, action: int) -> tuple[Any, float, bool, dict]:
+    def step(self, action: int) -> StepResult:
         pass
 
     @abstractmethod

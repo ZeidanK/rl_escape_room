@@ -1,0 +1,149 @@
+{
+  "matched_comparison": {
+    "sarsa": [
+      {
+        "algorithm": "SARSA",
+        "config_label": "\u03b1=0.1,\u03b3=0.95,\u03b5=0.995",
+        "seed": 0,
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0,
+        "eval_seeds_used": 100
+      },
+      {
+        "algorithm": "SARSA",
+        "config_label": "\u03b1=0.1,\u03b3=0.95,\u03b5=0.995",
+        "seed": 1,
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0,
+        "eval_seeds_used": 100
+      },
+      {
+        "algorithm": "SARSA",
+        "config_label": "\u03b1=0.1,\u03b3=0.95,\u03b5=0.995",
+        "seed": 2,
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0,
+        "eval_seeds_used": 100
+      },
+      {
+        "algorithm": "SARSA",
+        "config_label": "\u03b1=0.1,\u03b3=0.95,\u03b5=0.995",
+        "seed": 3,
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0,
+        "eval_seeds_used": 100
+      },
+      {
+        "algorithm": "SARSA",
+        "config_label": "\u03b1=0.1,\u03b3=0.95,\u03b5=0.995",
+        "seed": 4,
+        "success_rate": 1.0,
+        "mean_return": 83.8,
+        "std_return": 2.4979991993593598,
+        "mean_steps": 15.3,
+        "mean_successful_steps": 15.3,
+        "total_collisions": 30,
+        "total_slipped_actions": 30,
+        "total_traps": 0,
+        "eval_seeds_used": 100
+      }
+    ],
+    "q_learning": [
+      {
+        "algorithm": "Q-Learning",
+        "config_label": "\u03b1=0.1,\u03b3=0.95,\u03b5=0.995",
+        "seed": 0,
+        "success_rate": 1.0,
+        "mean_return": 85.0,
+        "std_return": 0.0,
+        "mean_steps": 15.0,
+        "mean_successful_steps": 15.0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0,
+        "eval_seeds_used": 100
+      },
+      {
+        "algorithm": "Q-Learning",
+        "config_label": "\u03b1=0.1,\u03b3=0.95,\u03b5=0.995",
+        "seed": 1,
+        "success_rate": 1.0,
+        "mean_return": 85.0,
+        "std_return": 0.0,
+        "mean_steps": 15.0,
+        "mean_successful_steps": 15.0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0,
+        "eval_seeds_used": 100
+      },
+      {
+        "algorithm": "Q-Learning",
+        "config_label": "\u03b1=0.1,\u03b3=0.95,\u03b5=0.995",
+        "seed": 2,
+        "success_rate": 1.0,
+        "mean_return": 85.0,
+        "std_return": 0.0,
+        "mean_steps": 15.0,
+        "mean_successful_steps": 15.0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0,
+        "eval_seeds_used": 100
+      },
+      {
+        "algorithm": "Q-Learning",
+        "config_label": "\u03b1=0.1,\u03b3=0.95,\u03b5=0.995",
+        "seed": 3,
+        "success_rate": 1.0,
+        "mean_return": 85.0,
+        "std_return": 0.0,
+        "mean_steps": 15.0,
+        "mean_successful_steps": 15.0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0,
+        "eval_seeds_used": 100
+      },
+      {
+        "algorithm": "Q-Learning",
+        "config_label": "\u03b1=0.1,\u03b3=0.95,\u03b5=0.995",
+        "seed": 4,
+        "success_rate": 1.0,
+        "mean_return": 85.0,
+        "std_return": 0.0,
+        "mean_steps": 15.0,
+        "mean_successful_steps": 15.0,
+        "total_collisions": 0,
+        "total_slipped_actions": 0,
+        "total_traps": 0,
+        "eval_seeds_used": 100
+      }
+    ]
+  },
+  "tuned_comparison": []
+}

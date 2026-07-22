@@ -521,3 +521,91 @@ def test_render_ansi_includes_agent():
     ansi = env.render_ansi()
     assert "A" in ansi
     assert "#" in ansi
+
+
+# ============================================================
+# Regression: Room3QLearning.reset() restores key cell
+# ============================================================
+
+
+def test_room3_reset_restores_key_cell():
+    env = Room3QLearning(max_steps=300)
+    env.reset(seed=42)
+    assert env.grid[1, 8] == CellType.KEY
+    assert not env._key_collected
+    # Navigate to cell left of key, collect it
+    env._agent_pos = (1, 7)
+    r = env.step(Action.RIGHT)
+    assert r.info.get("event") == "key"
+    assert env._key_collected
+    assert env.grid[1, 8] == CellType.EMPTY
+    # Reset and verify grid restored
+    env.reset(seed=42)
+    assert env.grid[1, 8] == CellType.KEY, "Reset must restore the key cell"
+    assert not env._key_collected, "Reset must clear key_collected flag"
+
+
+def test_room3_multiple_reset_key_preserved():
+    """Key collection and reset can be cycled repeatedly."""
+    env = Room3QLearning(max_steps=300)
+    for _ in range(3):
+        env.reset(seed=42)
+        assert env.grid[1, 8] == CellType.KEY
+        assert not env._key_collected
+        env._agent_pos = (1, 7)
+        env.step(Action.RIGHT)
+        assert env.grid[1, 8] == CellType.EMPTY
+        assert env._key_collected
+
+
+# ============================================================
+# Regression: get_transition_distribution purity
+# ============================================================
+
+
+def test_get_transition_distribution_does_not_mutate_env():
+    env = Room1DP(slip_config=SlipConfig(), seed=42, max_steps=200)
+    env.reset(seed=42)
+    pos_before = env.agent_position
+    step_before = env.step_count
+    term_before = env._terminated
+    trunc_before = env._truncated
+    grid_before = env.grid.copy()
+    rng_state_before = env.rng.bit_generator.state["state"]
+
+    dist = env.get_transition_distribution(env.agent_position, Action.RIGHT)
+    assert len(dist) >= 1
+
+    assert env.agent_position == pos_before, "agent_position changed"
+    assert env.step_count == step_before, "step_count changed"
+    assert env._terminated == term_before, "_terminated changed"
+    assert env._truncated == trunc_before, "_truncated changed"
+    assert (env.grid == grid_before).all(), "grid changed"
+    assert env.rng.bit_generator.state["state"] == rng_state_before, "rng state changed"
+
+
+# ============================================================
+# Phase 4 pre-checks: Room 2 SARSA
+# ============================================================
+
+
+def test_room2_has_slippery_and_trap():
+    env = Room2SARSA(max_steps=200)
+    assert np.any(env.grid == CellType.SLIPPERY), "Room2 must have slippery cells"
+    assert np.any(env.grid == CellType.TRAP), "Room2 must have a trap"
+
+
+def test_room2_reset_reproduces_stochastic_sequence():
+    """Same seed must produce identical slip/collision outcomes."""
+    env1 = Room2SARSA(max_steps=200, slip_config=SlipConfig(0.8, 0.1, 0.1))
+    env2 = Room2SARSA(max_steps=200, slip_config=SlipConfig(0.8, 0.1, 0.1))
+    env1.reset(seed=42)
+    env2.reset(seed=42)
+    for _ in range(20):
+        r1 = env1.step(Action.RIGHT)
+        r2 = env2.step(Action.RIGHT)
+        assert r1.info["effective_action"] == r2.info["effective_action"], (
+            f"Seeded sequences diverged at step {env1.step_count}"
+        )
+        if env1.is_done:
+            break

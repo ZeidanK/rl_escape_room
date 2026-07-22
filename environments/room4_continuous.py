@@ -1,109 +1,224 @@
+import math
+
 import numpy as np
 
-from core.types import RewardConfig
+from core.types import (
+    ContinuousRenderState,
+    ContinuousRewardConfig,
+    ContinuousState,
+    Room4MotionConfig,
+    StartMode,
+    StepResult,
+    VELOCITY_BY_ACTION,
+    VelocityAction,
+)
 from environments.base_environment import BaseEnvironment
-
-
-UP = 0
-RIGHT = 1
-DOWN = 2
-LEFT = 3
-STAY = 4
-
-ACTIONS = [UP, RIGHT, DOWN, LEFT, STAY]
-ACTION_VELOCITIES = {
-    UP: (0, 1),
-    RIGHT: (1, 0),
-    DOWN: (0, -1),
-    LEFT: (-1, 0),
-    STAY: (0, 0),
-}
 
 
 class Room4Continuous(BaseEnvironment):
     def __init__(
         self,
-        exit_centre: tuple[float, float] = (9.5, 9.5),
-        exit_radius: float = 0.3,
-        max_steps: int = 500,
-        dt: float = 0.02,
-        rewards: RewardConfig | None = None,
+        motion_config: Room4MotionConfig | None = None,
+        reward_config: ContinuousRewardConfig | None = None,
+        max_steps: int = 750,
+        start_mode: StartMode = StartMode.FIXED,
         seed: int | None = None,
-    ):
+    ) -> None:
         super().__init__(seed=seed)
-        self.exit_centre = np.array(exit_centre, dtype=float)
-        self.exit_radius = exit_radius
-        self.max_steps = max_steps
-        self.dt = dt
-        self.rewards = rewards or RewardConfig(step_penalty=-0.1)
-
+        self.motion = motion_config or Room4MotionConfig()
+        self.rewards = reward_config or ContinuousRewardConfig()
+        self._max_steps = max_steps
+        self._start_mode = start_mode
         self.pos = np.zeros(2, dtype=float)
-        self.vel = np.zeros(2, dtype=int)
-        self.step_count = 0
-        self.collision_count = 0
-        self.distance_travelled = 0.0
+        self.vel = np.array([0, 0], dtype=int)
+        self._step_count = 0
+        self._collision_count = 0
+        self._distance_travelled = 0.0
+        self._trajectory: list[tuple[float, float]] = []
+        self._terminated = False
+        self._truncated = False
 
-    def reset(self, seed: int | None = None) -> np.ndarray:
+    @property
+    def state(self) -> ContinuousState:
+        return (float(self.pos[0]), float(self.pos[1]), int(self.vel[0]), int(self.vel[1]))
+
+    @property
+    def agent_position(self) -> tuple[float, float]:
+        return (float(self.pos[0]), float(self.pos[1]))
+
+    @property
+    def velocity(self) -> tuple[int, int]:
+        return (int(self.vel[0]), int(self.vel[1]))
+
+    @property
+    def step_count(self) -> int:
+        return self._step_count
+
+    @property
+    def is_done(self) -> bool:
+        return self._terminated or self._truncated
+
+    @property
+    def actions(self) -> tuple[int, ...]:
+        return tuple(int(a) for a in VelocityAction)
+
+    @property
+    def exit_center(self) -> tuple[float, float]:
+        return self.motion.exit_center
+
+    @property
+    def exit_radius_m(self) -> float:
+        return self.motion.exit_radius_m
+
+    def _sample_start(self, rng: np.random.Generator) -> tuple[float, float]:
+        if self._start_mode == StartMode.FIXED:
+            return self.motion.start_position
+        elif self._start_mode == StartMode.RANDOM_LOWER_LEFT:
+            x = rng.uniform(0.25, 3.0)
+            y = rng.uniform(0.25, 3.0)
+            return (x, y)
+        elif self._start_mode == StartMode.RANDOM_ROOM:
+            ex, ey = self.motion.exit_center
+            er = self.motion.exit_radius_m
+            for _ in range(100):
+                x = rng.uniform(0.0, self.motion.room_width_m)
+                y = rng.uniform(0.0, self.motion.room_height_m)
+                dx, dy = x - ex, y - ey
+                if (dx * dx + dy * dy) > er * er:
+                    return (x, y)
+            return (0.5, 0.5)
+
+    def reset(self, seed: int | None = None, *, start_state: ContinuousState | None = None) -> ContinuousState:
         if seed is not None:
             self.rng = np.random.default_rng(seed)
-        self.pos = np.array([0.5, 0.5], dtype=float)
-        self.vel = np.array([0, 0], dtype=int)
-        self.step_count = 0
-        self.collision_count = 0
-        self.distance_travelled = 0.0
-        return self._get_state()
+        if start_state is not None:
+            sx, sy, svx, svy = start_state
+            if not (0.0 <= sx <= self.motion.room_width_m and 0.0 <= sy <= self.motion.room_height_m):
+                raise ValueError(f"start_state position ({sx}, {sy}) outside room bounds")
+            if (svx, svy) not in VELOCITY_BY_ACTION.values():
+                raise ValueError(f"start_state velocity ({svx}, {svy}) invalid")
+            ex, ey = self.motion.exit_center
+            dx, dy = sx - ex, sy - ey
+            if (dx * dx + dy * dy) <= self.motion.exit_radius_m * self.motion.exit_radius_m:
+                raise ValueError(f"start_state ({sx}, {sy}) is inside exit radius")
+            self.pos = np.array([sx, sy], dtype=float)
+            self.vel = np.array([svx, svy], dtype=int)
+        else:
+            sx, sy = self._sample_start(self.rng)
+            self.pos = np.array([sx, sy], dtype=float)
+            self.vel = np.array(self.motion.start_velocity, dtype=int)
+        self._step_count = 0
+        self._collision_count = 0
+        self._distance_travelled = 0.0
+        self._trajectory = [(float(self.pos[0]), float(self.pos[1]))]
+        self._terminated = False
+        self._truncated = False
+        return self.state
 
-    def _get_state(self) -> np.ndarray:
-        return np.array([self.pos[0], self.pos[1], float(self.vel[0]), float(self.vel[1])])
+    def step(self, action: int) -> StepResult:
+        if self.is_done:
+            raise RuntimeError("Episode already terminated; call reset() first")
+        self._step_count += 1
 
-    def step(self, action: int) -> tuple[np.ndarray, float, bool, dict]:
-        self.step_count += 1
-        info = {"timeout": False, "collision": False, "distance": self.distance_travelled}
+        action_enum = VelocityAction(action) if isinstance(action, int) else action
+        vel = VELOCITY_BY_ACTION[action_enum]
 
-        if action in ACTION_VELOCITIES:
-            self.vel = np.array(ACTION_VELOCITIES[action], dtype=int)
+        distance_before = math.sqrt(
+            (self.pos[0] - self.motion.exit_center[0]) ** 2
+            + (self.pos[1] - self.motion.exit_center[1]) ** 2
+        )
 
-        new_pos = self.pos + self.vel.astype(float) * self.dt
-        self.distance_travelled += float(np.linalg.norm(self.vel.astype(float) * self.dt))
+        self.vel = np.array(vel, dtype=int)
+        new_pos = self.pos + self.vel.astype(float) * self.motion.time_step_s
 
-        clipped = np.clip(new_pos, 0, 10)
-        collision = not np.allclose(clipped, new_pos)
-        if collision:
+        # Boundary clipping
+        clipped = np.clip(new_pos, 0.0, self.motion.room_width_m)
+        collision_detected = bool(
+            abs(clipped[0] - new_pos[0]) > 1e-12 or abs(clipped[1] - new_pos[1]) > 1e-12
+        )
+        if collision_detected:
             for i in range(2):
-                if new_pos[i] < 0 or new_pos[i] > 10:
-                    new_pos[i] = np.clip(new_pos[i], 0, 10)
+                if new_pos[i] < 0.0 or new_pos[i] > [self.motion.room_width_m, self.motion.room_height_m][i]:
                     self.vel[i] = 0
-            self.collision_count += 1
-            info["collision"] = True
+            self._collision_count += 1
+        self.pos = clipped
 
-        self.pos = np.clip(new_pos, 0, 10)
+        step_len = float(np.linalg.norm(self.vel.astype(float) * self.motion.time_step_s))
+        self._distance_travelled += step_len
+        self._trajectory.append((float(self.pos[0]), float(self.pos[1])))
 
-        reward = self.rewards.step_penalty
-        terminated = False
+        distance_after = math.sqrt(
+            (self.pos[0] - self.motion.exit_center[0]) ** 2
+            + (self.pos[1] - self.motion.exit_center[1]) ** 2
+        )
 
-        if collision:
-            reward += self.rewards.wall_penalty
-
-        exit_dist = np.linalg.norm(self.pos - self.exit_centre)
-        if exit_dist <= self.exit_radius:
-            reward = self.rewards.compute_exit_reward(self.max_steps, self.step_count)
-            terminated = True
-
-        if self.step_count >= self.max_steps and not terminated:
-            terminated = True
-            info["timeout"] = True
-
-        info["collision_count"] = self.collision_count
-        info["exit_distance"] = float(exit_dist)
-
-        return self._get_state(), reward, terminated, info
-
-    def render(self) -> dict:
-        return {
-            "position": self.pos.copy(),
-            "velocity": self.vel.copy(),
-            "exit_centre": self.exit_centre.copy(),
-            "exit_radius": self.exit_radius,
-            "collision_count": self.collision_count,
-            "distance_travelled": self.distance_travelled,
+        reward = self.rewards.step
+        info: dict = {
+            "collision": "boundary" if collision_detected else None,
+            "event": None,
+            "success": False,
+            "distance_before": distance_before,
+            "distance_after": distance_after,
+            "distance_travelled_step": step_len,
+            "distance_travelled_total": self._distance_travelled,
+            "velocity": (int(self.vel[0]), int(self.vel[1])),
+            "step_penalty": self.rewards.step,
+            "boundary_penalty": 0.0,
+            "exit_reward": 0.0,
+            "timeout_penalty": 0.0,
+            "progress_reward": 0.0,
         }
+
+        if collision_detected:
+            penalty = self.rewards.boundary_collision
+            reward += penalty
+            info["boundary_penalty"] = penalty
+
+        if self.rewards.distance_progress_scale > 0:
+            progress = distance_before - distance_after
+            progress_reward = self.rewards.distance_progress_scale * progress
+            reward += progress_reward
+            info["progress_reward"] = progress_reward
+
+        terminated = False
+        truncated = False
+
+        if distance_after <= self.motion.exit_radius_m:
+            exit_r = self.rewards.exit
+            reward += exit_r
+            terminated = True
+            self._terminated = True
+            info["event"] = "exit"
+            info["success"] = True
+            info["exit_reward"] = exit_r
+
+        if self._step_count >= self._max_steps and not terminated:
+            timeout_p = self.rewards.timeout
+            reward += timeout_p
+            truncated = True
+            self._truncated = True
+            info["event"] = "timeout"
+            info["timeout_penalty"] = timeout_p
+
+        return StepResult(
+            next_state=self.state,
+            reward=reward,
+            terminated=terminated,
+            truncated=truncated,
+            info=info,
+        )
+
+    def render(self) -> ContinuousRenderState:
+        return ContinuousRenderState(
+            x=float(self.pos[0]),
+            y=float(self.pos[1]),
+            vx=int(self.vel[0]),
+            vy=int(self.vel[1]),
+            step_count=self._step_count,
+            simulated_time_s=self._step_count * self.motion.time_step_s,
+            terminated=self._terminated,
+            truncated=self._truncated,
+            exit_center=self.motion.exit_center,
+            exit_radius_m=self.motion.exit_radius_m,
+            trajectory=tuple(self._trajectory),
+        )

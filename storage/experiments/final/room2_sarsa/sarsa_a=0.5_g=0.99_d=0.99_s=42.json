@@ -1,0 +1,24 @@
+{
+  "trial_id": "sarsa_a=0.5_g=0.99_d=0.99_s=42",
+  "stage": "screening",
+  "algorithm": "SARSA",
+  "room": "Room2SARSA",
+  "config": {
+    "alpha": 0.5,
+    "gamma": 0.99,
+    "decay": 0.99,
+    "episodes": 2000,
+    "seed": 42
+  },
+  "metrics": {
+    "success_rate": 0.0,
+    "mean_return": -815.0,
+    "std_return": 0.0,
+    "mean_steps": 200.0,
+    "mean_successful_steps": null,
+    "total_collisions": 19500,
+    "total_slipped_actions": 30,
+    "total_traps": 0
+  },
+  "runtime_seconds": 3.5829012393951416
+}

@@ -61,6 +61,7 @@ class GridEnvironment(BaseEnvironment):
     ):
         super().__init__(seed=seed)
         self._grid = grid.copy()
+        self._original_grid = grid.copy()
         self.reward_config = reward_config or RewardConfig()
         self.max_steps = max_steps
         self.slip_config = slip_config or SlipConfig()
@@ -116,6 +117,25 @@ class GridEnvironment(BaseEnvironment):
             if len(positions) > 0:
                 return (int(positions[0][0]), int(positions[0][1]))
         return None
+
+    @property
+    def states(self) -> tuple[Position, ...]:
+        rows, cols = self._grid.shape
+        result = []
+        for r in range(rows):
+            for c in range(cols):
+                if CellType(int(self._grid[r, c])) != CellType.WALL:
+                    result.append((r, c))
+        return tuple(result)
+
+    @property
+    def actions(self) -> tuple[Action, ...]:
+        return tuple(Action)
+
+    def is_terminal_state(self, state: Position) -> bool:
+        if not self._is_inside(state):
+            return False
+        return CellType(int(self._grid[state])) in self._terminal_cell_types()
 
     # --- Validation ---
 
@@ -173,6 +193,7 @@ class GridEnvironment(BaseEnvironment):
     def reset(self, seed: int | None = None) -> Any:
         if seed is not None:
             self.rng = np.random.default_rng(seed)
+        self._grid = self._original_grid.copy()
         self._agent_pos = self._start_pos
         self._step_count = 0
         self._terminated = False

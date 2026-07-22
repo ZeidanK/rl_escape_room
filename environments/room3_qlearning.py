@@ -47,6 +47,47 @@ class Room3QLearning(GridEnvironment):
         r, c = self._agent_pos
         return (r, c, self._key_collected)
 
+    @property
+    def states(self) -> tuple[tuple[int, int, bool], ...]:
+        positions = tuple(
+            (r, c)
+            for r in range(self._grid.shape[0])
+            for c in range(self._grid.shape[1])
+            if CellType(int(self._grid[r, c])) != CellType.WALL
+        )
+        return tuple(
+            (r, c, has_key)
+            for r, c in positions
+            for has_key in (False, True)
+        )
+
+    @property
+    def goal_position(self) -> Position | None:
+        for r in range(self._grid.shape[0]):
+            for c in range(self._grid.shape[1]):
+                if CellType(int(self._grid[r, c])) == CellType.LOCKED_EXIT:
+                    return (r, c)
+        return None
+
+    @property
+    def key_position(self) -> Position | None:
+        for r in range(self._grid.shape[0]):
+            for c in range(self._grid.shape[1]):
+                if CellType(int(self._grid[r, c])) == CellType.KEY:
+                    return (r, c)
+        return None
+
+    def is_terminal_state(self, state: Any) -> bool:
+        if not isinstance(state, tuple) or len(state) != 3:
+            return False
+        row, column, has_key = state
+        if not has_key:
+            return False
+        goal = self.goal_position
+        if goal is None:
+            return False
+        return (row, column) == goal
+
     def reset(self, seed: int | None = None) -> Any:
         self._key_collected = False
         return super().reset(seed=seed)
