@@ -115,17 +115,94 @@ for key in [
     if key not in st.session_state:
         st.session_state[key] = None
 
+MODE_LABELS = [
+    "Home", "Manual Environment", "Room 1 \u2014 DP", "Room 2 \u2014 SARSA",
+    "Room 3 \u2014 Q-Learning", "Room 4 \u2014 Function Approximation",
+    "Algorithm Comparison",
+]
+
 # --- Mode selector ---
+_default_mode = MODE_LABELS[0]
+query_modes = st.query_params.get_all("mode")
+if query_modes and query_modes[0] in MODE_LABELS:
+    _default_mode = query_modes[0]
+
 mode = st.sidebar.selectbox(
     "Mode",
-    ["Manual Environment", "Room 1 \u2014 DP", "Room 2 \u2014 SARSA",
-     "Room 3 \u2014 Q-Learning", "Room 4 \u2014 Function Approximation",
-     "Algorithm Comparison"],
+    MODE_LABELS,
+    index=MODE_LABELS.index(_default_mode),
     key="mode_selector",
 )
 if mode != st.session_state.mode:
     st.session_state.mode = mode
     st.rerun()
+
+# ============================================================
+# MODE: Home
+# ============================================================
+if st.session_state.mode == "Home":
+    st.header("Project Objective")
+    st.markdown("""
+    Apply four reinforcement learning algorithms of increasing difficulty to
+    navigate a series of escape-room grids. Each room introduces a new challenge:
+    stochastic transitions, trap cells, key-collection mechanics, and continuous
+    state spaces.
+    """)
+
+    st.header("The Four Rooms")
+    cols = st.columns(4)
+    cols[0].markdown("**Room 1 — Ice Maze**")
+    cols[0].markdown("Value Iteration on known MDP with slippery cells.")
+    cols[1].markdown("**Room 2 — Laser Corridor**")
+    cols[1].markdown("SARSA learning risk-aware behaviour under slip and traps.")
+    cols[2].markdown("**Room 3 — Key Vault**")
+    cols[2].markdown("Q-Learning with key-collection and locked-exit states.")
+    cols[3].markdown("**Room 4 — Momentum Chamber**")
+    cols[3].markdown("Continuous state (x,y,vx,vy) with tile coding + linear approx SARSA.")
+
+    st.header("Room & Algorithm Summary")
+    st.dataframe({
+        "Room": ["Room 1", "Room 2", "Room 3", "Room 4"],
+        "Algorithm": ["Value Iteration", "SARSA", "Q-Learning", "Approximate SARSA"],
+        "State Space": ["10×10 grid", "10×10 grid", "200 states (grid × key)", "Continuous (x,y,vx,vy)"],
+        "On/Off Policy": ["—", "On-policy", "Off-policy", "On-policy"],
+        "Model Known": ["Yes", "No", "No", "No"],
+    }, use_container_width=True)
+
+    st.header("Instructions")
+    st.markdown("""
+    1. Use the **sidebar** to select a mode.
+    2. For Rooms 1–3, select a room, configure parameters, and run the algorithm.
+    3. For Room 4, configure tile-coding and training parameters.
+    4. View training curves, policies, and trajectory replays.
+    5. The **Algorithm Comparison** mode compares SARSA and Q-Learning.
+    """)
+
+    st.header("Symbols & Legend")
+    st.markdown("""
+    - `S` — Start cell
+    - `G` — Goal / Exit
+    - `W` — Wall (impassable)
+    - `T` — Trap (penalty)
+    - `K` — Key (Room 3)
+    - `L` — Locked exit (Room 3)
+    - `•` — Agent position
+    - Arrows (↑→↓←) — Policy direction
+    """)
+
+    st.header("Final Local Measured Results")
+    import csv, os
+    csv_path = "storage/experiments/final/final_summary.csv"
+    if os.path.exists(csv_path):
+        with open(csv_path, newline="") as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+        st.dataframe(rows, use_container_width=True)
+    else:
+        st.info("Final summary not yet generated.")
+
+    st.markdown("---")
+    st.markdown("**Deployment: pending**")
 
 # ============================================================
 # MODE: Manual Environment
