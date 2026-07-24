@@ -4,10 +4,14 @@ import numpy as np
 
 from core.types import (
     Action,
+    ApproximateSarsaConfig,
+    ApproximateSarsaTrainingResult,
     EpsilonDecayKind,
     EpsilonScheduleConfig,
+    QLearningTrainingResult,
     QLearningConfig,
     SarsaConfig,
+    SarsaTrainingResult,
     SlipConfig,
     StartMode,
     StepResult,
@@ -92,6 +96,103 @@ ACTION_BUTTONS = {
     "DOWN": Action.DOWN,
     "LEFT": Action.LEFT,
 }
+
+
+def _epsilon_config_from_metadata(raw: dict, fallback: EpsilonScheduleConfig) -> EpsilonScheduleConfig:
+    try:
+        kind = EpsilonDecayKind(raw.get("kind", fallback.kind.value))
+    except ValueError:
+        kind = fallback.kind
+    return EpsilonScheduleConfig(
+        kind=kind,
+        start=float(raw.get("start", fallback.start)),
+        minimum=float(raw.get("minimum", fallback.minimum)),
+        decay=float(raw.get("decay", fallback.decay)),
+        linear_decay_episodes=int(raw.get("linear_decay_episodes", fallback.linear_decay_episodes)),
+    )
+
+
+def _loaded_sarsa_result(
+    q_values,
+    metadata: dict,
+    fallback_config: SarsaConfig,
+) -> SarsaTrainingResult:
+    cfg = metadata.get("training_config", {})
+    epsilon = _epsilon_config_from_metadata(cfg.get("epsilon", {}), fallback_config.epsilon)
+    config = SarsaConfig(
+        episodes=int(cfg.get("episodes", fallback_config.episodes)),
+        alpha=float(cfg.get("alpha", fallback_config.alpha)),
+        gamma=float(cfg.get("gamma", fallback_config.gamma)),
+        max_steps=int(cfg.get("max_steps", fallback_config.max_steps)),
+        seed=int(cfg.get("seed", fallback_config.seed)),
+        epsilon=epsilon,
+    )
+    training = metadata.get("training", {})
+    return SarsaTrainingResult(
+        config=config,
+        q_values=q_values,
+        metrics=(),
+        snapshots={},
+        final_epsilon=float(training.get("final_epsilon", epsilon.minimum)),
+        training_seed=config.seed,
+    )
+
+
+def _loaded_q_learning_result(
+    q_values,
+    metadata: dict,
+    fallback_config: QLearningConfig,
+) -> QLearningTrainingResult:
+    cfg = metadata.get("training_config", {})
+    epsilon = _epsilon_config_from_metadata(cfg.get("epsilon", {}), fallback_config.epsilon)
+    config = QLearningConfig(
+        episodes=int(cfg.get("episodes", fallback_config.episodes)),
+        alpha=float(cfg.get("alpha", fallback_config.alpha)),
+        gamma=float(cfg.get("gamma", fallback_config.gamma)),
+        max_steps=int(cfg.get("max_steps", fallback_config.max_steps)),
+        seed=int(cfg.get("seed", metadata.get("training_seed", fallback_config.seed))),
+        epsilon=epsilon,
+    )
+    return QLearningTrainingResult(
+        config=config,
+        q_values=q_values,
+        metrics=(),
+        snapshots={},
+        final_epsilon=float(metadata.get("final_epsilon", epsilon.minimum)),
+        training_seed=int(metadata.get("training_seed", config.seed)),
+    )
+
+
+def _loaded_approximate_result(
+    weights,
+    metadata: dict,
+    fallback_config: ApproximateSarsaConfig,
+    tile_coding_config: TileCodingConfig,
+) -> ApproximateSarsaTrainingResult:
+    cfg = metadata.get("training_config", {})
+    epsilon = _epsilon_config_from_metadata(cfg.get("epsilon", {}), fallback_config.epsilon)
+    try:
+        start_mode = StartMode(cfg.get("start_mode", fallback_config.start_mode.value))
+    except ValueError:
+        start_mode = fallback_config.start_mode
+    config = ApproximateSarsaConfig(
+        episodes=int(cfg.get("episodes", fallback_config.episodes)),
+        alpha=float(cfg.get("alpha", fallback_config.alpha)),
+        gamma=float(cfg.get("gamma", fallback_config.gamma)),
+        max_steps=int(cfg.get("max_steps", fallback_config.max_steps)),
+        seed=int(cfg.get("seed", metadata.get("training_seed", fallback_config.seed))),
+        epsilon=epsilon,
+        tile_coding=tile_coding_config,
+        start_mode=start_mode,
+    )
+    return ApproximateSarsaTrainingResult(
+        config=config,
+        weights=weights,
+        metrics=(),
+        snapshots={},
+        final_epsilon=epsilon.minimum,
+        training_seed=int(metadata.get("training_seed", config.seed)),
+    )
 
 st.set_page_config(page_title="RL Escape Room", layout="wide", page_icon="🧊")
 st.title("RL Escape Room")
@@ -659,7 +760,7 @@ elif st.session_state.mode == "Room 2 \u2014 SARSA":
     )
 
     # --- Train ---
-    if train_clicked or (st.session_state.sarsa_train_key != train_key and st.session_state.sarsa_result is None):
+    if train_clicked:
         with st.spinner(f"Training SARSA for {episodes} episodes..."):
             agent = SarsaAgent(make_env, sarsa_config)
 
@@ -687,6 +788,28 @@ elif st.session_state.mode == "Room 2 \u2014 SARSA":
 
     sarsa_result = st.session_state.sarsa_result
 
+    # --- Load ---
+    if load_clicked:
+        import glob, os
+        model_dir = os.path.join("storage", "models", "room2_sarsa")
+        pattern = os.path.join(model_dir, "*.json")
+        files = glob.glob(pattern)
+        if files:
+            latest = max(files).replace(".json", "")
+            try:
+                q_vals, meta = load_model(latest, map_grid=ROOM2_GRID)
+                st.session_state.sarsa_result = _loaded_sarsa_result(q_vals, meta, sarsa_config)
+                st.session_state.sarsa_train_key = train_key
+                st.session_state.sarsa_eval_summary = None
+                st.session_state.sarsa_rollout = None
+                st.success(f"Loaded model from {latest}")
+                st.rerun()
+            except ValueError as e:
+                st.error(f"Load failed: {e}")
+        else:
+            st.info("No saved models found.")
+    sarsa_result = st.session_state.sarsa_result
+
     if sarsa_result is not None:
         if eval_clicked:
             with st.spinner(f"Evaluating {eval_ep} episodes..."):
@@ -704,22 +827,6 @@ elif st.session_state.mode == "Room 2 \u2014 SARSA":
             save_model(sarsa_result, stem, reward_config=None, slip_config=slip_cfg, map_grid=ROOM2_GRID)
             st.success(f"Model saved to {stem}")
 
-        # --- Load ---
-        if load_clicked:
-            import glob, os
-            model_dir = os.path.join("storage", "models", "room2_sarsa")
-            pattern = os.path.join(model_dir, "*.json")
-            files = glob.glob(pattern)
-            if files:
-                latest = max(files).replace(".json", "")
-                try:
-                    q_vals, meta = load_model(latest, map_grid=ROOM2_GRID)
-                    st.success(f"Loaded model from {latest}")
-                except ValueError as e:
-                    st.error(f"Load failed: {e}")
-            else:
-                st.info("No saved models found.")
-
         # --- Greedy policy ---
         greedy_policy = extract_greedy_policy(sarsa_result.q_values)
         env_sample = make_env()
@@ -732,32 +839,35 @@ elif st.session_state.mode == "Room 2 \u2014 SARSA":
 
         # Tab 1: Training Progress
         with t1:
-            df = build_training_dataframe(sarsa_result.metrics)
-            window = min(rw, max(10, episodes // 20))
-
             c1, c2, c3 = st.columns(3)
             c1.metric("Episodes", len(sarsa_result.metrics))
             c2.metric("Final Epsilon", f"{sarsa_result.final_epsilon:.4f}")
-            final_100 = sarsa_result.metrics[-window:]
-            sr = sum(1 for m in final_100 if m.success) / len(final_100)
-            c3.metric(f"Rolling Success ({window})", f"{sr:.1%}")
+            if sarsa_result.metrics:
+                df = build_training_dataframe(sarsa_result.metrics)
+                window = min(rw, max(1, len(sarsa_result.metrics)))
+                final_100 = sarsa_result.metrics[-window:]
+                sr = sum(1 for m in final_100 if m.success) / len(final_100)
+                c3.metric(f"Rolling Success ({window})", f"{sr:.1%}")
 
-            st.subheader("Reward per Episode")
-            rewards = np.array(df["total_reward"])
-            rolling_r = np.convolve(rewards, np.ones(window) / window, mode="valid")
-            chart_data = {"reward": rewards, f"rolling ({window})": np.pad(rolling_r, (window - 1, 0))}
-            st.line_chart(chart_data)
+                st.subheader("Reward per Episode")
+                rewards = np.array(df["total_reward"])
+                rolling_r = np.convolve(rewards, np.ones(window) / window, mode="valid")
+                chart_data = {"reward": rewards, f"rolling ({window})": np.pad(rolling_r, (window - 1, 0))}
+                st.line_chart(chart_data)
 
-            st.subheader("Steps per Episode")
-            st.line_chart({"steps": np.array(df["steps"])})
+                st.subheader("Steps per Episode")
+                st.line_chart({"steps": np.array(df["steps"])})
 
-            st.subheader("Success Rate")
-            successes = np.array(df["success"])
-            rolling_s = np.convolve(successes, np.ones(window) / window, mode="valid")
-            st.line_chart({"success": successes, f"rolling ({window})": np.pad(rolling_s, (window - 1, 0))})
+                st.subheader("Success Rate")
+                successes = np.array(df["success"])
+                rolling_s = np.convolve(successes, np.ones(window) / window, mode="valid")
+                st.line_chart({"success": successes, f"rolling ({window})": np.pad(rolling_s, (window - 1, 0))})
 
-            st.subheader("Epsilon")
-            st.line_chart({"epsilon": np.array(df["epsilon"])})
+                st.subheader("Epsilon")
+                st.line_chart({"epsilon": np.array(df["epsilon"])})
+            else:
+                c3.metric("Rolling Success", "N/A")
+                st.info("Loaded model contains final Q-values only. Train locally to view per-episode progress.")
 
         # Tab 2: Learned Policy
         with t2:
@@ -913,7 +1023,7 @@ elif st.session_state.mode == "Room 3 \u2014 Q-Learning":
         ),
     )
 
-    if train_clicked or (st.session_state.ql_train_key != train_key and st.session_state.ql_result is None):
+    if train_clicked:
         with st.spinner(f"Training Q-Learning for {episodes} episodes..."):
             agent = QLearningAgent(make_ql_env, ql_config)
             progress_bar = st.progress(0)
@@ -941,6 +1051,26 @@ elif st.session_state.mode == "Room 3 \u2014 Q-Learning":
 
     ql_result = st.session_state.ql_result
 
+    if load_clicked:
+        import glob, os
+        model_dir = os.path.join("storage", "models", "room3_q_learning")
+        files = glob.glob(os.path.join(model_dir, "*.json"))
+        if files:
+            latest = max(files).replace(".json", "")
+            try:
+                q_vals, meta = load_q_model(latest, map_grid=ROOM3_GRID)
+                st.session_state.ql_result = _loaded_q_learning_result(q_vals, meta, ql_config)
+                st.session_state.ql_train_key = train_key
+                st.session_state.ql_eval_summary = None
+                st.session_state.ql_rollout = None
+                st.success(f"Loaded model from {latest}")
+                st.rerun()
+            except ValueError as e:
+                st.error(f"Load failed: {e}")
+        else:
+            st.info("No saved models found.")
+    ql_result = st.session_state.ql_result
+
     if ql_result is not None:
         if eval_clicked:
             with st.spinner(f"Evaluating {eval_ep} episodes..."):
@@ -957,20 +1087,6 @@ elif st.session_state.mode == "Room 3 \u2014 Q-Learning":
             save_q_model(ql_result, stem, reward_config=None, slip_config=slip_cfg, map_grid=ROOM3_GRID)
             st.success(f"Model saved to {stem}")
 
-        if load_clicked:
-            import glob, os
-            model_dir = os.path.join("storage", "models", "room3_q_learning")
-            files = glob.glob(os.path.join(model_dir, "*.json"))
-            if files:
-                latest = max(files).replace(".json", "")
-                try:
-                    q_vals, meta = load_q_model(latest, map_grid=ROOM3_GRID)
-                    st.success(f"Loaded model from {latest}")
-                except ValueError as e:
-                    st.error(f"Load failed: {e}")
-            else:
-                st.info("No saved models found.")
-
         from agents.tabular_utils import extract_deterministic_greedy_policy
         policy_no_key = extract_deterministic_greedy_policy(
             {s: v for s, v in ql_result.q_values.items() if not s[2]}
@@ -986,37 +1102,40 @@ elif st.session_state.mode == "Room 3 \u2014 Q-Learning":
         ])
 
         with t1:
-            df = build_q_learning_training_dataframe(ql_result.metrics)
-            window = min(rw, max(10, episodes // 20))
-
             c1, c2, c3 = st.columns(3)
             c1.metric("Episodes", len(ql_result.metrics))
             c2.metric("Final Epsilon", f"{ql_result.final_epsilon:.4f}")
-            final_100 = ql_result.metrics[-window:]
-            sr = sum(1 for m in final_100 if m.success) / len(final_100)
-            c3.metric(f"Rolling Success ({window})", f"{sr:.1%}")
+            if ql_result.metrics:
+                df = build_q_learning_training_dataframe(ql_result.metrics)
+                window = min(rw, max(1, len(ql_result.metrics)))
+                final_100 = ql_result.metrics[-window:]
+                sr = sum(1 for m in final_100 if m.success) / len(final_100)
+                c3.metric(f"Rolling Success ({window})", f"{sr:.1%}")
 
-            st.subheader("Reward per Episode")
-            rewards = np.array(df["total_reward"])
-            rolling_r = np.convolve(rewards, np.ones(window) / window, mode="valid")
-            chart_data = {"reward": rewards, f"rolling ({window})": np.pad(rolling_r, (window - 1, 0))}
-            st.line_chart(chart_data)
+                st.subheader("Reward per Episode")
+                rewards = np.array(df["total_reward"])
+                rolling_r = np.convolve(rewards, np.ones(window) / window, mode="valid")
+                chart_data = {"reward": rewards, f"rolling ({window})": np.pad(rolling_r, (window - 1, 0))}
+                st.line_chart(chart_data)
 
-            st.subheader("Steps per Episode")
-            st.line_chart({"steps": np.array(df["steps"])})
+                st.subheader("Steps per Episode")
+                st.line_chart({"steps": np.array(df["steps"])})
 
-            st.subheader("Key Events")
-            key_col = np.array(df["key_collected"], dtype=float)
-            locked = np.array(df["locked_exit_attempts"], dtype=float)
-            st.line_chart({"key_collected": key_col, "locked_exit_attempts": locked})
+                st.subheader("Key Events")
+                key_col = np.array(df["key_collected"], dtype=float)
+                locked = np.array(df["locked_exit_attempts"], dtype=float)
+                st.line_chart({"key_collected": key_col, "locked_exit_attempts": locked})
 
-            st.subheader("Success Rate")
-            successes = np.array(df["success"])
-            rolling_s = np.convolve(successes, np.ones(window) / window, mode="valid")
-            st.line_chart({"success": successes, f"rolling ({window})": np.pad(rolling_s, (window - 1, 0))})
+                st.subheader("Success Rate")
+                successes = np.array(df["success"])
+                rolling_s = np.convolve(successes, np.ones(window) / window, mode="valid")
+                st.line_chart({"success": successes, f"rolling ({window})": np.pad(rolling_s, (window - 1, 0))})
 
-            st.subheader("Epsilon")
-            st.line_chart({"epsilon": np.array(df["epsilon"])})
+                st.subheader("Epsilon")
+                st.line_chart({"epsilon": np.array(df["epsilon"])})
+            else:
+                c3.metric("Rolling Success", "N/A")
+                st.info("Loaded model contains final Q-values only. Train locally to view per-episode progress.")
 
         with t2:
             pol_sym = build_room3_policy_symbols(env_sample, policy_no_key, has_key=False)
@@ -1196,7 +1315,7 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
     )
 
     # --- Train ---
-    if train_clicked or (st.session_state.approx_train_key != train_key and st.session_state.approx_result is None):
+    if train_clicked:
         with st.spinner(f"Training Approximate SARSA for {approx_episodes} episodes..."):
             factory = lambda: make_approx_env()
             agent = ApproximateSarsaAgent(factory, approx_config)
@@ -1224,6 +1343,27 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
             status_text.empty()
             st.rerun()
 
+    approx_result = st.session_state.approx_result
+
+    if load_clicked:
+        import glob, os
+        model_dir = os.path.join("storage", "models", "room4_approximate_sarsa")
+        files = glob.glob(os.path.join(model_dir, "*.json"))
+        if files:
+            latest = max(files).replace(".json", "")
+            try:
+                weights, meta = load_approximate_model(latest, expected_tile_coding=tc_cfg)
+                st.session_state.approx_result = _loaded_approximate_result(weights, meta, approx_config, tc_cfg)
+                st.session_state.approx_train_key = train_key
+                st.session_state.approx_eval_fixed = None
+                st.session_state.approx_eval_gen = None
+                st.session_state.approx_rollout = None
+                st.success(f"Loaded model from {latest}")
+                st.rerun()
+            except ValueError as e:
+                st.error(f"Load failed: {e}")
+        else:
+            st.info("No saved models found.")
     approx_result = st.session_state.approx_result
 
     if approx_result is not None:
@@ -1262,21 +1402,6 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
                                    reward_config=ContinuousRewardConfig(distance_progress_scale=approx_progress_scale))
             st.success(f"Model saved to {stem}")
 
-        # --- Load ---
-        if load_clicked:
-            import glob, os
-            model_dir = os.path.join("storage", "models", "room4_approximate_sarsa")
-            files = glob.glob(os.path.join(model_dir, "*.json"))
-            if files:
-                latest = max(files).replace(".json", "")
-                try:
-                    weights, meta = load_approximate_model(latest, expected_tile_coding=tc_cfg)
-                    st.success(f"Loaded model from {latest}")
-                except ValueError as e:
-                    st.error(f"Load failed: {e}")
-            else:
-                st.info("No saved models found.")
-
         # --- Tabs ---
         t1, t2, t3, t4, t5, t6, t7 = st.tabs([
             "Training Progress", "Final Trajectory", "Training-Stage Replay",
@@ -1285,35 +1410,38 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
 
         # Tab 1: Training Progress
         with t1:
-            df = build_approx_training_dataframe(approx_result.metrics)
-            window = min(rw, max(10, approx_episodes // 20))
-
             c1, c2, c3 = st.columns(3)
             c1.metric("Episodes", len(approx_result.metrics))
             c2.metric("Final Epsilon", f"{approx_result.final_epsilon:.4f}")
-            final_win = approx_result.metrics[-window:]
-            sr = sum(1 for m in final_win if m.success) / len(final_win)
-            c3.metric(f"Rolling Success ({window})", f"{sr:.1%}")
+            if approx_result.metrics:
+                df = build_approx_training_dataframe(approx_result.metrics)
+                window = min(rw, max(1, len(approx_result.metrics)))
+                final_win = approx_result.metrics[-window:]
+                sr = sum(1 for m in final_win if m.success) / len(final_win)
+                c3.metric(f"Rolling Success ({window})", f"{sr:.1%}")
 
-            st.subheader("Reward per Episode")
-            rewards = np.array(df["total_reward"])
-            rolling_r = np.convolve(rewards, np.ones(window) / window, mode="valid")
-            chart_data = {"reward": rewards, f"rolling ({window})": np.pad(rolling_r, (window - 1, 0))}
-            st.line_chart(chart_data)
+                st.subheader("Reward per Episode")
+                rewards = np.array(df["total_reward"])
+                rolling_r = np.convolve(rewards, np.ones(window) / window, mode="valid")
+                chart_data = {"reward": rewards, f"rolling ({window})": np.pad(rolling_r, (window - 1, 0))}
+                st.line_chart(chart_data)
 
-            st.subheader("Steps per Episode")
-            st.line_chart({"steps": np.array(df["steps"])})
+                st.subheader("Steps per Episode")
+                st.line_chart({"steps": np.array(df["steps"])})
 
-            st.subheader("Distance to Exit")
-            st.line_chart({"final_distance_to_exit_m": np.array(df["final_distance_to_exit_m"])})
+                st.subheader("Distance to Exit")
+                st.line_chart({"final_distance_to_exit_m": np.array(df["final_distance_to_exit_m"])})
 
-            st.subheader("Success Rate")
-            successes = np.array(df["success"])
-            rolling_s = np.convolve(successes, np.ones(window) / window, mode="valid")
-            st.line_chart({"success": successes, f"rolling ({window})": np.pad(rolling_s, (window - 1, 0))})
+                st.subheader("Success Rate")
+                successes = np.array(df["success"])
+                rolling_s = np.convolve(successes, np.ones(window) / window, mode="valid")
+                st.line_chart({"success": successes, f"rolling ({window})": np.pad(rolling_s, (window - 1, 0))})
 
-            st.subheader("Epsilon")
-            st.line_chart({"epsilon": np.array(df["epsilon"])})
+                st.subheader("Epsilon")
+                st.line_chart({"epsilon": np.array(df["epsilon"])})
+            else:
+                c3.metric("Rolling Success", "N/A")
+                st.info("Loaded model contains final weights only. Train locally to view per-episode progress.")
 
         # Tab 2: Final Trajectory
         with t2:

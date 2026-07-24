@@ -366,12 +366,11 @@ def evaluate_approximate_policy(
     q_func = LinearTileQFunction(tile_coder, n_actions=9)
     q_func._weights = weights.copy()
 
+    rollout_factory = _make_category_factory(environment_factory, start_mode)
     rollouts: list[ContinuousRolloutResult] = []
     for seed_val in seeds:
-        env = environment_factory()
-        env._start_mode = start_mode
         roll = rollout_approximate_policy(
-            environment_factory, q_func,
+            rollout_factory, q_func,
             seed=int(seed_val), epsilon=0.0, max_steps=max_steps,
         )
         rollouts.append(roll)

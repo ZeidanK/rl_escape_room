@@ -305,8 +305,20 @@ def save_comparison_to_final(
     with open(path, "w") as f:
         json.dump(data, f, indent=2)
 
+    tuned_path = os.path.join(FINAL_DIR, "sarsa_vs_q_learning_tuned.json")
+    tuned_data = {
+        "tuned_comparison": data["tuned_comparison"],
+        "_metadata": {
+            **data["_metadata"],
+            "artifact": "tuned_comparison",
+        },
+    }
+    with open(tuned_path, "w") as f:
+        json.dump(tuned_data, f, indent=2)
+
     # Also save final comparison
     comp_path = os.path.join("storage", "comparisons", "sarsa_vs_q_learning.json")
+    os.makedirs(os.path.dirname(comp_path), exist_ok=True)
     with open(comp_path, "w") as f:
         json.dump(data, f, indent=2)
 

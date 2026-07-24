@@ -119,6 +119,11 @@ def save_trial(
     filepath: str,
     data: dict,
 ) -> None:
+    data.setdefault("schema_version", 1)
+    data.setdefault("generated_at", now_iso())
+    data.setdefault("git_commit", git_commit())
+    data.setdefault("python_version", python_version())
+    data.setdefault("package_versions", package_versions())
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     tmp = filepath + ".tmp"
     try:

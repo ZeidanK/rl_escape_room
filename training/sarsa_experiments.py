@@ -89,7 +89,7 @@ def run_screening_experiments(
                 duration_vals = [r["train_duration_sec"] for r in trial_records]
                 impr_vals = [r["train_improvement"] for r in trial_records]
 
-                records.append({
+                results.append({
                     "experiment_type": "screening",
                     "alpha": alpha,
                     "gamma": gamma,

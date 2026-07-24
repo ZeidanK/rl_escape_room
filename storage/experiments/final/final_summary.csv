@@ -1,5 +1,5 @@
 room,algorithm,best_config_id,training_episodes,training_seed_count,evaluation_count,success_rate_mean,success_rate_std,mean_return,mean_successful_steps,key_collection_rate,fixed_unseen_success_rate,random_room_success_rate,runtime_seconds,result_file,git_commit
-Room 1,Value Iteration,"gamma=0.8,tol=0.01,slip=deterministic",N/A,N/A,100,1.0,0.0,86.0,14.0,N/A,N/A,N/A,N/A,room1_value_iteration.json,bac4537a442c25b0f2cffb3d014c0ac3602d9015
-Room 2,SARSA,"alpha=0.05,gamma=0.95,decay=0.99",5000,5,100,1.0,0.0,84.76,15.059999999999999,N/A,N/A,N/A,N/A,room2_sarsa_confirmation.json,bac4537a442c25b0f2cffb3d014c0ac3602d9015
-Room 3,Q-Learning,"alpha=0.5,gamma=0.99,decay=0.999",5000,5,100,1.0,0.0,91.0,19.0,1.0,N/A,N/A,N/A,room3_q_learning_confirmation.json,bac4537a442c25b0f2cffb3d014c0ac3602d9015
-Room 4,Approximate SARSA,"nt=16,tx=16,alpha=0.05,ps=1.0,ed=0.995",3000,5,100,0.6,0.0,N/A,N/A,N/A,0.08,0.144,N/A,room4_approximate_sarsa_confirmation.json,bac4537a442c25b0f2cffb3d014c0ac3602d9015
+Room 1,Value Iteration,"gamma=0.8,tol=0.01,slip=deterministic",N/A,N/A,100,1.0,0.0,86.0,14.0,N/A,N/A,N/A,N/A,room1_value_iteration.json,a0dda0e4c0cbea225724d49fa8565b190b2b96f7
+Room 2,SARSA,"alpha=0.05,gamma=0.95,decay=0.99",5000,5,100,1.0,0.0,84.76,15.059999999999999,N/A,N/A,N/A,N/A,room2_sarsa_confirmation.json,9c6c37ba99069b44ef38aeeecc7cb84ba74ee4fd
+Room 3,Q-Learning,"alpha=0.5,gamma=0.99,decay=0.999",5000,5,100,1.0,0.0,91.0,19.0,1.0,N/A,N/A,N/A,room3_q_learning_confirmation.json,9c6c37ba99069b44ef38aeeecc7cb84ba74ee4fd
+Room 4,Approximate SARSA,"nt=16,tx=16,alpha=0.05,ps=1.0,ed=0.995",1500,5,25,0.6,0.0,N/A,N/A,N/A,0.08,0.144,N/A,room4_approximate_sarsa_confirmation.json,bac4537a442c25b0f2cffb3d014c0ac3602d9015

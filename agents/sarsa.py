@@ -338,6 +338,7 @@ def _build_metadata(
     slip_config,
     map_grid,
 ) -> dict:
+    recent_metrics = result.metrics[-100:]
     return {
         "version": _MODEL_VERSION,
         "map_signature": map_signature(map_grid),
@@ -373,8 +374,8 @@ def _build_metadata(
         "training": {
             "final_epsilon": result.final_epsilon,
             "total_episodes": len(result.metrics),
-            "final_mean_reward": float(np.mean([m.total_reward for m in result.metrics[-100:]])),
-            "final_success_rate": float(np.mean([1.0 for m in result.metrics[-100:] if m.success])),
+            "final_mean_reward": float(np.mean([m.total_reward for m in recent_metrics])) if recent_metrics else 0.0,
+            "final_success_rate": float(np.mean([1.0 if m.success else 0.0 for m in recent_metrics])) if recent_metrics else 0.0,
             "snapshot_episodes": sorted(result.snapshots.keys()),
         },
     }

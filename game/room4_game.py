@@ -16,11 +16,83 @@ from core.types import (
     VELOCITY_BY_ACTION, VelocityAction,
 )
 from environments.room4_continuous import Room4Continuous
-from agents.approximate_sarsa import ApproximateSarsaAgent, load_approximate_model, rollout_approximate_policy
-from features.tile_coding import TileCodingConfig
+from agents.approximate_sarsa import (
+    ApproximateSarsaAgent,
+    LinearTileQFunction,
+    load_approximate_model,
+    rollout_approximate_policy,
+)
+from features.tile_coding import TileCoder, TileCodingConfig
 from game.achievements import AchievementTracker
 from game.room_transitions import render_transition_content
 from game.home_page import ROOM_DEFS
+
+
+def _training_config(meta: dict) -> dict:
+    return meta.get("training_config", {})
+
+
+def _tile_config_from_meta(meta: dict) -> TileCodingConfig:
+    tc = meta.get("tile_coding_config", {})
+    tiles_xy = meta.get("tiles_xy", 10)
+    return TileCodingConfig(
+        num_tilings=int(tc.get("num_tilings", meta.get("num_tilings", 8))),
+        tiles_x=int(tc.get("tiles_x", tiles_xy)),
+        tiles_y=int(tc.get("tiles_y", tiles_xy)),
+        include_velocity=bool(tc.get("include_velocity", True)),
+    )
+
+
+def _motion_config_from_meta(meta: dict) -> Room4MotionConfig:
+    motion = meta.get("motion_config", {})
+    return Room4MotionConfig(
+        room_width_m=float(motion.get("room_width_m", 10.0)),
+        room_height_m=float(motion.get("room_height_m", 10.0)),
+        time_step_s=float(motion.get("time_step_s", 0.02)),
+        exit_center=tuple(motion.get("exit_center", (9.5, 9.5))),
+        exit_radius_m=float(motion.get("exit_radius_m", 0.35)),
+    )
+
+
+def _reward_config_from_meta(meta: dict) -> ContinuousRewardConfig:
+    reward = meta.get("reward_config", {})
+    return ContinuousRewardConfig(
+        step=float(reward.get("step", -0.01)),
+        exit=float(reward.get("exit", 100.0)),
+        boundary_collision=float(reward.get("boundary_collision", -1.0)),
+        timeout=float(reward.get("timeout", -25.0)),
+        distance_progress_scale=float(reward.get("distance_progress_scale", meta.get("progress_scale", 1.0))),
+    )
+
+
+def _seed_from_meta(meta: dict, default: int = 42) -> int:
+    cfg = _training_config(meta)
+    return int(meta.get("training_seed", cfg.get("seed", meta.get("seed", default))))
+
+
+def _max_steps_from_meta(meta: dict, default: int = 750) -> int:
+    return int(_training_config(meta).get("max_steps", default))
+
+
+def _start_mode_from_meta(meta: dict) -> StartMode:
+    cfg = _training_config(meta)
+    try:
+        return StartMode(cfg.get("start_mode", meta.get("start_mode", StartMode.FIXED.value)))
+    except ValueError:
+        return StartMode.FIXED
+
+
+def _q_function_from_weights(weights: np.ndarray, tc_cfg: TileCodingConfig, motion_cfg: Room4MotionConfig) -> LinearTileQFunction:
+    tile_coder = TileCoder(tc_cfg, room_width=motion_cfg.room_width_m, room_height=motion_cfg.room_height_m)
+    q_func = LinearTileQFunction(tile_coder, n_actions=len(VelocityAction))
+    q_func._weights = weights.copy()
+    return q_func
+
+
+def _final_distance_to_exit_m(rollout, motion_cfg: Room4MotionConfig) -> float:
+    x, y = rollout.final_state[:2]
+    ex, ey = motion_cfg.exit_center
+    return float(np.hypot(x - ex, y - ey))
 
 
 def render_room4_game():
@@ -45,7 +117,7 @@ def render_room4_game():
         if load_col.button("Load Latest Model", key="r4g_load"):
             try:
                 import glob, os
-                model_dir = os.path.join("storage", "models", "room4_approximate")
+                model_dir = os.path.join("storage", "models", "room4_approximate_sarsa")
                 pattern = os.path.join(model_dir, "*.json")
                 files = glob.glob(pattern)
                 if files:
@@ -89,30 +161,32 @@ def render_room4_game():
         return
 
     # Build environment from meta
-    tc_cfg = TileCodingConfig(
-        num_tilings=meta.get("num_tilings", 8),
-        tiles_x=meta.get("tiles_xy", 10),
-        tiles_y=meta.get("tiles_xy", 10),
-        include_velocity=True,
-    )
-    
-    motion_cfg = Room4MotionConfig()
-    reward_cfg = ContinuousRewardConfig(
-        progress_scale=meta.get("progress_scale", 1.0),
-    )
-    start_mode = StartMode(meta.get("start_mode", "fixed"))
+    tc_cfg = _tile_config_from_meta(meta)
+    motion_cfg = _motion_config_from_meta(meta)
+    reward_cfg = _reward_config_from_meta(meta)
+    start_mode = _start_mode_from_meta(meta)
+    max_steps = _max_steps_from_meta(meta)
+    seed = _seed_from_meta(meta)
     
     env = Room4Continuous(
         motion_config=motion_cfg,
         reward_config=reward_cfg,
-        max_steps=750,
+        max_steps=max_steps,
         start_mode=start_mode,
-        seed=meta.get("seed", 42),
+        seed=seed,
     )
 
     # Build rollout if not already built
     if rollout is None:
-        rollout = rollout_approximate_policy(env, weights, tc_cfg, seed=meta.get("seed", 42))
+        q_func = _q_function_from_weights(weights, tc_cfg, motion_cfg)
+        make_env = lambda: Room4Continuous(
+            motion_config=motion_cfg,
+            reward_config=reward_cfg,
+            max_steps=max_steps,
+            start_mode=start_mode,
+            seed=seed,
+        )
+        rollout = rollout_approximate_policy(make_env, q_func, seed=seed, max_steps=max_steps)
         st.session_state.r4g_rollout = rollout
         st.rerun()
 
@@ -123,10 +197,13 @@ def render_room4_game():
     elif not rollout.success:
         status_badges.append('<span class="badge-failure">FAILED</span>')
 
+    cfg = _training_config(meta)
+    final_distance = _final_distance_to_exit_m(rollout, motion_cfg)
+
     from game.hud import render_hud
     st.markdown(render_hud(
         room_name="\U0001f300 Room 4: The Momentum Chamber",
-        algorithm=f"Approximate SARSA (Tile Coding) | \u03b1={meta.get('alpha', 0.1):.2f} \u03b3={meta.get('gamma', 0.99):.2f} | Tilings={meta.get('num_tilings', 8)}",
+        algorithm=f"Approximate SARSA (Tile Coding) | \u03b1={float(cfg.get('alpha', meta.get('alpha', 0.1))):.2f} \u03b3={float(cfg.get('gamma', meta.get('gamma', 0.99))):.2f} | Tilings={tc_cfg.num_tilings}",
         state_str=f"({rollout.start_state[0]:.2f}, {rollout.start_state[1]:.2f}, v={rollout.start_state[2]}, {rollout.start_state[3]})",
         action=None,
         reward=None,
@@ -134,9 +211,9 @@ def render_room4_game():
         epsilon=None,
         status_badges=status_badges,
         custom_items=[
-            ("Steps", str(rollout.total_steps)),
+            ("Steps", str(rollout.steps)),
             ("Distance", f"{rollout.distance_travelled_m:.2f}m"),
-            ("Final Dist.", f"{rollout.final_distance_to_exit_m:.2f}m"),
+            ("Final Dist.", f"{final_distance:.2f}m"),
         ],
     ), unsafe_allow_html=True)
 
@@ -203,10 +280,10 @@ def render_room4_game():
     
     # Stats
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Steps", rollout.total_steps)
+    col1.metric("Steps", rollout.steps)
     col2.metric("Reward", f"{rollout.total_reward:.1f}")
     col3.metric("Distance", f"{rollout.distance_travelled_m:.2f}m")
-    col4.metric("Final Dist.", f"{rollout.final_distance_to_exit_m:.2f}m")
+    col4.metric("Final Dist.", f"{final_distance:.2f}m")
     
     if rollout.collision_count > 0:
         st.warning(f"Collisions: {rollout.collision_count}")

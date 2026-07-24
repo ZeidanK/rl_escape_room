@@ -2,6 +2,7 @@
 
 import time
 from dataclasses import replace
+from collections.abc import Sequence
 
 import streamlit as st
 import numpy as np
@@ -10,11 +11,24 @@ from game.theme import get_theme
 from game.canvas_renderer import render_grid_canvas, render_vi_animation_frame
 from game.hud import render_hud
 from game.episode_replay import build_replay_from_rollout, render_replay_bar, get_current_step
-from game.explain_panel import render_explain_panel, get_algorithm_explanation
+from game.explain_panel import render_explain_panel as render_explain_panel_html, get_algorithm_explanation
 from game.models import ReplayState, RoomTransition
 from game.achievements import AchievementTracker, AchievementId
 from game.room_transitions import render_transition_content
 from game.home_page import ROOM_DEFS
+
+
+def _iter_replay_steps(replay) -> Sequence:
+    steps = getattr(replay, "steps", ())
+    if isinstance(steps, int):
+        return ()
+    return steps or ()
+
+
+def _replay_step_count(replay) -> int:
+    if hasattr(replay, "total_steps"):
+        return int(replay.total_steps)
+    return int(getattr(replay, "steps", 0))
 
 
 def render_back_button(key: str, target_mode: str = "\U0001f3ae Escape Room Showcase", target_room: str | None = None):
@@ -162,10 +176,13 @@ def render_legend(room_id: str):
     """, unsafe_allow_html=True)
 
 
-def check_and_unlock_achievements(room_id: str, replay: ReplayState) -> list:
+def check_and_unlock_achievements(room_id: str, replay) -> list:
     """Check and unlock achievements based on replay data. Returns list of newly unlocked achievements."""
+    if replay is None:
+        return []
     tracker = AchievementTracker.from_session_state()
     newly_unlocked: list = []
+    replay_steps = _iter_replay_steps(replay)
 
     # FIRST_ESCAPE
     ach = tracker.try_unlock_first_escape()
@@ -175,21 +192,21 @@ def check_and_unlock_achievements(room_id: str, replay: ReplayState) -> list:
     # Room-specific achievements
     if room_id == "room1":
         # ICE_MASTER - no unintended slips
-        slip_count = sum(1 for s in replay.steps if s.slipped)
+        slip_count = sum(1 for s in replay_steps if s.slipped)
         ach = tracker.try_unlock_ice_master(slip_count)
         if ach:
             newly_unlocked.append(ach)
 
     elif room_id == "room2":
         # LASER_DODGER - no trap cells visited
-        trap_count = sum(1 for s in replay.steps if s.event == "trap")
+        trap_count = sum(1 for s in replay_steps if s.event == "trap")
         ach = tracker.try_unlock_laser_dodger(trap_count)
         if ach:
             newly_unlocked.append(ach)
 
     elif room_id == "room3":
         # VAULT_EXPERT - key collected and exit reached
-        key_collected = any(s.event == "key_collected" for s in replay.steps)
+        key_collected = any(s.event in ("key", "key_collected") for s in replay_steps)
         ach = tracker.try_unlock_vault_expert(replay.success, key_collected)
         if ach:
             newly_unlocked.append(ach)
@@ -206,7 +223,7 @@ def check_and_unlock_achievements(room_id: str, replay: ReplayState) -> list:
     for room_def in ROOM_DEFS:
         if room_def.room_id == room_id:
             room_status = room_def.status
-            if room_status.best_steps is None or replay.total_steps < room_status.best_steps:
+            if room_status.best_steps is None or _replay_step_count(replay) < room_status.best_steps:
                 is_new_best = True
             break
     ach = tracker.try_unlock_speed_runner(is_new_best)
@@ -216,13 +233,16 @@ def check_and_unlock_achievements(room_id: str, replay: ReplayState) -> list:
     return newly_unlocked
 
 
-def render_room_transition(room_id: str, replay: ReplayState, achievements: list):
+def render_room_transition(room_id: str, replay, achievements: list):
     """Render room transition overlay with achievements and continue button."""
+    if replay is None:
+        return False
     if not replay.success:
         return False
     
     # Check if at end of replay
-    if replay.current_index < len(replay.steps) - 1:
+    replay_steps = _iter_replay_steps(replay)
+    if replay_steps and getattr(replay, "current_index", 0) < len(replay_steps) - 1:
         return False
     
     theme = get_theme(room_id)
@@ -232,7 +252,7 @@ def render_room_transition(room_id: str, replay: ReplayState, achievements: list
     for room_def in ROOM_DEFS:
         if room_def.room_id == room_id:
             room_status = room_def.status
-            if room_status.best_steps is None or replay.total_steps < room_status.best_steps:
+            if room_status.best_steps is None or _replay_step_count(replay) < room_status.best_steps:
                 is_new_best = True
             break
     
@@ -240,7 +260,7 @@ def render_room_transition(room_id: str, replay: ReplayState, achievements: list
     transition = RoomTransition(
         room_id=room_id,
         success=True,
-        steps=replay.total_steps,
+        steps=_replay_step_count(replay),
         total_reward=replay.total_reward,
         new_best=is_new_best,
         message="The chamber dissolves. The path forward clears.",
@@ -320,7 +340,7 @@ def render_explain_panel(q_vals: dict | None, selected_action: str | None, algor
     """Render the 'Explain Action' panel with Q-value table."""
     st.markdown("### Explain Action")
     explanation = get_algorithm_explanation(algorithm.lower().replace(" ", "_"))
-    st.markdown(render_explain_panel(
+    st.markdown(render_explain_panel_html(
         q_vals,
         selected_action=selected_action,
         algorithm=algorithm,
@@ -328,9 +348,10 @@ def render_explain_panel(q_vals: dict | None, selected_action: str | None, algor
     ), unsafe_allow_html=True)
 
 
-def render_game_grid(env, agent_pos, room_id: str, policy=None, values=None, 
+def render_game_grid(env, agent_pos, room_id: str, policy=None, values=None,
                      show_policy: bool = True, show_values: bool = False, show_labels: bool = False,
-                     slip_effect: bool = False, trajectory=None, cell_size: int = 48):
+                     slip_effect: bool = False, trajectory=None, cell_size: int = 48,
+                     has_key: bool | None = None):
     """Render the game grid with error handling and fallback."""
     try:
         svg = render_grid_canvas(
@@ -345,6 +366,7 @@ def render_game_grid(env, agent_pos, room_id: str, policy=None, values=None,
             show_labels=show_labels,
             slip_effect=slip_effect,
             trajectory=trajectory,
+            has_key=has_key,
         )
         st.markdown(f'<div class="grid-container" style="overflow:hidden;">{svg}</div>', unsafe_allow_html=True)
     except Exception as e:
@@ -372,7 +394,7 @@ def render_step_info(current_step_data, replay, room_id: str):
             ev = current_step_data.event
             if ev == "exit":
                 st.markdown('<span class="badge-success">EXIT REACHED</span>', unsafe_allow_html=True)
-            elif ev == "key_collected":
+            elif ev in ("key", "key_collected"):
                 st.markdown('<span class="badge-key">KEY COLLECTED</span>', unsafe_allow_html=True)
             elif ev == "trap":
                 st.markdown('<span class="badge-trap">TRAP HIT</span>', unsafe_allow_html=True)

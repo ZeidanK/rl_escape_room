@@ -920,11 +920,13 @@ def generate_summary_csv():
                 r2 = json.load(f)
                 if r2.get("confirmation_results"):
                     best = r2["confirmation_results"][0]
+                    config_meta = r2.get("config", {})
                     rows.append({
                         "room": "Room 2", "algorithm": "SARSA",
                         "best_config_id": f"alpha={best['config']['alpha']},gamma={best['config']['gamma']},decay={best['config']['decay']}",
-                        "training_episodes": 5000, "training_seed_count": best["n_seeds"],
-                        "evaluation_count": 100,
+                        "training_episodes": config_meta.get("confirmation_episodes", best["config"].get("episodes", 5000)),
+                        "training_seed_count": len(r2.get("training_seeds", [])) or best["n_seeds"],
+                        "evaluation_count": len(r2.get("evaluation_seeds", [])) or 100,
                         "success_rate_mean": best["mean_success_rate"],
                         "success_rate_std": best["std_success_rate"],
                         "mean_return": best["mean_return"],
@@ -934,7 +936,7 @@ def generate_summary_csv():
                         "random_room_success_rate": "N/A",
                         "runtime_seconds": "N/A",
                         "result_file": "room2_sarsa_confirmation.json",
-                        "git_commit": commit,
+                        "git_commit": r2.get("git_commit", commit),
                     })
             except Exception:
                 pass
@@ -947,11 +949,13 @@ def generate_summary_csv():
                 r3 = json.load(f)
                 if r3.get("confirmation_results"):
                     best = r3["confirmation_results"][0]
+                    config_meta = r3.get("config", {})
                     rows.append({
                         "room": "Room 3", "algorithm": "Q-Learning",
                         "best_config_id": f"alpha={best['config']['alpha']},gamma={best['config']['gamma']},decay={best['config']['decay']}",
-                        "training_episodes": 5000, "training_seed_count": best["n_seeds"],
-                        "evaluation_count": 100,
+                        "training_episodes": config_meta.get("confirmation_episodes", best["config"].get("episodes", 5000)),
+                        "training_seed_count": len(r3.get("training_seeds", [])) or best["n_seeds"],
+                        "evaluation_count": len(r3.get("evaluation_seeds", [])) or 100,
                         "success_rate_mean": best["mean_success_rate"],
                         "success_rate_std": best["std_success_rate"],
                         "mean_return": best["mean_return"],
@@ -961,7 +965,7 @@ def generate_summary_csv():
                         "random_room_success_rate": "N/A",
                         "runtime_seconds": "N/A",
                         "result_file": "room3_q_learning_confirmation.json",
-                        "git_commit": commit,
+                        "git_commit": r3.get("git_commit", commit),
                     })
             except Exception:
                 pass
@@ -974,11 +978,13 @@ def generate_summary_csv():
                 r4 = json.load(f)
                 if r4.get("confirmation_results"):
                     best = r4["confirmation_results"][0]
+                    config_meta = r4.get("config", {})
                     rows.append({
                         "room": "Room 4", "algorithm": "Approximate SARSA",
                         "best_config_id": f"nt={best['config']['num_tilings']},tx={best['config']['tiles_xy']},alpha={best['config']['alpha']},ps={best['config']['progress_scale']},ed={best['config']['epsilon_decay']}",
-                        "training_episodes": 3000, "training_seed_count": best["n_seeds"],
-                        "evaluation_count": 100,
+                        "training_episodes": config_meta.get("confirmation_episodes", best["config"].get("episodes", 1500)),
+                        "training_seed_count": len(r4.get("training_seeds", [])) or best["n_seeds"],
+                        "evaluation_count": len(r4.get("evaluation_seeds", [])) or "N/A",
                         "success_rate_mean": best["fixed_training_start_success_rate"],
                         "success_rate_std": 0.0,
                         "mean_return": "N/A",
@@ -988,7 +994,7 @@ def generate_summary_csv():
                         "random_room_success_rate": best["random_room_success_rate"],
                         "runtime_seconds": "N/A",
                         "result_file": "room4_approximate_sarsa_confirmation.json",
-                        "git_commit": commit,
+                        "git_commit": r4.get("git_commit", commit),
                     })
             except Exception:
                 pass

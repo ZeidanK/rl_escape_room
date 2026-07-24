@@ -3,7 +3,7 @@
 A Python-based reinforcement learning escape-room application with four rooms of
 increasing difficulty, each solved by a different RL algorithm.
 
-**Deployment: pending**
+**Deployment: local-only for now**
 
 ## Project Objective
 
@@ -28,7 +28,7 @@ continuous state spaces.
 | 9 | Room 4 is a 10×10 metre room                                                 | Done   |
 | 10 | All agents run on the same platform (Streamlit)                              | Done   |
 | 11 | Reproducible experiments with seeded RNG streams                             | Done   |
-| 12 | Published as a public Streamlit app                                          | Pending |
+| 12 | Published as a public Streamlit app                                          | Deferred |
 | 13 | Defence presentation with oral questions                                     | Prepared |
 
 ## Four-Room Overview
@@ -110,7 +110,7 @@ rl_escape_room/
 ├── training/              # Experiment pipelines, comparisons, utilities
 ├── visualization/         # Policy arrows, Q-tables, training curves, action fields
 ├── storage/               # Saved models, experiment results, metrics
-├── tests/                 # 263 tests across all components
+├── tests/                 # 291 tests across all components
 ├── docs/                  # Design docs, defence prep, screenshots
 └── tools/                 # Screenshot capture, result extraction
 ```
@@ -133,7 +133,22 @@ streamlit run app.py
 pytest -v
 ```
 
-**Exact test count: 263 tests (current local result).**
+**Exact test count: 291 tests (current local result).**
+
+## Generating Local Showcase Models
+
+Rooms 2-4 in the Escape Room Showcase load saved local models from
+`storage/models/`. Generate them with:
+
+```bash
+python tools/generate_local_models.py
+```
+
+For a quick wiring check, use:
+
+```bash
+python tools/generate_local_models.py --smoke
+```
 
 ## Best Measured Parameters
 
@@ -249,7 +264,7 @@ Screenshots from the local Streamlit application:
 
 - Room 5 — Deep Q-Network with experience replay and target network on
   a partially observable grid (stub only, not implemented).
-- Deploy to Streamlit Community Cloud.
+- Deploy to Streamlit Community Cloud when public hosting is in scope.
 - Replace screenshots with public-site screenshots after deployment.
 - Extended hyperparameter search for Room 4 (Bayesian optimisation, more
   tilings configurations).
@@ -273,5 +288,5 @@ hyperparameters, reproducibility, and comparison methodology.
 ## Deployment
 
 ```text
-Deployment: pending
+Deployment: local-only for now. Run with `streamlit run app.py`.
 ```

@@ -1,5 +1,7 @@
 """Room 3 — Key Vault game view. Full Q-Learning replay implementation."""
 
+from dataclasses import replace
+
 import streamlit as st
 import numpy as np
 
@@ -20,6 +22,7 @@ from core.types import (
 )
 from environments.room3_qlearning import ROOM3_GRID, Room3QLearning
 from agents.q_learning import QLearningAgent, load_q_model, rollout_q_learning_policy
+from agents.tabular_utils import extract_deterministic_greedy_policy
 from game.canvas_renderer import render_grid_canvas
 from game.hud import render_hud
 from game.episode_replay import build_replay_from_rollout, get_current_step
@@ -28,6 +31,46 @@ from game.models import ReplayState
 from game.achievements import AchievementTracker
 from game.room_transitions import render_transition_content
 from game.home_page import ROOM_DEFS
+
+
+def _training_config(meta: dict) -> dict:
+    return meta.get("training_config", {})
+
+
+def _slip_config_from_meta(meta: dict) -> SlipConfig:
+    slip = meta.get("slip_config", {})
+    return SlipConfig(
+        intended_probability=float(slip.get("intended_probability", meta.get("p_int", 0.8))),
+        left_probability=float(slip.get("left_probability", meta.get("p_left", 0.1))),
+        right_probability=float(slip.get("right_probability", meta.get("p_right", 0.1))),
+    )
+
+
+def _seed_from_meta(meta: dict, default: int = 42) -> int:
+    cfg = _training_config(meta)
+    return int(meta.get("training_seed", cfg.get("seed", meta.get("seed", default))))
+
+
+def _max_steps_from_meta(meta: dict, default: int = 300) -> int:
+    return int(_training_config(meta).get("max_steps", default))
+
+
+def _has_key_before_current_step(replay) -> bool:
+    if replay is None:
+        return False
+    return any(
+        step.event in ("key", "key_collected")
+        for step in replay.steps[:replay.current_index]
+    )
+
+
+def _has_key_after_current_step(replay) -> bool:
+    if replay is None:
+        return False
+    return any(
+        step.event in ("key", "key_collected")
+        for step in replay.steps[:replay.current_index + 1]
+    )
 
 
 def render_room3_game():
@@ -52,7 +95,7 @@ def render_room3_game():
         if load_col.button("Load Latest Model", key="r3g_load"):
             try:
                 import glob, os
-                model_dir = os.path.join("storage", "models", "room3_qlearning")
+                model_dir = os.path.join("storage", "models", "room3_q_learning")
                 pattern = os.path.join(model_dir, "*.json")
                 files = glob.glob(pattern)
                 if files:
@@ -108,15 +151,17 @@ def render_room3_game():
         slip_effect = True
 
     # Build environment for rendering
-    env = Room3QLearning(max_steps=300,
-                         slip_config=SlipConfig(meta.get("p_int", 0.8), 
-                                                meta.get("p_left", 0.1), 
-                                                meta.get("p_right", 0.1)),
-                         seed=meta.get("seed", 42))
+    env = Room3QLearning(max_steps=_max_steps_from_meta(meta),
+                         slip_config=_slip_config_from_meta(meta),
+                         seed=_seed_from_meta(meta))
     
     # Build replay if needed
     if replay is None:
-        roll = rollout_q_learning_policy(env, q_vals, seed=meta.get("seed", 42))
+        seed = _seed_from_meta(meta)
+        slip_config = _slip_config_from_meta(meta)
+        max_steps = _max_steps_from_meta(meta)
+        make_env = lambda: Room3QLearning(max_steps=max_steps, slip_config=slip_config, seed=seed)
+        roll = rollout_q_learning_policy(make_env, q_vals, seed=seed)
         replay = build_replay_from_rollout(roll, "room3", stage_label="Final")
         st.session_state.r3g_replay = replay
         st.rerun()
@@ -128,9 +173,13 @@ def render_room3_game():
     elif replay and not replay.success:
         status_badges.append('<span class="badge-failure">FAILED</span>')
 
+    cfg = _training_config(meta)
+    has_key_before = _has_key_before_current_step(replay)
+    has_key_after = _has_key_after_current_step(replay)
+
     st.markdown(render_hud(
         room_name="\U0001f511 Room 3: The Key Vault",
-        algorithm=f"Q-Learning (Off-Policy TD) | \u03b1={meta.get('alpha', 0.1):.2f} \u03b3={meta.get('gamma', 0.95):.2f}",
+        algorithm=f"Q-Learning (Off-Policy TD) | \u03b1={float(cfg.get('alpha', meta.get('alpha', 0.1))):.2f} \u03b3={float(cfg.get('gamma', meta.get('gamma', 0.95))):.2f}",
         state_str=str(env.agent_position) if current_step_data else None,
         action=current_step_data.action if current_step_data else None,
         reward=current_step_data.reward if current_step_data else None,
@@ -138,7 +187,7 @@ def render_room3_game():
         epsilon=current_step_data.epsilon_at_time if current_step_data else None,
         status_badges=status_badges,
         slip_info=slip_info,
-        inventory="KEY" if current_step_data and current_step_data.event == "key_collected" else None,
+        inventory="KEY" if has_key_after else None,
     ), unsafe_allow_html=True)
 
     # Main grid area
@@ -152,11 +201,8 @@ def render_room3_game():
             if replay:
                 trajectory = [s.state[:2] for s in replay.steps[:replay.current_index + 1]]
 
-        # For Room 3, we need to show policy based on key state
-        # The policy is different for has_key=True vs False
-        # We'll show the greedy policy for the current key state
-        from agents.q_learning import extract_greedy_policy_q
-        greedy_policy = extract_greedy_policy_q(q_vals)
+        # The canvas uses the current key flag to select the matching policy slice.
+        greedy_policy = extract_deterministic_greedy_policy(q_vals)
         
         render_game_grid(
             env=env,
@@ -170,7 +216,7 @@ def render_room3_game():
             slip_effect=slip_effect,
             trajectory=trajectory,
             cell_size=48,
-            has_key=current_step_data is not None and current_step_data.event == "key_collected",
+            has_key=has_key_before,
         )
 
     with col_info:
@@ -180,10 +226,10 @@ def render_room3_game():
         st.markdown("### Explain Action")
         q_vals_state = None
         if q_vals and current_step_data:
-            state_key = current_step_data.state
-            if isinstance(state_key, tuple) and len(state_key) == 3:
-                q_vals_state = {a.name: q_vals.get(state_key, (0,0,0,0))[i] 
-                               for i, a in enumerate(Action)}
+            row, col = current_step_data.state[:2]
+            state_key = (row, col, has_key_before)
+            q_vals_state = {a.name: q_vals.get(state_key, (0,0,0,0))[i]
+                           for i, a in enumerate(Action)}
         sel_action = current_step_data.action if current_step_data else None
         st.markdown(render_explain_panel(
             q_vals_state,
@@ -203,43 +249,43 @@ def render_room3_game():
         rb_cols = st.columns([1, 1, 1, 1, 1, 2, 1, 1, 1, 1])
         with rb_cols[0]:
             if st.button("\u23ee", key=f"{rk}_begin", disabled=cur == 0):
-                st.session_state.r3g_replay = replay._replace(current_index=0, playing=False)
+                st.session_state.r3g_replay = replace(replay, current_index=0, playing=False)
                 st.rerun()
         with rb_cols[1]:
             if st.button("\u23f4", key=f"{rk}_prev", disabled=cur == 0):
-                st.session_state.r3g_replay = replay._replace(current_index=cur - 1, playing=False)
+                st.session_state.r3g_replay = replace(replay, current_index=cur - 1, playing=False)
                 st.rerun()
         with rb_cols[2]:
             btn_label = "\u23f8" if replay.playing else "\u25b6"
             if st.button(btn_label, key=f"{rk}_play"):
-                st.session_state.r3g_replay = replay._replace(playing=not replay.playing)
+                st.session_state.r3g_replay = replace(replay, playing=not replay.playing)
                 st.rerun()
         with rb_cols[3]:
             if st.button("\u23f5", key=f"{rk}_next", disabled=cur >= total - 1):
-                st.session_state.r3g_replay = replay._replace(current_index=cur + 1, playing=False)
+                st.session_state.r3g_replay = replace(replay, current_index=cur + 1, playing=False)
                 st.rerun()
         with rb_cols[4]:
             if st.button("\u23ed", key=f"{rk}_end", disabled=cur >= total - 1):
-                st.session_state.r3g_replay = replay._replace(current_index=total - 1, playing=False)
+                st.session_state.r3g_replay = replace(replay, current_index=total - 1, playing=False)
                 st.rerun()
 
         with rb_cols[5]:
             st.markdown(f"Speed: {replay.speed}x")
         with rb_cols[6]:
             if st.button("0.5x", key=f"{rk}_sp05"):
-                st.session_state.r3g_replay = replay._replace(speed=0.5)
+                st.session_state.r3g_replay = replace(replay, speed=0.5)
                 st.rerun()
         with rb_cols[7]:
             if st.button("1x", key=f"{rk}_sp1"):
-                st.session_state.r3g_replay = replay._replace(speed=1.0)
+                st.session_state.r3g_replay = replace(replay, speed=1.0)
                 st.rerun()
         with rb_cols[8]:
             if st.button("2x", key=f"{rk}_sp2"):
-                st.session_state.r3g_replay = replay._replace(speed=2.0)
+                st.session_state.r3g_replay = replace(replay, speed=2.0)
                 st.rerun()
         with rb_cols[9]:
             if st.button("4x", key=f"{rk}_sp4"):
-                st.session_state.r3g_replay = replay._replace(speed=4.0)
+                st.session_state.r3g_replay = replace(replay, speed=4.0)
                 st.rerun()
 
     # Room transition
