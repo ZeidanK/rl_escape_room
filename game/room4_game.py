@@ -1,0 +1,252 @@
+"""Room 4 — Momentum Chamber game view. Continuous state space with trajectory visualization."""
+
+import streamlit as st
+import numpy as np
+
+from game.theme import get_theme
+from game.game_view_common import (
+    render_back_button,
+    check_and_unlock_achievements,
+    render_room_transition,
+    render_game_legend,
+)
+
+from core.types import (
+    SlipConfig, ContinuousRewardConfig, Room4MotionConfig, StartMode,
+    VELOCITY_BY_ACTION, VelocityAction,
+)
+from environments.room4_continuous import Room4Continuous
+from agents.approximate_sarsa import ApproximateSarsaAgent, load_approximate_model, rollout_approximate_policy
+from features.tile_coding import TileCodingConfig
+from game.achievements import AchievementTracker
+from game.room_transitions import render_transition_content
+from game.home_page import ROOM_DEFS
+
+
+def render_room4_game():
+    theme = get_theme("room4")
+
+    st.markdown(
+        f'<div class="narrative-box" style="border-left-color:{theme.primary};">'
+        f'The discrete grid disappears. The agent must control velocity in continuous space '
+        f'and generalize from overlapping tile-coded features.</div>',
+        unsafe_allow_html=True,
+    )
+
+    render_back_button("r4g_back")
+
+    # Sidebar controls
+    with st.sidebar:
+        st.header("Room 4 Controls")
+        
+        # Model loading section
+        st.markdown("**Model**")
+        load_col, reset_col = st.columns(2)
+        if load_col.button("Load Latest Model", key="r4g_load"):
+            try:
+                import glob, os
+                model_dir = os.path.join("storage", "models", "room4_approximate")
+                pattern = os.path.join(model_dir, "*.json")
+                files = glob.glob(pattern)
+                if files:
+                    latest = max(files).replace(".json", "")
+                    weights, meta = load_approximate_model(latest)
+                    st.session_state.r4g_weights = weights
+                    st.session_state.r4g_meta = meta
+                    st.session_state.r4g_loaded = True
+                    st.success(f"Loaded model from {latest}")
+                else:
+                    st.info("No saved models found. Train in Learning Laboratory first.")
+            except Exception as e:
+                st.error(f"Load failed: {e}")
+            st.rerun()
+        
+        if reset_col.button("Reset", key="r4g_reset"):
+            for key in ["r4g_weights", "r4g_meta", "r4g_rollout", "r4g_loaded"]:
+                st.session_state[key] = None
+            st.rerun()
+
+        st.markdown("---")
+        
+        # Display toggles
+        st.markdown("**Display**")
+        show_trajectory = st.checkbox("Show Trajectory", value=True, key="r4g_traj")
+        show_velocity = st.checkbox("Show Velocity Arrows", value=True, key="r4g_vel")
+        grid_res = st.slider("Grid Resolution", 10, 50, 30, key="r4g_grid",
+                             help="Resolution for trajectory discretization display.")
+
+    # Initialize session state
+    for key in ["r4g_weights", "r4g_meta", "r4g_rollout", "r4g_loaded"]:
+        if key not in st.session_state:
+            st.session_state[key] = None
+
+    weights = st.session_state.r4g_weights
+    meta = st.session_state.r4g_meta
+    rollout = st.session_state.r4g_rollout
+
+    if weights is None or meta is None:
+        st.info("Press **Load Latest Model** to view a trained policy.")
+        return
+
+    # Build environment from meta
+    tc_cfg = TileCodingConfig(
+        num_tilings=meta.get("num_tilings", 8),
+        tiles_x=meta.get("tiles_xy", 10),
+        tiles_y=meta.get("tiles_xy", 10),
+        include_velocity=True,
+    )
+    
+    motion_cfg = Room4MotionConfig()
+    reward_cfg = ContinuousRewardConfig(
+        progress_scale=meta.get("progress_scale", 1.0),
+    )
+    start_mode = StartMode(meta.get("start_mode", "fixed"))
+    
+    env = Room4Continuous(
+        motion_config=motion_cfg,
+        reward_config=reward_cfg,
+        max_steps=750,
+        start_mode=start_mode,
+        seed=meta.get("seed", 42),
+    )
+
+    # Build rollout if not already built
+    if rollout is None:
+        rollout = rollout_approximate_policy(env, weights, tc_cfg, seed=meta.get("seed", 42))
+        st.session_state.r4g_rollout = rollout
+        st.rerun()
+
+    # HUD
+    status_badges = []
+    if rollout.success:
+        status_badges.append('<span class="badge-success">SUCCESS</span>')
+    elif not rollout.success:
+        status_badges.append('<span class="badge-failure">FAILED</span>')
+
+    from game.hud import render_hud
+    st.markdown(render_hud(
+        room_name="\U0001f300 Room 4: The Momentum Chamber",
+        algorithm=f"Approximate SARSA (Tile Coding) | \u03b1={meta.get('alpha', 0.1):.2f} \u03b3={meta.get('gamma', 0.99):.2f} | Tilings={meta.get('num_tilings', 8)}",
+        state_str=f"({rollout.start_state[0]:.2f}, {rollout.start_state[1]:.2f}, v={rollout.start_state[2]}, {rollout.start_state[3]})",
+        action=None,
+        reward=None,
+        total_reward=rollout.total_reward,
+        epsilon=None,
+        status_badges=status_badges,
+        custom_items=[
+            ("Steps", str(rollout.total_steps)),
+            ("Distance", f"{rollout.distance_travelled_m:.2f}m"),
+            ("Final Dist.", f"{rollout.final_distance_to_exit_m:.2f}m"),
+        ],
+    ), unsafe_allow_html=True)
+
+    # Continuous trajectory visualization
+    st.markdown("### Continuous Trajectory")
+    
+    # Create a 2D discretized view of the trajectory
+    room_w = motion_cfg.room_width_m
+    room_h = motion_cfg.room_height_m
+    grid_size = grid_res
+    cell_w = room_w / grid_size
+    cell_h = room_h / grid_size
+    
+    # Build discretized grid
+    grid = [["." for _ in range(grid_size)] for _ in range(grid_size)]
+    
+    # Mark exit
+    ex, ey = motion_cfg.exit_center
+    er = motion_cfg.exit_radius_m
+    for row in range(grid_size):
+        for col in range(grid_size):
+            cx = (col + 0.5) * cell_w
+            cy = (row + 0.5) * cell_h
+            if (cx - ex) ** 2 + (cy - ey) ** 2 <= er ** 2:
+                grid[row][col] = "E"
+    
+    # Mark start
+    sx, sy = rollout.start_state[0], rollout.start_state[1]
+    sr = int(sy / cell_h)
+    sc = int(sx / cell_w)
+    if 0 <= sr < grid_size and 0 <= sc < grid_size:
+        grid[sr][sc] = "S"
+    
+    # Mark trajectory
+    for step in rollout.trajectory:
+        x, y, _, _ = step.state
+        r = int(y / cell_h)
+        c = int(x / cell_w)
+        if 0 <= r < grid_size and 0 <= c < grid_size:
+            if grid[r][c] in (".", "S"):
+                grid[r][c] = "*"
+    
+    # Mark collisions
+    for step in rollout.trajectory:
+        if step.collision:
+            x, y, _, _ = step.state
+            r = int(y / cell_h)
+            c = int(x / cell_w)
+            if 0 <= r < grid_size and 0 <= c < grid_size:
+                grid[r][c] = "X"
+    
+    # Direction arrows at intervals
+    arrow_interval = max(1, len(rollout.trajectory) // 20)
+    for idx, step in enumerate(rollout.trajectory):
+        if idx % arrow_interval == 0:
+            x, y, vx, vy = step.state
+            r = int(y / cell_h)
+            c = int(x / cell_w)
+            if 0 <= r < grid_size and 0 <= c < grid_size:
+                grid[r][c] = _velocity_arrow(vx, vy)
+    
+    # Display as code block
+    st.code("\n".join(" ".join(row) for row in grid), language="text")
+    
+    # Stats
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Steps", rollout.total_steps)
+    col2.metric("Reward", f"{rollout.total_reward:.1f}")
+    col3.metric("Distance", f"{rollout.distance_travelled_m:.2f}m")
+    col4.metric("Final Dist.", f"{rollout.final_distance_to_exit_m:.2f}m")
+    
+    if rollout.collision_count > 0:
+        st.warning(f"Collisions: {rollout.collision_count}")
+    
+    # Room transition
+    achievements = check_and_unlock_achievements("room4", rollout)
+    for ach in achievements:
+        st.toast(f"{ach.emoji} {ach.name}: {ach.description}")
+    
+    render_room_transition("room4", rollout, achievements)
+    
+    # Legend
+    st.markdown(f"""
+    <div class="game-legend">
+        <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_empty};"></span> Empty</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_exit};"></span> Exit</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_start};"></span> Start</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:{theme.agent_color};"></span> Trajectory</span>
+        <span class="legend-item">X Collision</span>
+        <span class="legend-item">↑→↓← Velocity</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def _velocity_arrow(vx: int, vy: int) -> str:
+    """Convert velocity to arrow symbol."""
+    if vx == 0 and vy == 1:
+        return "\u2191"  # UP
+    elif vx == 0 and vy == -1:
+        return "\u2193"  # DOWN
+    elif vx == 1 and vy == 0:
+        return "\u2192"  # RIGHT
+    elif vx == -1 and vy == 0:
+        return "\u2190"  # LEFT
+    elif vx == 1 and vy == 1:
+        return "\u2197"  # UP-RIGHT
+    elif vx == 1 and vy == -1:
+        return "\u2198"  # DOWN-RIGHT
+    elif vx == -1 and vy == 1:
+        return "\u2196"  # UP-LEFT
+    elif vx == -1 and vy == -1:
+        return "\u2199"  # DOWN-LEFT
+    return "*"

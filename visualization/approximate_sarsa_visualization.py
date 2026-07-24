@@ -1,6 +1,7 @@
 import math
 
 import numpy as np
+import streamlit as st
 
 from agents.approximate_sarsa import LinearTileQFunction
 from core.types import (
@@ -14,6 +15,7 @@ from core.types import (
 from features.tile_coding import TileCoder, TileCodingConfig
 
 
+@st.cache_data
 def build_training_dataframe(
     metrics: tuple[ApproximateEpisodeMetrics, ...],
 ) -> dict[str, np.ndarray]:

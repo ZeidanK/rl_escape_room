@@ -1,6 +1,7 @@
 from collections.abc import Mapping
 
 import numpy as np
+import streamlit as st
 
 from core.types import Action, CellType, QLearningEpisodeMetrics, Room3State
 from environments.grid_environment import CELL_TO_CHAR
@@ -86,6 +87,7 @@ def build_room3_q_value_table(
     }
 
 
+@st.cache_data
 def build_q_learning_training_dataframe(
     metrics: tuple[QLearningEpisodeMetrics, ...],
 ) -> dict:
@@ -118,8 +120,6 @@ def build_q_learning_training_dataframe(
 def render_q_learning_trajectory_overlay(
     environment,
     rollout,
-    *,
-    has_key: bool,
 ) -> np.ndarray:
     positions = tuple(step.state for step in rollout.steps)
     return render_sarsa_trajectory_overlay(environment, positions)

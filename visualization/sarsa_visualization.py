@@ -1,6 +1,7 @@
 from collections.abc import Mapping, Sequence
 
 import numpy as np
+import streamlit as st
 
 from core.types import Action, CellType, Position, TrainingEpisodeMetrics
 from environments.grid_environment import GridEnvironment
@@ -64,6 +65,7 @@ def build_greedy_policy_symbols(
     return symbols
 
 
+@st.cache_data
 def build_q_value_tables(
     q_values: Mapping[Position, tuple[float, ...]],
 ) -> dict[Position, dict[str, float]]:
@@ -78,6 +80,7 @@ def build_q_value_tables(
     }
 
 
+@st.cache_data
 def build_training_dataframe(
     metrics: tuple[TrainingEpisodeMetrics, ...],
 ) -> dict:

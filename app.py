@@ -93,12 +93,12 @@ ACTION_BUTTONS = {
     "LEFT": Action.LEFT,
 }
 
-st.set_page_config(page_title="RL Escape Room", layout="wide")
+st.set_page_config(page_title="RL Escape Room", layout="wide", page_icon="🧊")
 st.title("RL Escape Room")
 
 # --- Session state ---
 for key in [
-    "env", "last_result", "room_key", "mode",
+    "env", "last_result", "room_key",
     "vi_result", "vi_solve_key", "vi_rollout_result", "vi_rollout_key",
     "vi_eval_summary", "vi_eval_key", "dp_env",
     "sarsa_result", "sarsa_train_key", "sarsa_eval_summary", "sarsa_eval_key",
@@ -111,36 +111,194 @@ for key in [
     "approx_eval_gen", "approx_eval_gen_key",
     "approx_rollout", "approx_rollout_key",
     "approx_env_factory",
+    "game_mode", "game_room", "show_lab",
 ]:
     if key not in st.session_state:
         st.session_state[key] = None
+if "mode" not in st.session_state:
+    st.session_state.mode = "\U0001f3ae Escape Room Showcase"
+
+# ============================================================
+# Game mode imports
+# ============================================================
+from game.home_page import render_home_page, ROOM_DEFS, ROOM_NARRATIVES
+from game.room1_game import render_room1_game
+from game.room2_game import render_room2_game
+from game.room3_game import render_room3_game
+from game.room4_game import render_room4_game
+from game.comparison_theater import render_comparison_theater
+from game.theme import render_global_styles
+from game.achievements import AchievementTracker
 
 MODE_LABELS = [
-    "Home", "Manual Environment", "Room 1 \u2014 DP", "Room 2 \u2014 SARSA",
-    "Room 3 \u2014 Q-Learning", "Room 4 \u2014 Function Approximation",
+    "\U0001f3ae Escape Room Showcase",
+    "Home",
+    "---",
+    "\U0001f579\ufe0f Manual Play",
+    "---",
+    "\U0001f52c Learning Laboratory",
+    "Room 1 \u2014 DP",
+    "Room 2 \u2014 SARSA",
+    "Room 3 \u2014 Q-Learning",
+    "Room 4 \u2014 Function Approximation",
     "Algorithm Comparison",
+    "---",
+    "\U0001f4d6 About the Project",
 ]
 
 # --- Mode selector ---
-_default_mode = MODE_LABELS[0]
-query_modes = st.query_params.get_all("mode")
-if query_modes and query_modes[0] in MODE_LABELS:
-    _default_mode = query_modes[0]
+GAME_LABEL = "\U0001f3ae Escape Room Showcase"
+LAB_LABEL = "\U0001f52c Learning Laboratory"
+ABOUT_LABEL = "\U0001f4d6 About the Project"
 
-mode = st.sidebar.selectbox(
-    "Mode",
-    MODE_LABELS,
-    index=MODE_LABELS.index(_default_mode),
-    key="mode_selector",
+# Selectable = game showcase, analysis rooms, manual, about
+SELECTABLE_MODES = [
+    GAME_LABEL,
+    "\U0001f579\ufe0f Manual Play",
+    ABOUT_LABEL,
+    "Home",
+    "Room 1 \u2014 DP",
+    "Room 2 \u2014 SARSA",
+    "Room 3 \u2014 Q-Learning",
+    "Room 4 \u2014 Function Approximation",
+    "Algorithm Comparison",
+]
+
+_MODE_NAME_MAP = {
+    GAME_LABEL: GAME_LABEL,
+    "\U0001f579\ufe0f Manual Play": "Manual Environment",
+    ABOUT_LABEL: ABOUT_LABEL,
+    "Home": "Home",
+    "Room 1 \u2014 DP": "Room 1 \u2014 DP",
+    "Room 2 \u2014 SARSA": "Room 2 \u2014 SARSA",
+    "Room 3 \u2014 Q-Learning": "Room 3 \u2014 Q-Learning",
+    "Room 4 \u2014 Function Approximation": "Room 4 \u2014 Function Approximation",
+    "Algorithm Comparison": "Algorithm Comparison",
+}
+
+# Custom sidebar with categorized radio buttons
+st.sidebar.markdown(
+    '<div style="font-size:0.75em;color:#616161;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Navigation</div>',
+    unsafe_allow_html=True,
 )
-if mode != st.session_state.mode:
-    st.session_state.mode = mode
+
+# High contrast mode toggle
+if "high_contrast" not in st.session_state:
+    st.session_state.high_contrast = False
+
+if st.sidebar.checkbox("High Contrast Mode", value=st.session_state.high_contrast, key="high_contrast_toggle"):
+    st.session_state.high_contrast = True
+else:
+    st.session_state.high_contrast = False
+
+# Inject high contrast class
+if st.session_state.high_contrast:
+    st.markdown("""
+    <script>
+    document.body.classList.add('high-contrast');
+    </script>
+    """, unsafe_allow_html=True)
+
+# Determine which radio index to show based on current mode
+mode = st.session_state.mode
+_reverse_map = {v: k for k, v in _MODE_NAME_MAP.items()}
+_sidebar_to_show = _reverse_map.get(mode, GAME_LABEL)
+_default_idx = SELECTABLE_MODES.index(_sidebar_to_show) if _sidebar_to_show in SELECTABLE_MODES else 0
+
+sidebar_selection = st.sidebar.radio(
+    "Mode",
+    SELECTABLE_MODES,
+    index=_default_idx,
+    key="mode_selector",
+    label_visibility="collapsed",
+)
+sidebar_effective = _MODE_NAME_MAP.get(sidebar_selection, sidebar_selection)
+
+# Sidebar always overrides; clear deep-linked game room on nav change
+if sidebar_effective != mode:
+    st.session_state.game_room = None
+    st.session_state.mode = sidebar_effective
     st.rerun()
 
+mode = st.session_state.mode
+
+# Ensure achievement tracker exists
+AchievementTracker.from_session_state()
+
 # ============================================================
-# MODE: Home
+# MODE: Escape Room Showcase
 # ============================================================
-if st.session_state.mode == "Home":
+if st.session_state.mode == GAME_LABEL:
+    st.markdown(render_global_styles(), unsafe_allow_html=True)
+    game_room = st.session_state.get("game_room")
+    if game_room == "room1":
+        render_room1_game()
+    elif game_room == "room2":
+        render_room2_game()
+    elif game_room == "room3":
+        render_room3_game()
+    elif game_room == "room4":
+        render_room4_game()
+    else:
+        render_home_page()
+
+# ============================================================
+# MODE: About the Project
+# ============================================================
+elif st.session_state.mode == ABOUT_LABEL:
+    st.markdown(render_global_styles(), unsafe_allow_html=True)
+    st.markdown("## About RL Escape Room")
+    st.markdown("""
+    This project applies four reinforcement learning algorithms of increasing difficulty to
+    navigate a series of escape-room environments. Each room introduces a new challenge:
+
+    | Room | Algorithm | Key Concept |
+    |------|-----------|-------------|
+    | 1 — Frozen Maze | Value Iteration | Dynamic Programming on known MDP |
+    | 2 — Laser Corridor | SARSA | On-policy TD learning with risk sensitivity |
+    | 3 — Key Vault | Q-Learning | Off-policy TD with augmented state space |
+    | 4 — Momentum Chamber | Approximate SARSA | Linear function approximation with tile coding |
+
+    The **Escape Room Showcase** presents the agents as a campaign-style game with animated
+    replay, while the **Learning Laboratory** provides full analysis tools including training
+    curves, policy visualization, Q-value inspection, and algorithm comparison.
+    """)
+
+    # Screenshots
+    st.markdown("### Screenshots")
+    screenshots = [
+        ("docs/screenshots/home.png", "Home / Campaign Selection"),
+        ("docs/screenshots/room1_value_policy.png", "Room 1 — Value Iteration Convergence & Policy"),
+        ("docs/screenshots/room2_training.png", "Room 2 — SARSA Training Progress"),
+        ("docs/screenshots/room3_policy_no_key.png", "Room 3 — Q-Learning Policy (No Key)"),
+        ("docs/screenshots/room4_trajectory.png", "Room 4 — Approximate SARSA Continuous Trajectory"),
+        ("docs/screenshots/comparison.png", "Algorithm Comparison — SARSA vs Q-Learning"),
+    ]
+    for i, (path, caption) in enumerate(screenshots):
+        if i % 2 == 0:
+            cols = st.columns(2)
+        try:
+            cols[i % 2].image(path, caption=caption, use_container_width=True)
+        except Exception:
+            cols[i % 2].markdown(f"*Screenshot not found: {path}*")
+
+    st.markdown("### Technical Stack")
+    st.markdown("""
+    - **Framework:** Streamlit
+    - **Runtime:** Python 3.11+
+    - **Numerics:** NumPy
+    - **RL Algorithms:** Value Iteration, SARSA, Q-Learning, Semi-Gradient SARSA
+    - **Function Approximation:** Tile Coding with linear basis functions
+    - **Visualization:** SVG via `st.components.v1.html` and inline CSS
+    """)
+
+    st.markdown("### Repository")
+    st.markdown("[GitHub](https://github.com/anomalyco/rilearningPro)")
+
+# ============================================================
+# MODE: Home (original, kept for backward compat / lab entry)
+# ============================================================
+elif st.session_state.mode == "Home":
     st.header("Project Objective")
     st.markdown("""
     Apply four reinforcement learning algorithms of increasing difficulty to
@@ -202,16 +360,20 @@ if st.session_state.mode == "Home":
         st.info("Final summary not yet generated.")
 
     st.markdown("---")
-    st.markdown("**Deployment: pending**")
 
 # ============================================================
 # MODE: Manual Environment
 # ============================================================
 if st.session_state.mode == "Manual Environment":
+    from game.canvas_renderer import render_grid_canvas
+    from game.theme import get_theme
+
     with st.sidebar:
         st.header("Controls")
-        room_name = st.selectbox("Room", list(ROOM_CLASSES.keys()), key="room_selector")
-        seed = st.number_input("Seed", min_value=0, max_value=2**31 - 1, value=42, step=1)
+        room_name = st.selectbox("Room", list(ROOM_CLASSES.keys()), key="room_selector",
+                                 help="Select which room environment to play manually.")
+        seed = st.number_input("Seed", min_value=0, max_value=2**31 - 1, value=42, step=1,
+                               help="Random seed for environment stochasticity (slip outcomes).")
         if st.button("Reset") or st.session_state.room_key != room_name:
             cls = ROOM_CLASSES[room_name]
             st.session_state.env = cls(seed=seed)
@@ -225,7 +387,8 @@ if st.session_state.mode == "Manual Environment":
             disabled = env.is_done
             cols = st.columns(4)
             for i, (label, action) in enumerate(ACTION_BUTTONS.items()):
-                if cols[i].button(label, disabled=disabled, key=f"m_btn_{action}"):
+                if cols[i].button(label, disabled=disabled, key=f"m_btn_{action}",
+                                  help=f"Move {label} in the grid."):
                     result: StepResult = env.step(action)
                     st.session_state.last_result = result
                     st.rerun()
@@ -248,9 +411,44 @@ if st.session_state.mode == "Manual Environment":
                     st.success("EXIT REACHED")
                 elif env._truncated:
                     st.error("TIMEOUT")
+    
     if env is not None:
-        st.subheader("Grid")
-        st.code(env.render_ansi(), language="text")
+        # Determine room_id for theme
+        room_id_map = {
+            "Room 1 — Ice Maze (DP)": "room1",
+            "Room 2 — Laser Corridor (SARSA)": "room2",
+            "Room 3 — Key Vault (Q-Learning)": "room3",
+        }
+        room_id = room_id_map.get(room_name, "room1")
+        theme = get_theme(room_id)
+        
+        # Render SVG grid with error handling
+        try:
+            svg = render_grid_canvas(
+                env.grid,
+                agent_pos=env.agent_position,
+                room_id=room_id,
+                cell_size=48,
+                show_policy=False,
+                show_values=False,
+                show_labels=True,
+            )
+            st.markdown(f'<div style="overflow:hidden;">{svg}</div>', unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"Failed to render grid: {e}")
+            st.code(env.render_ansi())
+        
+        # Legend
+        st.markdown(f"""
+        <div class="game-legend">
+            <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_empty};"></span> Empty</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_wall};"></span> Wall</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_start};"></span> Start</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_exit};"></span> Exit</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_slippery};"></span> Slippery</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:{theme.agent_color};"></span> Agent</span>
+        </div>
+        """, unsafe_allow_html=True)
 
 # ============================================================
 # MODE: Room 1 — DP
@@ -258,28 +456,47 @@ if st.session_state.mode == "Manual Environment":
 elif st.session_state.mode == "Room 1 \u2014 DP":
     with st.sidebar:
         st.header("DP Parameters")
-        gamma = st.slider("Discount (\u03b3)", 0.50, 0.99, 0.95, step=0.01)
-        tolerance = st.select_slider("Tolerance", options=[1e-2, 1e-4, 1e-6], value=1e-6)
-        max_it = st.number_input("Max Iterations", min_value=100, max_value=50000, value=10000, step=100)
+        gamma = st.slider("Discount (\u03b3)", 0.50, 0.99, 0.95, step=0.01,
+                          help="How much future rewards are valued vs immediate rewards. Higher = more far-sighted.")
+        tolerance = st.select_slider("Tolerance", options=[1e-2, 1e-4, 1e-6], value=1e-6,
+                                     help="Stop iterating when max value change per iteration falls below this threshold.")
+        max_it = st.number_input("Max Iterations", min_value=100, max_value=50000, value=10000, step=100,
+                                 help="Hard cap on iterations. Value Iteration stops when converged or this limit is reached.")
         st.markdown("**Slip Probabilities**")
-        p_int = st.slider("Intended", 0.0, 1.0, 0.80, step=0.05)
-        p_left = st.slider("Left", 0.0, 1.0, 0.10, step=0.05)
-        p_right = st.slider("Right", 0.0, 1.0, 0.10, step=0.05)
-        if abs(p_int + p_left + p_right - 1.0) > 1e-7:
-            st.warning(f"Slip probs sum to {p_int + p_left + p_right:.2f}")
+        p_int = st.slider("Intended", 0.0, 1.0, 0.80, step=0.05,
+                          help="Probability the agent moves in the intended direction.")
+        p_left = st.slider("Left", 0.0, 1.0, 0.10, step=0.05,
+                           help="Probability the agent slips left (counter-clockwise) from intended direction.")
+        p_right = st.slider("Right", 0.0, 1.0, 0.10, step=0.05,
+                            help="Probability the agent slips right (clockwise) from intended direction.")
+        slip_sum = p_int + p_left + p_right
+        slip_valid = abs(slip_sum - 1.0) <= 1e-7
+        if not slip_valid:
+            st.error(f"Slip probabilities must sum to 1.0 (currently {slip_sum:.2f})")
         slip_cfg = SlipConfig(p_int, p_left, p_right)
         st.markdown("---")
-        rollout_seed = st.number_input("Rollout Seed", min_value=0, max_value=2**31 - 1, value=0, step=1)
-        eval_ep = st.number_input("Eval Episodes", min_value=1, max_value=1000, value=100, step=1)
+        rollout_seed = st.number_input("Rollout Seed", min_value=0, max_value=2**31 - 1, value=0, step=1,
+                                       help="Random seed for the policy rollout (trajectory simulation).")
+        eval_ep = st.number_input("Eval Episodes", min_value=1, max_value=1000, value=100, step=1,
+                                  help="Number of episodes to run for policy evaluation.")
         solve_params = (gamma, tolerance, max_it, p_int, p_left, p_right)
         roll_params = solve_params + (rollout_seed,)
         ev_params = solve_params + (eval_ep,)
         col1, col2 = st.columns(2)
-        solve_clicked = col1.button("Solve", type="primary")
-        if col2.button("Reset Results"):
-            st.session_state.vi_result = None
-            st.session_state.vi_rollout_result = None
-            st.session_state.vi_eval_summary = None
+        solve_clicked = col1.button("Solve", type="primary", disabled=not slip_valid)
+        if st.session_state.get("vi_confirm_reset"):
+            st.warning("Click again to confirm reset — this will clear all DP results.")
+            if col2.button("Confirm Reset", key="vi_confirm"):
+                st.session_state.vi_result = None
+                st.session_state.vi_rollout_result = None
+                st.session_state.vi_eval_summary = None
+                st.session_state.vi_confirm_reset = False
+                st.rerun()
+            if st.button("Cancel", key="vi_cancel_reset"):
+                st.session_state.vi_confirm_reset = False
+                st.rerun()
+        elif col2.button("Reset Results"):
+            st.session_state.vi_confirm_reset = True
             st.rerun()
         rollout_clicked = st.button("Run Rollout", disabled=st.session_state.vi_result is None)
         eval_clicked = st.button("Evaluate Policy", disabled=st.session_state.vi_result is None)
@@ -352,29 +569,46 @@ elif st.session_state.mode == "Room 1 \u2014 DP":
 elif st.session_state.mode == "Room 2 \u2014 SARSA":
     with st.sidebar:
         st.header("SARSA Parameters")
-        episodes = st.number_input("Episodes", min_value=100, max_value=50000, value=5000, step=500)
-        alpha = st.slider("Alpha (\u03b1)", 0.01, 1.0, 0.10, step=0.01)
-        gamma = st.slider("Gamma (\u03b3)", 0.50, 0.99, 0.95, step=0.01)
-        max_steps = st.number_input("Max Steps", min_value=50, max_value=2000, value=500, step=50)
+        episodes = st.number_input("Episodes", min_value=100, max_value=50000, value=5000, step=500,
+                                   help="Number of training episodes. More episodes = better convergence but slower.")
+        alpha = st.slider("Alpha (\u03b1)", 0.01, 1.0, 0.10, step=0.01,
+                          help="Learning rate. How much new experience overrides old knowledge.")
+        gamma = st.slider("Gamma (\u03b3)", 0.50, 0.99, 0.95, step=0.01,
+                          help="Discount factor for future rewards.")
+        max_steps = st.number_input("Max Steps", min_value=50, max_value=2000, value=500, step=50,
+                                    help="Maximum steps per episode. Episode truncates if exceeded.")
 
         st.markdown("**Epsilon Schedule**")
-        eps_kind = st.selectbox("Decay Kind", ["exponential", "linear", "constant"], index=0)
-        eps_start = st.slider("Epsilon Start", 0.0, 1.0, 1.0, step=0.05)
-        eps_min = st.slider("Epsilon Min", 0.0, 1.0, 0.05, step=0.01)
-        eps_decay = st.slider("Decay Rate", 0.9, 1.0, 0.995, step=0.001)
-        linear_decay_ep = st.number_input("Linear Decay Episodes", min_value=1, max_value=50000, value=4000, step=100)
+        eps_kind = st.selectbox("Decay Kind", ["exponential", "linear", "constant"], index=0,
+                                help="How exploration rate decreases over time.")
+        eps_start = st.slider("Epsilon Start", 0.0, 1.0, 1.0, step=0.05,
+                              help="Initial exploration rate (1.0 = fully random).")
+        eps_min = st.slider("Epsilon Min", 0.0, 1.0, 0.05, step=0.01,
+                            help="Minimum exploration rate. Never go below this.")
+        eps_decay = st.slider("Decay Rate", 0.9, 1.0, 0.995, step=0.001,
+                              help="Exponential decay factor per episode. Closer to 1 = slower decay.")
+        linear_decay_ep = st.number_input("Linear Decay Episodes", min_value=1, max_value=50000, value=4000, step=100,
+                                          help="Episodes over which to linearly decay epsilon (if linear kind selected).")
 
         st.markdown("**Slip Probabilities**")
-        p_int = st.slider("Intended", 0.0, 1.0, 0.80, step=0.05)
-        p_left = st.slider("Left", 0.0, 1.0, 0.10, step=0.05)
-        p_right = st.slider("Right", 0.0, 1.0, 0.10, step=0.05)
-        if abs(p_int + p_left + p_right - 1.0) > 1e-7:
-            st.warning(f"Slip probs sum to {p_int + p_left + p_right:.2f}")
+        p_int = st.slider("Intended", 0.0, 1.0, 0.80, step=0.05,
+                          help="Probability the agent moves in the intended direction.")
+        p_left = st.slider("Left", 0.0, 1.0, 0.10, step=0.05,
+                           help="Probability the agent slips left (counter-clockwise) from intended direction.")
+        p_right = st.slider("Right", 0.0, 1.0, 0.10, step=0.05,
+                            help="Probability the agent slips right (clockwise) from intended direction.")
+        slip_sum = p_int + p_left + p_right
+        slip_valid = abs(slip_sum - 1.0) <= 1e-7
+        if not slip_valid:
+            st.error(f"Slip probabilities must sum to 1.0 (currently {slip_sum:.2f})")
         slip_cfg = SlipConfig(p_int, p_left, p_right)
 
-        train_seed = st.number_input("Training Seed", min_value=0, max_value=2**31 - 1, value=42, step=1)
-        eval_ep = st.number_input("Eval Episodes", min_value=1, max_value=1000, value=100, step=1)
-        rw = st.number_input("Rolling Window", min_value=10, max_value=5000, value=100, step=10)
+        train_seed = st.number_input("Training Seed", min_value=0, max_value=2**31 - 1, value=42, step=1,
+                                     help="Random seed for training reproducibility.")
+        eval_ep = st.number_input("Eval Episodes", min_value=1, max_value=1000, value=100, step=1,
+                                  help="Number of episodes for policy evaluation after training.")
+        rw = st.number_input("Rolling Window", min_value=10, max_value=5000, value=100, step=10,
+                             help="Window size for rolling averages in training charts.")
 
         # Build cache keys — includes rewards, slip, map signature
         import hashlib
@@ -385,11 +619,20 @@ elif st.session_state.mode == "Room 2 \u2014 SARSA":
         eval_key = train_key + (eval_ep,)
 
         col1, col2 = st.columns(2)
-        train_clicked = col1.button("Train SARSA", type="primary")
-        if col2.button("Reset Results"):
-            st.session_state.sarsa_result = None
-            st.session_state.sarsa_eval_summary = None
-            st.session_state.sarsa_rollout = None
+        train_clicked = col1.button("Train SARSA", type="primary", disabled=not slip_valid)
+        if st.session_state.get("sarsa_confirm_reset"):
+            st.warning("Click again to confirm reset — this will clear all SARSA results.")
+            if col2.button("Confirm Reset", key="sarsa_confirm"):
+                st.session_state.sarsa_result = None
+                st.session_state.sarsa_eval_summary = None
+                st.session_state.sarsa_rollout = None
+                st.session_state.sarsa_confirm_reset = False
+                st.rerun()
+            if st.button("Cancel", key="sarsa_cancel_reset"):
+                st.session_state.sarsa_confirm_reset = False
+                st.rerun()
+        elif col2.button("Reset Results"):
+            st.session_state.sarsa_confirm_reset = True
             st.rerun()
         eval_clicked = st.button("Evaluate Policy", disabled=st.session_state.sarsa_result is None)
         save_clicked = st.button("Save Model", disabled=st.session_state.sarsa_result is None)
@@ -445,10 +688,6 @@ elif st.session_state.mode == "Room 2 \u2014 SARSA":
     sarsa_result = st.session_state.sarsa_result
 
     if sarsa_result is not None:
-        # --- Eval ---
-        if st.session_state.sarsa_eval_key != eval_key:
-            if not train_clicked:
-                pass
         if eval_clicked:
             with st.spinner(f"Evaluating {eval_ep} episodes..."):
                 summary = evaluate_sarsa_policy(make_env, sarsa_result.q_values, n_episodes=eval_ep)
@@ -583,27 +822,41 @@ elif st.session_state.mode == "Room 3 \u2014 Q-Learning":
     with st.sidebar:
         st.header("Q-Learning Parameters")
         episodes = st.number_input("Episodes", min_value=100, max_value=50000, value=5000, step=500,
-                                   key="ql_episodes")
-        alpha = st.slider("Alpha (\u03b1)", 0.01, 1.0, 0.10, step=0.01, key="ql_alpha")
-        gamma_ql = st.slider("Gamma (\u03b3)", 0.50, 0.99, 0.95, step=0.01, key="ql_gamma")
+                                   key="ql_episodes",
+                                   help="Number of training episodes. More episodes = better convergence but slower.")
+        alpha = st.slider("Alpha (\u03b1)", 0.01, 1.0, 0.10, step=0.01, key="ql_alpha",
+                          help="Learning rate. How much new experience overrides old knowledge.")
+        gamma_ql = st.slider("Gamma (\u03b3)", 0.50, 0.99, 0.95, step=0.01, key="ql_gamma",
+                             help="Discount factor for future rewards.")
         max_steps = st.number_input("Max Steps", min_value=50, max_value=2000, value=500, step=50,
-                                     key="ql_max_steps")
+                                     key="ql_max_steps",
+                                     help="Maximum steps per episode. Episode truncates if exceeded.")
 
         st.markdown("**Epsilon Schedule**")
         eps_kind = st.selectbox("Decay Kind", ["exponential", "linear", "constant"], index=0,
-                                key="ql_eps_kind")
-        eps_start = st.slider("Epsilon Start", 0.0, 1.0, 1.0, step=0.05, key="ql_eps_start")
-        eps_min = st.slider("Epsilon Min", 0.0, 1.0, 0.05, step=0.01, key="ql_eps_min")
-        eps_decay = st.slider("Decay Rate", 0.9, 1.0, 0.995, step=0.001, key="ql_eps_decay")
+                                key="ql_eps_kind",
+                                help="How exploration rate decreases over time.")
+        eps_start = st.slider("Epsilon Start", 0.0, 1.0, 1.0, step=0.05, key="ql_eps_start",
+                              help="Initial exploration rate (1.0 = fully random).")
+        eps_min = st.slider("Epsilon Min", 0.0, 1.0, 0.05, step=0.01, key="ql_eps_min",
+                            help="Minimum exploration rate. Never go below this.")
+        eps_decay = st.slider("Decay Rate", 0.9, 1.0, 0.995, step=0.001, key="ql_eps_decay",
+                              help="Exponential decay factor per episode. Closer to 1 = slower decay.")
         linear_decay_ep = st.number_input("Linear Decay Episodes", min_value=1, max_value=50000, value=4000, step=100,
-                                           key="ql_linear_decay")
+                                           key="ql_linear_decay",
+                                           help="Episodes over which to linearly decay epsilon (if linear kind selected).")
 
         st.markdown("**Slip Probabilities**")
-        p_int = st.slider("Intended", 0.0, 1.0, 0.80, step=0.05, key="ql_p_int")
-        p_left = st.slider("Left", 0.0, 1.0, 0.10, step=0.05, key="ql_p_left")
-        p_right = st.slider("Right", 0.0, 1.0, 0.10, step=0.05, key="ql_p_right")
-        if abs(p_int + p_left + p_right - 1.0) > 1e-7:
-            st.warning(f"Slip probs sum to {p_int + p_left + p_right:.2f}")
+        p_int = st.slider("Intended", 0.0, 1.0, 0.80, step=0.05, key="ql_p_int",
+                          help="Probability the agent moves in the intended direction.")
+        p_left = st.slider("Left", 0.0, 1.0, 0.10, step=0.05, key="ql_p_left",
+                           help="Probability the agent slips left (counter-clockwise) from intended direction.")
+        p_right = st.slider("Right", 0.0, 1.0, 0.10, step=0.05, key="ql_p_right",
+                            help="Probability the agent slips right (clockwise) from intended direction.")
+        slip_sum = p_int + p_left + p_right
+        slip_valid = abs(slip_sum - 1.0) <= 1e-7
+        if not slip_valid:
+            st.error(f"Slip probabilities must sum to 1.0 (currently {slip_sum:.2f})")
         slip_cfg = SlipConfig(p_int, p_left, p_right)
 
         train_seed = st.number_input("Training Seed", min_value=0, max_value=2**31 - 1, value=42, step=1,
@@ -621,11 +874,20 @@ elif st.session_state.mode == "Room 3 \u2014 Q-Learning":
         eval_key = train_key + (eval_ep,)
 
         col1, col2 = st.columns(2)
-        train_clicked = col1.button("Train Q-Learning", type="primary")
-        if col2.button("Reset Results", key="ql_reset"):
-            st.session_state.ql_result = None
-            st.session_state.ql_eval_summary = None
-            st.session_state.ql_rollout = None
+        train_clicked = col1.button("Train Q-Learning", type="primary", disabled=not slip_valid)
+        if st.session_state.get("ql_confirm_reset"):
+            st.warning("Click again to confirm reset — this will clear all Q-Learning results.")
+            if col2.button("Confirm Reset", key="ql_confirm"):
+                st.session_state.ql_result = None
+                st.session_state.ql_eval_summary = None
+                st.session_state.ql_rollout = None
+                st.session_state.ql_confirm_reset = False
+                st.rerun()
+            if st.button("Cancel", key="ql_cancel_reset"):
+                st.session_state.ql_confirm_reset = False
+                st.rerun()
+        elif col2.button("Reset Results", key="ql_reset"):
+            st.session_state.ql_confirm_reset = True
             st.rerun()
         eval_clicked = st.button("Evaluate Policy", key="ql_eval_btn",
                                   disabled=st.session_state.ql_result is None)
@@ -821,39 +1083,55 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
     with st.sidebar:
         st.header("Approximate SARSA Parameters")
         approx_episodes = st.number_input("Episodes", min_value=50, max_value=50000, value=3000, step=500,
-                                          key="approx_episodes")
-        approx_alpha = st.slider("Alpha (\u03b1)", 0.01, 1.0, 0.10, step=0.01, key="approx_alpha")
-        approx_gamma = st.slider("Gamma (\u03b3)", 0.50, 0.99, 0.99, step=0.01, key="approx_gamma")
+                                          key="approx_episodes",
+                                          help="Number of training episodes. More = better convergence but slower.")
+        approx_alpha = st.slider("Alpha (\u03b1)", 0.01, 1.0, 0.10, step=0.01, key="approx_alpha",
+                                 help="Learning rate. Higher = faster learning but may overshoot. Lower = more stable.")
+        approx_gamma = st.slider("Gamma (\u03b3)", 0.50, 0.99, 0.99, step=0.01, key="approx_gamma",
+                                 help="Discount factor. Higher = more far-sighted. 0.99 is typical for continuing tasks.")
         approx_max_steps = st.number_input("Max Steps", min_value=50, max_value=2000, value=750, step=50,
-                                           key="approx_max_steps")
+                                            key="approx_max_steps",
+                                            help="Maximum steps per episode. Episode truncates if exit not reached.")
 
         st.markdown("**Epsilon Schedule**")
         approx_eps_kind = st.selectbox("Decay Kind", ["exponential", "linear", "constant"], index=0,
-                                       key="approx_eps_kind")
-        approx_eps_start = st.slider("Epsilon Start", 0.0, 1.0, 1.0, step=0.05, key="approx_eps_start")
-        approx_eps_min = st.slider("Epsilon Min", 0.0, 1.0, 0.02, step=0.01, key="approx_eps_min")
-        approx_eps_decay = st.slider("Decay Rate", 0.9, 1.0, 0.997, step=0.001, key="approx_eps_decay")
+                                        key="approx_eps_kind",
+                                        help="How exploration rate decreases. Exponential = smooth decay. Linear = steady decrease. Constant = no decay.")
+        approx_eps_start = st.slider("Epsilon Start", 0.0, 1.0, 1.0, step=0.05, key="approx_eps_start",
+                                     help="Initial exploration rate. 1.0 = fully random, 0.0 = fully greedy.")
+        approx_eps_min = st.slider("Epsilon Min", 0.0, 1.0, 0.02, step=0.01, key="approx_eps_min",
+                                   help="Minimum exploration rate. Never decays below this.")
+        approx_eps_decay = st.slider("Decay Rate", 0.9, 1.0, 0.997, step=0.001, key="approx_eps_decay",
+                                     help="Exponential decay factor per episode. Closer to 1.0 = slower decay.")
         approx_linear_decay = st.number_input("Linear Decay Episodes", min_value=1, max_value=50000, value=2000,
-                                              step=100, key="approx_linear_decay")
+                                               step=100, key="approx_linear_decay",
+                                               help="Episodes over which epsilon linearly decays from start to min (only for linear decay).")
 
         st.markdown("**Tile Coding**")
         approx_tilings = st.number_input("Num Tilings", min_value=1, max_value=64, value=8, step=1,
-                                         key="approx_tilings")
-        approx_tiles_xy = st.selectbox("Tiles per Dim", [4, 8, 10, 16, 20], index=2, key="approx_tiles_xy")
+                                          key="approx_tilings",
+                                          help="Number of overlapping tile grids. More tilings = better approximation but more computation. 4-16 typical.")
+        approx_tiles_xy = st.selectbox("Tiles per Dim", [4, 8, 10, 16, 20], index=2, key="approx_tiles_xy",
+                                       help="Tiles per dimension (x and y). More tiles = finer discretization. 8-16 typical.")
 
         st.markdown("**Reward**")
-        approx_progress_scale = st.slider("Progress Scale", 0.0, 2.0, 1.0, step=0.1, key="approx_progress_scale")
+        approx_progress_scale = st.slider("Progress Scale", 0.0, 2.0, 1.0, step=0.1, key="approx_progress_scale",
+                                          help="Scales the reward for moving toward exit. 0 = no shaping, 1 = standard shaping, >1 = strong guidance.")
 
         st.markdown("**Start Mode**")
         approx_start_mode = st.selectbox("Training Start", ["fixed", "random_lower_left", "random_room"],
-                                         index=1, key="approx_start_mode")
+                                         index=1, key="approx_start_mode",
+                                         help="Where episodes start. fixed = always same start. random_lower_left = varied starts near origin. random_room = any valid start position.")
 
         train_seed = st.number_input("Training Seed", min_value=0, max_value=2**31 - 1, value=42, step=1,
-                                     key="approx_seed")
+                                     key="approx_seed",
+                                     help="Random seed for training reproducibility.")
         eval_ep = st.number_input("Eval Episodes", min_value=1, max_value=500, value=50, step=1,
-                                  key="approx_eval_ep")
+                                  key="approx_eval_ep",
+                                  help="Number of episodes for policy evaluation after training.")
         rw = st.number_input("Rolling Window", min_value=10, max_value=5000, value=100, step=10,
-                             key="approx_rw")
+                             key="approx_rw",
+                             help="Window size for rolling averages in training charts.")
 
         # Build cache keys
         tc_cfg = TileCodingConfig(num_tilings=approx_tilings, tiles_x=approx_tiles_xy,
@@ -867,11 +1145,20 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
 
         col1, col2 = st.columns(2)
         train_clicked = col1.button("Train Approx SARSA", type="primary")
-        if col2.button("Reset Results", key="approx_reset"):
-            st.session_state.approx_result = None
-            st.session_state.approx_eval_fixed = None
-            st.session_state.approx_eval_gen = None
-            st.session_state.approx_rollout = None
+        if st.session_state.get("approx_confirm_reset"):
+            st.warning("Click again to confirm reset — this will clear all Approximate SARSA results.")
+            if col2.button("Confirm Reset", key="approx_confirm"):
+                st.session_state.approx_result = None
+                st.session_state.approx_eval_fixed = None
+                st.session_state.approx_eval_gen = None
+                st.session_state.approx_rollout = None
+                st.session_state.approx_confirm_reset = False
+                st.rerun()
+            if st.button("Cancel", key="approx_cancel_reset"):
+                st.session_state.approx_confirm_reset = False
+                st.rerun()
+        elif col2.button("Reset Results", key="approx_reset"):
+            st.session_state.approx_confirm_reset = True
             st.rerun()
 
         eval_fixed_clicked = st.button("Evaluate Fixed Start", key="approx_eval_fixed_btn",
@@ -1157,14 +1444,20 @@ elif st.session_state.mode == "Algorithm Comparison":
     with st.sidebar:
         st.markdown("**Comparison Settings**")
         comp_episodes = st.number_input("Episodes", min_value=100, max_value=10000, value=2000, step=500,
-                                         key="comp_episodes")
-        comp_alpha = st.slider("Alpha", 0.01, 1.0, 0.10, step=0.01, key="comp_alpha")
-        comp_gamma = st.slider("Gamma", 0.50, 0.99, 0.95, step=0.01, key="comp_gamma")
-        comp_decay = st.slider("Epsilon Decay", 0.9, 1.0, 0.995, step=0.001, key="comp_decay")
+                                         key="comp_episodes",
+                                         help="Training episodes per algorithm per seed.")
+        comp_alpha = st.slider("Alpha", 0.01, 1.0, 0.10, step=0.01, key="comp_alpha",
+                               help="Learning rate for both algorithms.")
+        comp_gamma = st.slider("Gamma", 0.50, 0.99, 0.95, step=0.01, key="comp_gamma",
+                               help="Discount factor for both algorithms.")
+        comp_decay = st.slider("Epsilon Decay", 0.9, 1.0, 0.995, step=0.001, key="comp_decay",
+                               help="Exponential epsilon decay rate per episode.")
         comp_seeds = st.number_input("Training Seeds", min_value=1, max_value=10, value=5, step=1,
-                                      key="comp_seeds")
+                                      key="comp_seeds",
+                                      help="Number of random seeds to average over. More = more reliable but slower.")
         comp_eval_ep = st.number_input("Eval Episodes per Model", min_value=10, max_value=500, value=100, step=10,
-                                        key="comp_eval_ep")
+                                        key="comp_eval_ep",
+                                        help="Evaluation episodes per trained model per seed.")
 
         comp_key = (comp_episodes, comp_alpha, comp_gamma, comp_decay, comp_seeds, comp_eval_ep)
 
