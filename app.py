@@ -597,6 +597,7 @@ from game.comparison_theater import render_comparison_theater
 from game.theme import render_global_styles
 from game.achievements import AchievementTracker
 from game.html_rendering import render_html
+from game.constants import MODE_SELECTOR_KEY, PENDING_MODE_SELECTOR_KEY
 
 MODE_LABELS = [
     "\U0001f3ae Escape Room Showcase",
@@ -647,6 +648,13 @@ _MODE_NAME_MAP = {
     "Algorithm Comparison": "Algorithm Comparison",
 }
 
+if PENDING_MODE_SELECTOR_KEY in st.session_state:
+    pending_selector = st.session_state[PENDING_MODE_SELECTOR_KEY]
+    del st.session_state[PENDING_MODE_SELECTOR_KEY]
+    if pending_selector in SELECTABLE_MODES:
+        st.session_state[MODE_SELECTOR_KEY] = pending_selector
+        st.session_state.mode = _MODE_NAME_MAP.get(pending_selector, pending_selector)
+
 # Custom sidebar with categorized radio buttons
 render_html(
     '<div style="font-size:0.75em;color:#616161;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Navigation</div>',
@@ -686,7 +694,7 @@ sidebar_selection = st.sidebar.radio(
     "Mode",
     SELECTABLE_MODES,
     index=_default_idx,
-    key="mode_selector",
+    key=MODE_SELECTOR_KEY,
     label_visibility="collapsed",
 )
 sidebar_effective = _MODE_NAME_MAP.get(sidebar_selection, sidebar_selection)

@@ -3,6 +3,7 @@
 import html as html_mod
 
 import streamlit as st
+from game.constants import PENDING_MODE_SELECTOR_KEY
 from game.html_rendering import normalize_html, render_html
 from game.theme import difficulty_badge
 from game.models import GameRoomState, RoomUnlockStatus, Achievement, AchievementId
@@ -178,6 +179,7 @@ def render_home_page():
     with nav_col2:
         if st.button("\U0001f52c View Learning Laboratory", use_container_width=True):
             st.session_state.mode = "Home"
+            st.session_state[PENDING_MODE_SELECTOR_KEY] = "Home"
             st.rerun()
 
     render_html("<hr style='border-color:#333;margin:24px 0;'>")

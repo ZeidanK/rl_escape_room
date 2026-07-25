@@ -114,6 +114,17 @@ def test_home_page_with_unlocked_achievements_does_not_show_raw_html():
     _assert_no_raw_html_text(at)
 
 
+def test_home_learning_laboratory_button_opens_lab_view():
+    at = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    at.run()
+
+    at = _click_button_by_label(at, "\U0001f52c View Learning Laboratory")
+
+    assert len(at.exception) == 0
+    assert at.session_state["mode"] == "Home"
+    assert at.session_state["mode_selector"] == "Home"
+
+
 def test_room2_analysis_mode_auto_loads_showcase_outputs():
     at = AppTest.from_file(str(APP_PATH), default_timeout=60)
     at.run()
