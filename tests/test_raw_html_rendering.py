@@ -59,3 +59,22 @@ def test_custom_html_goes_through_normalized_renderer():
                 offenders.append(f"{path.relative_to(ROOT)}:{node.lineno}")
 
     assert offenders == []
+
+
+def test_home_room_card_achievement_html_stays_in_one_html_block():
+    from game.achievements import AchievementId
+    from game.home_page import ROOM_DEFS, _render_room_card_html
+    from game.theme import difficulty_badge
+
+    html = _render_room_card_html(
+        ROOM_DEFS[0],
+        card_class="room-card",
+        emoji="❄️",
+        diff_badge=difficulty_badge(1),
+        unlocked_ids={AchievementId.ICE_MASTER},
+    )
+
+    assert html.startswith('<div class="room-card">')
+    assert '<div style="margin-top:6px;"><span' in html
+    assert 'title="Ice Master"' in html
+    assert "\n" not in html

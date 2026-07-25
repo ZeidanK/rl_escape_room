@@ -3,7 +3,7 @@
 import html as html_mod
 
 import streamlit as st
-from game.html_rendering import render_html
+from game.html_rendering import normalize_html, render_html
 from game.theme import difficulty_badge
 from game.models import GameRoomState, RoomUnlockStatus, Achievement, AchievementId
 from game.achievements import AchievementTracker, ALL_ACHIEVEMENTS
@@ -93,6 +93,50 @@ def _get_room_emoji(idx: int) -> str:
     return ["\u2744\ufe0f", "\u26a1", "\U0001f511", "\U0001f300", "\U0001f9e0"][idx - 1]
 
 
+def _render_room_card_html(
+    room: GameRoomState,
+    *,
+    card_class: str,
+    emoji: str,
+    diff_badge: str,
+    unlocked_ids: set[AchievementId],
+) -> str:
+    room_ach_ids = _room_achievements(room.room_id)
+    ach_icons = "".join(
+        f'<span style="font-size:0.8em;margin-right:4px;" title="{html_mod.escape(ALL_ACHIEVEMENTS[a].name)}">{ALL_ACHIEVEMENTS[a].emoji}</span>'
+        for a in room_ach_ids if a in unlocked_ids
+    )
+
+    best_stats = ""
+    if room.status.best_steps is not None:
+        best_stats = (
+            f'<div class="hud-row" style="margin-top:6px;">'
+            f'<div class="hud-item"><div class="hud-label">Best Steps</div>'
+            f'<div class="hud-value">{room.status.best_steps}</div></div>'
+            f'<div class="hud-item"><div class="hud-label">Best Return</div>'
+            f'<div class="hud-value">{room.status.best_return:.1f}</div></div>'
+            f'</div>'
+        )
+
+    achievements = f'<div style="margin-top:6px;">{ach_icons}</div>' if ach_icons else ""
+
+    return normalize_html(
+        f'<div class="{card_class}">'
+        f'<div style="display:flex;justify-content:space-between;align-items:start;">'
+        f'<div>'
+        f'<div class="room-card-title">{emoji} {html_mod.escape(room.room_name)}</div>'
+        f'<div style="font-size:0.8em;color:#90a4ae;">{html_mod.escape(room.algorithm)}</div>'
+        f'</div>'
+        f'<div>{diff_badge}</div>'
+        f'</div>'
+        f'<div style="font-size:0.8em;color:#aaa;margin:6px 0;">{html_mod.escape(room.state_description)}</div>'
+        f'<div style="font-size:0.8em;color:#b0bec5;font-style:italic;">{html_mod.escape(room.challenge)}</div>'
+        f'{best_stats}'
+        f'{achievements}'
+        f'</div>'
+    )
+
+
 def render_home_page():
     # Global styles are injected by app.py — do not duplicate here
 
@@ -151,42 +195,13 @@ def render_home_page():
             emoji = _get_room_emoji(room.room_index)
             diff_badge = difficulty_badge(room.difficulty)
 
-            room_ach_ids = _room_achievements(room.room_id)
-            ach_str = "".join(
-                f'<span style="font-size:0.8em;margin-right:4px;" title="{html_mod.escape(ALL_ACHIEVEMENTS[a].name)}">{ALL_ACHIEVEMENTS[a].emoji}</span>'
-                for a in room_ach_ids if a in unlocked_ids
-            )
-
-            best_str = ""
-            if room.status.best_steps is not None:
-                best_str = (
-                    f'<div class="hud-row" style="margin-top:6px;">'
-                    f'<div class="hud-item"><div class="hud-label">Best Steps</div>'
-                    f'<div class="hud-value">{room.status.best_steps}</div></div>'
-                    f'<div class="hud-item"><div class="hud-label">Best Return</div>'
-                    f'<div class="hud-value">{room.status.best_return:.1f}</div></div>'
-                    f'</div>'
-                )
-
-            render_html(f"""
-            <div class="{card_class}">
-                <div style="display:flex;justify-content:space-between;align-items:start;">
-                    <div>
-                        <div class="room-card-title">{emoji} {room.room_name}</div>
-                        <div style="font-size:0.8em;color:#90a4ae;">{room.algorithm}</div>
-                    </div>
-                    <div>{diff_badge}</div>
-                </div>
-                <div style="font-size:0.8em;color:#aaa;margin:6px 0;">
-                    {room.state_description}
-                </div>
-                <div style="font-size:0.8em;color:#b0bec5;font-style:italic;">
-                    {room.challenge}
-                </div>
-                {best_str}
-                {f'<div style="margin-top:6px;">{ach_str}</div>' if ach_str else ''}
-            </div>
-            """)
+            render_html(_render_room_card_html(
+                room,
+                card_class=card_class,
+                emoji=emoji,
+                diff_badge=diff_badge,
+                unlocked_ids=unlocked_ids,
+            ))
 
             btn_label = "Enter Room" if not locked else "Locked"
             disabled = locked
