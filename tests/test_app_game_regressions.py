@@ -47,6 +47,13 @@ def _click_button_by_label(at: AppTest, label: str) -> AppTest:
     raise AssertionError(f"button not found: {label}")
 
 
+def _set_number_by_label(at: AppTest, label: str, value) -> AppTest:
+    for widget in at.sidebar.number_input:
+        if widget.label == label:
+            return widget.set_value(value).run()
+    raise AssertionError(f"number input not found: {label}")
+
+
 def _prepare_storage(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     (tmp_path / "storage" / "models").mkdir(parents=True)
@@ -60,6 +67,47 @@ def test_room4_analysis_mode_renders_without_auto_training():
 
     assert len(at.exception) == 0
     assert at.session_state["approx_result"] is None
+
+
+def test_room5_analysis_mode_renders_without_auto_training():
+    at = AppTest.from_file(str(APP_PATH), default_timeout=30)
+    at.run()
+    room5_option = next(option for option in at.sidebar.radio[0].options if "Room 5" in option)
+    at.sidebar.radio[0].set_value(room5_option).run()
+
+    assert len(at.exception) == 0
+    assert at.session_state["dqn_result"] is None
+
+
+def test_room5_tiny_training_evaluation_and_replay():
+    at = AppTest.from_file(str(APP_PATH), default_timeout=90)
+    at.run()
+    room5_option = next(option for option in at.sidebar.radio[0].options if "Room 5" in option)
+    at.sidebar.radio[0].set_value(room5_option).run()
+
+    for label, value in [
+        ("Episodes", 10),
+        ("Max Steps", 50),
+        ("Replay Capacity", 100),
+        ("Batch Size", 4),
+        ("Warmup Steps", 4),
+        ("Target Update Interval", 5),
+        ("Hidden Units", 8),
+        ("Eval Episodes", 1),
+    ]:
+        at = _set_number_by_label(at, label, value)
+
+    at = _click_button_by_label(at, "Train DQN")
+    assert len(at.exception) == 0
+    assert at.session_state["dqn_result"] is not None
+
+    at = _click_button_by_label(at, "Evaluate Fixed Layout")
+    assert len(at.exception) == 0
+    assert at.session_state["dqn_eval_fixed"] is not None
+
+    at = _click_button_by_label(at, "Generate Greedy Replay")
+    assert len(at.exception) == 0
+    assert at.session_state["dqn_rollout"] is not None
 
 
 def test_room2_game_loads_saved_sarsa_model(tmp_path, monkeypatch):

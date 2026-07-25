@@ -331,15 +331,18 @@ class KnownModelGridEnvironment(GridEnvironment):
         for prob, effective_action in action_probs:
             dr, dc = ACTION_DELTAS[effective_action]
             nr, nc = r + dr, c + dc
+            collision = False
             if not (0 <= nr < self.rows and 0 <= nc < self.cols):
                 nr, nc = r, c
+                collision = True
             next_cell = CellType(int(self._grid[nr, nc]))
             if next_cell == CellType.WALL:
                 nr, nc = r, c
                 next_cell = cell
+                collision = True
             rew = self.reward_config.step_penalty
             terminated = False
-            if next_cell == CellType.WALL:
+            if collision:
                 rew += self.reward_config.wall_penalty
             elif next_cell == CellType.TRAP:
                 rew += self.reward_config.trap_penalty

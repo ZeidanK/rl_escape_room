@@ -34,7 +34,7 @@ ROOM_DEFS = [
         room_name="The Key Vault",
         room_index=3,
         algorithm="Q-Learning (Off-Policy TD)",
-        state_description="(row, col, has_key) \u2014 200 states",
+        state_description="(row, col, has_key) \u2014 92 states",
         challenge="Key collection \u2014 state must include key possession",
         difficulty=3,
         status=RoomUnlockStatus(room_id="room3", unlocked=True, best_steps=None, best_return=None, best_time_s=None),
@@ -48,6 +48,16 @@ ROOM_DEFS = [
         challenge="Continuous state space \u2014 velocity control with function approximation",
         difficulty=4,
         status=RoomUnlockStatus(room_id="room4", unlocked=True, best_steps=None, best_return=None, best_time_s=None),
+    ),
+    GameRoomState(
+        room_id="room5",
+        room_name="The Obstacle Lab",
+        room_index=5,
+        algorithm="NumPy DQN (Replay + Target Network)",
+        state_description="22-feature continuous observation",
+        challenge="Seeded 0.5m obstacles \u2014 learn from local obstacle visibility",
+        difficulty=5,
+        status=RoomUnlockStatus(room_id="room5", unlocked=True, best_steps=None, best_return=None, best_time_s=None),
     ),
 ]
 
@@ -69,11 +79,15 @@ ROOM_NARRATIVES = {
         "The discrete grid disappears. The agent must control velocity in continuous space and "
         "generalize from overlapping tile-coded features."
     ),
+    "room5": (
+        "The chamber now contains avoidable square obstacles. The agent observes only nearby "
+        "obstacle records and learns with a replay-buffer DQN."
+    ),
 }
 
 
 def _get_room_emoji(idx: int) -> str:
-    return ["\u2744\ufe0f", "\u26a1", "\U0001f511", "\U0001f300"][idx - 1]
+    return ["\u2744\ufe0f", "\u26a1", "\U0001f511", "\U0001f300", "\U0001f9e0"][idx - 1]
 
 
 def render_home_page():
@@ -82,13 +96,13 @@ def render_home_page():
     st.markdown("""
     <div class="home-title">
         <h1>RL ESCAPE ROOM</h1>
-        <p>Can four learning agents escape four increasingly difficult chambers?</p>
+        <p>Can five learning agents escape five increasingly difficult chambers?</p>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("""
     <div style="text-align:center;padding:10px 0 20px;color:#616161;font-size:0.85em;">
-        Known Model \u2192 Unknown Model \u2192 Memory/State Extension \u2192 Continuous Control
+        Known Model \u2192 Unknown Model \u2192 Memory/State Extension \u2192 Continuous Control \u2192 Obstacle DQN
     </div>
     """, unsafe_allow_html=True)
 
@@ -101,6 +115,8 @@ def render_home_page():
         <span style="background:#b71c1c;color:#ff5252;padding:2px 12px;border-radius:12px;font-size:0.75em;">Room 3</span>
         <span style="color:#444;">\u2192</span>
         <span style="background:#4a148c;color:#ea80fc;padding:2px 12px;border-radius:12px;font-size:0.75em;">Room 4</span>
+        <span style="color:#444;">\u2192</span>
+        <span style="background:#0f766e;color:#5eead4;padding:2px 12px;border-radius:12px;font-size:0.75em;">Room 5</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -194,5 +210,6 @@ def _room_achievements(room_id: str) -> list[AchievementId]:
         "room2": [AchievementId.FIRST_ESCAPE, AchievementId.LASER_DODGER, AchievementId.SPEED_RUNNER],
         "room3": [AchievementId.FIRST_ESCAPE, AchievementId.VAULT_EXPERT, AchievementId.SPEED_RUNNER],
         "room4": [AchievementId.FIRST_ESCAPE, AchievementId.MOMENTUM_MASTER, AchievementId.SPEED_RUNNER],
+        "room5": [AchievementId.FIRST_ESCAPE, AchievementId.SPEED_RUNNER],
     }
     return mapping.get(room_id, [AchievementId.FIRST_ESCAPE])

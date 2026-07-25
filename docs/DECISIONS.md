@@ -2,20 +2,20 @@
 
 ## Theme: Research Facility Escape
 
-The four rooms form a narrative of escaping a research facility. This theme provides a consistent visual identity and makes the reward structure intuitive (reaching exits, avoiding traps, collecting keys).
+The rooms form a narrative of escaping a research facility. This theme provides a consistent visual identity and makes the reward structure intuitive (reaching exits, avoiding traps, collecting keys, and avoiding obstacles).
 
 ## Source Requirements vs Implementation Choices
 
 | # | Source Requirement | Implementation Decision | Rationale |
 |---|-------------------|------------------------|-----------|
-| 1 | Four+ rooms with different tasks | Four rooms: Ice Maze, Laser Corridor, Key Vault, Momentum Chamber | Covers all specified algorithms |
+| 1 | Four+ rooms with different tasks | Four required rooms plus optional Room 5: Dynamic Obstacles | Covers the assignment and adds bonus DQN work |
 | 2 | Each room has a final state | Each room has exactly one exit cell/region | Clear terminal condition |
 | 3 | Faster completion = higher reward | Negative step penalty as primary mechanism; optional time bonus | Simplicity; bonus defaults to 0.0 |
 | 4 | Rooms 1-3 use 10×10 grids | All three use the same `GridEnvironment` base | Code reuse, consistent testing |
 | 5 | Room 1 uses DP with slippery cells | Value Iteration on known stochastic grid | Standard DP approach for known MDPs |
 | 6 | Room 2 uses SARSA with slippery cells | SARSA with epsilon-greedy on stochastic grid | On-policy learns risk-aware behaviour |
 | 7 | Room 3 uses Q-Learning | Q-Learning with key-collection state extension | Off-policy suits deterministic key mechanic |
-| 8 | Room 4 non-grid, uses X,Y,Vx,Vy | Continuous state with 5 discrete velocity actions | Matches brief specification |
+| 8 | Room 4 non-grid, uses X,Y,Vx,Vy | Continuous state with 9 discrete velocity actions | Represents all velocity pairs in {-1,0,1}^2 |
 | 9 | Room 4 is 10×10 metres | Continuous position clipped to [0,10] | Direct from requirement |
 | 10 | Room 4 dt = 0.02s | dt parameter on `Room4Continuous` | Direct from requirement |
 | 11 | Vx, Vy are -1, 0, 1 | Five actions map directly to velocity vectors | Simple, matches brief |
@@ -142,8 +142,11 @@ Each evaluation episode gets a `copy.deepcopy()` of the base environment to prev
 ### Experiment Ranking
 Hyperparameter experiments are ranked by: converged > success_rate > -mean_successful_steps > mean_return > iterations.
 
-### Transition Distribution Wall-penalty Note
-When on a slippery cell, `get_transition_distribution()` does not add the wall penalty for wall collisions (the next_cell type is reset to the original cell type). The actual `step()` method does add the wall penalty. This is a known inconsistency that affects expected Q-value calculations on slippery cells.
+### Transition Distribution Collision Parity
+`get_transition_distribution()` now mirrors `step()` for wall and boundary
+collisions: both return `step_penalty + wall_penalty` and leave the state
+unchanged. `tests/test_dynamic_programming.py` includes explicit model-vs-step
+parity checks for both boundary and wall collisions.
 
 ## Phase 4 Decisions (SARSA)
 
@@ -263,3 +266,28 @@ Backward-compatible aliases remain in `agents/sarsa.py`. All SARSA tests remain 
 2. **Unseen starts** (optional): Fixed grid of positions outside the lower-left training region.
 3. **Random starts**: Configurable via `StartMode` with explicit seed sets for reproducibility.
 4. **Start validation**: Custom and random starts are validated to be outside the exit radius.
+
+## Room 5 — Optional Dynamic Obstacles
+
+1. **Bonus scope**: Room 5 is additive and is not counted as mandatory basic
+   compliance. Existing SARSA-vs-Q-Learning comparison claims remain based on
+   the shared Room 2 benchmark.
+2. **Geometry**: Obstacles are axis-aligned squares with exact width 0.5m.
+   Width validation rejects any other value so the assignment-facing contract
+   cannot drift.
+3. **Layouts**: Random layouts are generated from layout seeds with configurable
+   obstacle-count ranges. A fixed validation layout is available for stable
+   screenshots and comparable evaluation.
+4. **Visibility**: Obstacle observations use center-to-center distance. The
+   DQN sees only the nearest K=4 visible obstacle records and padded slots for
+   missing obstacles.
+5. **Reward shape**: Distance-progress shaping helps learning but remains
+   explicit in the reward config and step `info`, alongside obstacle, boundary,
+   exit, and timeout components.
+6. **DQN implementation**: A small NumPy network was used instead of PyTorch to
+   keep dependencies lightweight. It includes replay, target-network copies,
+   epsilon-greedy behavior, mini-batch TD updates, snapshots, and seeded
+   reproducibility.
+7. **Persistence**: Room 5 models are JSON metadata plus `.npz` weights with
+   observation schema, environment config, seeds, finite-value validation, and
+   a SHA-256 checksum.

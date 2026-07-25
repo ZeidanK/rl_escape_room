@@ -141,11 +141,14 @@ Load validates map signature, state count, action count, and finite values.
 |----------|-------|
 | Algorithm | Q-Learning (off-policy TD control) |
 | Grid | 10×10, unknown environment |
-| State | `(row, column, has_key)` — 200 discrete states |
+| State | `(row, column, has_key)` - 92 discrete states |
 | Actions | `UP(0), RIGHT(1), DOWN(2), LEFT(3)` |
 | Special mechanic | Key must be collected before exit becomes available |
 | Terminal condition | Reaching the exit cell while `has_key == True` |
 | Non-terminal | Reaching the exit cell without the key (episode continues) |
+
+Room 3 has 46 non-wall physical positions, so `(row, column, has_key)` yields
+46 x 2 = 92 tabular states.
 
 ### Grid Legend
 - Same as Room 1, plus:
@@ -167,7 +170,9 @@ Load validates map signature, state count, action count, and finite values.
 ```
 
 ### State-Space Design
-Room 3 uses an augmented state `(row, column, has_key)` — the Cartesian product of all non-wall physical positions × `{False, True}`. This yields `N_non_wall × 2` states (approximately 160 states). Some combinations may be unreachable (e.g. `(key_position, True)` after the key is collected), but this is an acceptable tradeoff for simplicity in a tabular project.
+
+Correct count: 46 non-wall physical positions x 2 key flags = 92 states.
+Room 3 uses an augmented state `(row, column, has_key)` - the Cartesian product of all 46 non-wall physical positions x `{False, True}`. This yields exactly 92 states. Some combinations may be unreachable (e.g. `(key_position, True)` after the key is collected), but this is an acceptable tradeoff for simplicity in a tabular project.
 
 ### Q-Learning Default Configuration
 
@@ -330,8 +335,82 @@ Top 5 configs × 3 seeds × 3000 episodes × 100 eval starts.
 
 | Property | Value |
 |----------|-------|
-| Algorithm | Extensible from Room 4 |
+| Algorithm | NumPy DQN with replay buffer and target network |
 | Environment | Continuous 10×10 metre with moving obstacles |
-| Observation | Configurable observation distance |
-| Obstacles | 0.5 metres wide, dynamic placement |
-| Evaluation | Unseen random layouts |
+| Observation | 22-feature vector with nearest K=4 visible obstacle records |
+| Obstacles | Axis-aligned seeded squares, exact width 0.5m |
+| Evaluation | Fixed, random, and unseen random layouts |
+
+Room 5 is implemented as optional bonus work beyond the required four-room
+assignment path.
+
+### Environment Configuration
+
+| Parameter | Default | Description |
+|---|---:|---|
+| `room_width_m` | 10.0 | Room width |
+| `room_height_m` | 10.0 | Room height |
+| `time_step_s` | 0.05 | Room 5 default step size |
+| `obstacle_width_m` | 0.5 | Required exact obstacle width |
+| `min_obstacles` | 3 | Minimum generated obstacle count |
+| `max_obstacles` | 5 | Maximum generated obstacle count |
+| `observation_distance_m` | 2.5 | Visibility radius X for obstacle records |
+| `nearest_obstacles` | 4 | Padded nearest visible obstacle slots |
+| `max_steps` | 260 | Episode truncation limit |
+
+Obstacle visibility and reporting use center-to-center distance from the agent
+to each obstacle center. Layout generation avoids the start, the exit, and
+overlapping obstacle squares.
+
+### Observation Schema
+
+The DQN observation is:
+
+```
+x_norm, y_norm, vx, vy, exit_dx_norm, exit_dy_norm,
+obstacle_0_visible, obstacle_0_dx_over_x, obstacle_0_dy_over_x, obstacle_0_distance_over_x,
+obstacle_1_visible, obstacle_1_dx_over_x, obstacle_1_dy_over_x, obstacle_1_distance_over_x,
+obstacle_2_visible, obstacle_2_dx_over_x, obstacle_2_dy_over_x, obstacle_2_distance_over_x,
+obstacle_3_visible, obstacle_3_dx_over_x, obstacle_3_dy_over_x, obstacle_3_distance_over_x
+```
+
+Missing obstacle slots are padded as `(0, 0, 0, 1)`.
+
+### Rewards
+
+| Event | Default |
+|---|---:|
+| Step | -0.01 |
+| Exit | +120.0 |
+| Boundary collision | -1.0 |
+| Obstacle collision | -60.0 |
+| Timeout | -25.0 |
+| Distance-progress shaping | 2.0 x distance gain |
+
+Obstacle collision terminates as failure. Reaching the exit terminates as
+success. Timeout truncates and does not bootstrap.
+
+### DQN Training
+
+| Parameter | Default |
+|---|---:|
+| Episodes | 600 |
+| Learning rate | 0.001 |
+| Gamma | 0.99 |
+| Replay capacity | 20,000 |
+| Batch size | 64 |
+| Warmup steps | 128 |
+| Target update interval | 100 |
+| Hidden units | 64 |
+| Epsilon schedule | EXP(1.0 -> 0.05, decay=0.995) |
+
+The implementation is intentionally NumPy-only: one hidden ReLU layer, replay
+buffer, epsilon-greedy behavior policy, mini-batch TD target, target network
+copy, deterministic seeded RNG streams, snapshots, evaluation, save/load, and
+finite-value validation.
+
+### Persistence
+
+Room 5 models use a JSON metadata file plus `.npz` weights. Metadata records
+algorithm tag, environment config, observation/action schema, training config,
+training seed, dimensions, and a SHA-256 checksum over the weights file.

@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "algorithm": "NumPy DQN",
+  "room": "Room5Obstacles",
+  "observation_schema": [
+    "x_norm",
+    "y_norm",
+    "vx",
+    "vy",
+    "exit_dx_norm",
+    "exit_dy_norm",
+    "obstacle_0_visible",
+    "obstacle_0_dx_over_x",
+    "obstacle_0_dy_over_x",
+    "obstacle_0_distance_over_x",
+    "obstacle_1_visible",
+    "obstacle_1_dx_over_x",
+    "obstacle_1_dy_over_x",
+    "obstacle_1_distance_over_x",
+    "obstacle_2_visible",
+    "obstacle_2_dx_over_x",
+    "obstacle_2_dy_over_x",
+    "obstacle_2_distance_over_x",
+    "obstacle_3_visible",
+    "obstacle_3_dx_over_x",
+    "obstacle_3_dy_over_x",
+    "obstacle_3_distance_over_x"
+  ],
+  "action_schema": [
+    "STOP",
+    "NORTH",
+    "NORTH_EAST",
+    "EAST",
+    "SOUTH_EAST",
+    "SOUTH",
+    "SOUTH_WEST",
+    "WEST",
+    "NORTH_WEST"
+  ],
+  "input_dim": 22,
+  "hidden_units": 64,
+  "action_count": 9,
+  "training_seed": 42,
+  "training_config": {
+    "episodes": 300,
+    "learning_rate": 0.001,
+    "gamma": 0.99,
+    "max_steps": 260,
+    "epsilon": {
+      "kind": "exponential",
+      "start": 1.0,
+      "minimum": 0.05,
+      "decay": 0.995,
+      "linear_decay_episodes": 4000
+    },
+    "replay_capacity": 20000,
+    "batch_size": 64,
+    "warmup_steps": 128,
+    "target_update_interval": 100
+  },
+  "environment_config": {
+    "room_width_m": 10.0,
+    "room_height_m": 10.0,
+    "time_step_s": 0.05,
+    "exit_center": [
+      9.5,
+      9.5
+    ],
+    "exit_radius_m": 0.35,
+    "obstacle_width_m": 0.5,
+    "min_obstacles": 3,
+    "max_obstacles": 5,
+    "observation_distance_m": 2.5,
+    "nearest_obstacles": 4
+  },
+  "weights_sha256": "0fc78250cc2531eb090ca338224d77fc7b72f54f3370eff9c19cc14c76e42e52"
+}

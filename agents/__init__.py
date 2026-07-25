@@ -36,3 +36,13 @@ from agents.approximate_sarsa import (
     rollout_approximate_policy,
     save_approximate_model,
 )
+from agents.dqn import (
+    DQNAgent,
+    DQNNetwork,
+    ReplayBuffer,
+    evaluate_dqn_policy,
+    extract_dqn_action_values,
+    load_dqn_model,
+    rollout_dqn_policy,
+    save_dqn_model,
+)

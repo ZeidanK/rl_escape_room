@@ -28,6 +28,7 @@ from training.experiment_utils import (
     trial_id_for_room4,
     trial_id_for_sarsa,
 )
+from training.room5_dqn_experiments import FINAL_ROOM5_PATH, run_room5_experiments
 
 # ============================================================
 # Benchmarking
@@ -999,6 +1000,37 @@ def generate_summary_csv():
             except Exception:
                 pass
 
+    # Room 5 (optional bonus, kept separate from SARSA-vs-Q-Learning comparison)
+    r5_file = str(FINAL_ROOM5_PATH)
+    if os.path.exists(r5_file):
+        with open(r5_file) as f:
+            try:
+                r5 = json.load(f)
+                best = r5.get("best_config", {})
+                aggregate = r5.get("confirmation", {}).get("aggregate", {})
+                rows.append({
+                    "room": "Room 5", "algorithm": "NumPy DQN",
+                    "best_config_id": (
+                        f"hidden={best.get('hidden_units')},lr={best.get('learning_rate')},"
+                        f"ed={best.get('epsilon_decay')},obs={best.get('observation_distance_m')}"
+                    ),
+                    "training_episodes": r5.get("confirmation_episodes", 180),
+                    "training_seed_count": len(r5.get("confirmation_seeds", [])) or "N/A",
+                    "evaluation_count": 12,
+                    "success_rate_mean": aggregate.get("random_success_rate_mean", "N/A"),
+                    "success_rate_std": "N/A",
+                    "mean_return": "N/A",
+                    "mean_successful_steps": "N/A",
+                    "key_collection_rate": "N/A",
+                    "fixed_unseen_success_rate": aggregate.get("fixed_success_rate_mean", "N/A"),
+                    "random_room_success_rate": aggregate.get("unseen_success_rate_mean", "N/A"),
+                    "runtime_seconds": r5.get("runtime_seconds", "N/A"),
+                    "result_file": "room5_dqn_confirmation.json",
+                    "git_commit": r5.get("git_commit", commit),
+                })
+            except Exception:
+                pass
+
     csv_path = os.path.join(FINAL_DIR, "final_summary.csv")
     os.makedirs(os.path.dirname(csv_path), exist_ok=True)
     fieldnames = [
@@ -1034,6 +1066,7 @@ def run_all(benchmark_only: bool = False):
     run_room3()
     run_room4()
     run_comparison()
+    run_room5_experiments()
     generate_summary_csv()
 
     print("=" * 60)

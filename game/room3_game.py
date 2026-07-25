@@ -96,10 +96,16 @@ def render_room3_game():
             try:
                 import glob, os
                 model_dir = os.path.join("storage", "models", "room3_q_learning")
-                pattern = os.path.join(model_dir, "*.json")
-                files = glob.glob(pattern)
-                if files:
-                    latest = max(files).replace(".json", "")
+                showcase = os.path.join(model_dir, "showcase_ql")
+                files = glob.glob(os.path.join(model_dir, "*.json"))
+                files = [f for f in files if os.path.exists(f.replace(".json", ".npz"))]
+                if os.path.exists(showcase + ".json") and os.path.exists(showcase + ".npz"):
+                    latest = showcase
+                elif files:
+                    latest = max(files, key=os.path.getmtime).replace(".json", "")
+                else:
+                    latest = None
+                if latest:
                     q_vals, meta = load_q_model(latest, map_grid=ROOM3_GRID)
                     st.session_state.r3g_q_vals = q_vals
                     st.session_state.r3g_meta = meta

@@ -1,7 +1,7 @@
 # Reinforcement Learning Escape Room
 
-A Python-based reinforcement learning escape-room application with four rooms of
-increasing difficulty, each solved by a different RL algorithm.
+A Python-based reinforcement learning escape-room application with four required
+rooms plus one optional bonus room, each solved by a different RL algorithm.
 
 **Deployment: local-only for now**
 
@@ -12,6 +12,9 @@ Q-Learning, and semi-gradient SARSA with tile coding — to navigate a series of
 grid-world and continuous control environments. Each room introduces a new
 challenge: stochastic transitions, trap cells, key-collection mechanics, and
 continuous state spaces.
+
+Room 5 is implemented as optional bonus work: a continuous dynamic-obstacle
+room solved with a lightweight NumPy DQN using replay and a target network.
 
 ## Assignment Requirements
 
@@ -31,7 +34,7 @@ continuous state spaces.
 | 12 | Published as a public Streamlit app                                          | Deferred |
 | 13 | Defence presentation with oral questions                                     | Prepared |
 
-## Four-Room Overview
+## Room Overview
 
 | Room | Name               | Algorithm                  | State Space          | Model Known | On/Off Policy |
 |------|--------------------|----------------------------|----------------------|-------------|---------------|
@@ -39,6 +42,10 @@ continuous state spaces.
 | 2    | Laser Corridor     | SARSA                      | 10×10 grid           | No          | On-policy     |
 | 3    | Key Vault          | Q-Learning                 | Grid × {has_key}     | No          | Off-policy    |
 | 4    | Momentum Chamber   | Semi-gradient SARSA + TC   | Continuous (X,Y,Vx,Vy) | No        | On-policy     |
+| 5    | Dynamic Obstacles  | NumPy DQN                  | 22-feature continuous observation | No | Off-policy |
+
+Room 3 has 46 non-wall physical positions, so its tabular state space is
+46 positions x 2 key flags = 92 states.
 
 ### Room 1 — Ice Maze (Value Iteration)
 
@@ -67,6 +74,7 @@ continuous state spaces.
 
 - **State**: (row, col, has_key) — Cartesian product of non-wall cells × {False, True}.
 - **Actions**: UP, RIGHT, DOWN, LEFT.
+- **State count**: 46 non-wall positions x 2 key flags = 92 states.
 - **Rewards**: same as Room 2 + key_reward=+10 when first collecting the key.
 - **Terminal**: exit cell **with key**; locked exit without key is not terminal.
 - **Transition model**: unknown.
@@ -87,6 +95,23 @@ continuous state spaces.
 - **Feature representation**: tile coding — multi-scale overlapping tilings
   with velocity categories.
 
+### Room 5 - Dynamic Obstacles (Optional NumPy DQN)
+
+- **State**: 22-feature continuous observation vector: normalized position,
+  velocity, exit delta, and nearest K=4 visible obstacle records
+  `(visible, dx/X, dy/X, distance/X)`.
+- **Actions**: same 9 velocity vectors as Room 4.
+- **Environment**: continuous 10x10 metre room, seeded random obstacle layouts,
+  exact obstacle width 0.5m, configurable obstacle count and observation
+  distance X.
+- **Rewards**: small step penalty, distance-progress shaping, exit reward,
+  obstacle-collision penalty, boundary penalty, and timeout penalty.
+- **Terminal**: exit success; obstacle collision terminates as failure; timeout
+  truncates the episode.
+- **Algorithm**: NumPy DQN with replay buffer, epsilon-greedy exploration,
+  target network updates, mini-batch TD learning, snapshots, evaluation, and
+  JSON/NPZ model persistence with checksums.
+
 ## Increasing Difficulty
 
 1. **Room 1** – Known MDP, solved via dynamic programming (exact, no sampling).
@@ -96,6 +121,9 @@ continuous state spaces.
    optimal value despite exploratory actions.
 4. **Room 4** – Continuous state; function approximation generalises across
    infinitely many states; semi-gradient update trades bias for variance.
+
+5. **Room 5** - Optional dynamic-obstacle DQN extension with local observations,
+   seeded layouts, and held-out layout evaluation.
 
 ## Project Architecture
 
@@ -133,11 +161,11 @@ streamlit run app.py
 pytest -v
 ```
 
-**Exact test count: 291 tests (current local result).**
+**Exact test count: 308 tests (current local result).**
 
 ## Generating Local Showcase Models
 
-Rooms 2-4 in the Escape Room Showcase load saved local models from
+Rooms 2-5 in the Escape Room Showcase load saved local models from
 `storage/models/`. Generate them with:
 
 ```bash
@@ -150,6 +178,12 @@ For a quick wiring check, use:
 python tools/generate_local_models.py --smoke
 ```
 
+For deterministic committed showcase artifact names, use:
+
+```bash
+python tools/generate_local_models.py --showcase
+```
+
 ## Best Measured Parameters
 
 | Room | Algorithm          | Best Config                                                                  |
@@ -158,6 +192,7 @@ python tools/generate_local_models.py --smoke
 | 2    | SARSA              | alpha=0.05, gamma=0.95, epsilon_decay=0.99, episodes=5000                    |
 | 3    | Q-Learning         | alpha=0.50, gamma=0.99, epsilon_decay=0.999, episodes=5000                   |
 | 4    | Approximate SARSA  | tilings=16, tiles_xy=16, alpha=0.05, progress_scale=1.0, epsilon_decay=0.995 |
+| 5    | NumPy DQN          | hidden=64, lr=0.001, gamma=0.99, replay=20000, target_update=100             |
 
 ## Final Local Measured Results
 
@@ -167,9 +202,14 @@ python tools/generate_local_models.py --smoke
 | 2    | SARSA              | 100.00%      | 84.8        | 15.1       | 5 seeds, 100 eval episodes |
 | 3    | Q-Learning         | 100.00%      | 91.0        | 19.0       | 5 seeds, 100 eval episodes |
 | 4    | Approximate SARSA  | 60.00%       | —           | —          | Fixed training start       |
+| 5    | NumPy DQN          | 66.67%       | N/A         | N/A        | Optional; random layouts, 5 seeds |
 
 Room 4 generalisation: fixed unseen=8.00%, random lower-left=32.80%,
 random room=14.40%.
+
+Room 5 optional generalisation: fixed validation layout=0.00%, seeded random
+layouts=66.67%, unseen random layouts=73.33%. This result is reported
+separately and is not part of the SARSA-vs-Q-Learning comparison.
 
 ## Matched SARSA vs Q-Learning Comparison
 
@@ -229,6 +269,7 @@ No single algorithm dominates across all metrics.
 
 - SARSA/Q-Learning: JSON metadata + `.npz` Q-table array.
 - Approximate SARSA: JSON metadata + `.npz` weight matrix.
+- Room 5 DQN: JSON metadata + `.npz` network weights with checksum validation.
 - Map signature validation prevents loading models on incompatible maps.
 - Algorithm tag prevents loading a SARSA model as Q-Learning.
 - All experiment results stored in `storage/experiments/final/`.
@@ -262,8 +303,7 @@ Screenshots from the local Streamlit application:
 
 ## Future Work
 
-- Room 5 — Deep Q-Network with experience replay and target network on
-  a partially observable grid (stub only, not implemented).
+- Room 5 future work: broader hyperparameter search and longer DQN training budgets.
 - Deploy to Streamlit Community Cloud when public hosting is in scope.
 - Replace screenshots with public-site screenshots after deployment.
 - Extended hyperparameter search for Room 4 (Bayesian optimisation, more

@@ -46,7 +46,7 @@
 
 | Aspect              | Detail |
 |---------------------|--------|
-| State               | (row, col, has_key) — 200 states (100 non-wall cells × 2 key flags). |
+| State               | (row, col, has_key) - 92 states (46 non-wall positions x 2 key flags). |
 | Actions             | UP, RIGHT, DOWN, LEFT. |
 | Rewards             | Same as Room 2 + key_reward=+10 on first key collection. Locked exit (no key): penalty=−6, not terminal. |
 | Transition model    | Unknown. |
@@ -83,6 +83,22 @@
 | Likely oral question | "Why does the semi-gradient update use the same weights for both the current estimate and the target?" |
 | Answer              | The semi-gradient treats the target `r + γQ(s',a')` as fixed (no gradient through the target). This is biased but stable in the on-policy linear case. Full gradient methods (residual gradients) are unbiased but can have higher variance and slower convergence. With tile coding and on-policy SARSA, the semi-gradient is guaranteed to converge (to a bounded region around the optimum). |
 | Numerical example   | State s=(5.0, 5.0, 0, 0), a=STOP (action 0). Tile coder activates features {142, 319, 507, ...}. Q(s,a) = Σ w[0][feat] for active feats. After step: r=−0.01, s'=(5.0, 5.0, 0, 0), a'=RIGHT (action 1). δ = −0.01 + 0.99×Q(s',RIGHT) − Q(s,STOP). w[STOP] += (0.05/16) × δ × x(s). |
+
+## Room 5 - Dynamic Obstacles / NumPy DQN
+
+| Aspect              | Detail |
+|---------------------|--------|
+| State               | 22-feature vector: normalized position, velocity, exit delta, and nearest K=4 visible obstacle records. |
+| Actions             | Same 9 velocity vectors as Room 4. |
+| Environment         | Continuous 10x10m room; seeded square obstacles; exact obstacle width 0.5m. |
+| Observation         | Obstacles are included only if center-to-center distance <= observation distance X. Missing slots are padded. |
+| Rewards             | step=-0.01, exit=+120, obstacle=-60, boundary=-1, timeout=-25, plus distance-progress shaping. |
+| Terminal/Truncated  | Exit terminates as success. Obstacle collision terminates as failure. Timeout truncates. |
+| Algorithm           | NumPy DQN with replay buffer, target network, epsilon-greedy behavior, mini-batch TD updates, snapshots, and JSON/NPZ persistence. |
+| On/off policy       | Off-policy control: behavior is epsilon-greedy, target uses max next-state Q-value from the target network. |
+| Likely oral question | "Why use a target network and replay buffer?" |
+| Answer              | Replay reduces correlation between consecutive samples; the target network slows changes in the bootstrap target, making DQN updates less unstable than using the online network for both sides. |
+| Numerical example   | For transition `(s,a,r,s')`, target is `r + gamma * max_a' Q_target(s',a')` unless terminal/truncated, where target is just `r`. The online network is updated only for the selected action's prediction. |
 
 ## Cross-Cutting Topics
 

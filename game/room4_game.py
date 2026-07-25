@@ -118,10 +118,16 @@ def render_room4_game():
             try:
                 import glob, os
                 model_dir = os.path.join("storage", "models", "room4_approximate_sarsa")
-                pattern = os.path.join(model_dir, "*.json")
-                files = glob.glob(pattern)
-                if files:
-                    latest = max(files).replace(".json", "")
+                showcase = os.path.join(model_dir, "showcase_approx")
+                files = glob.glob(os.path.join(model_dir, "*.json"))
+                files = [f for f in files if os.path.exists(f.replace(".json", ".npz"))]
+                if os.path.exists(showcase + ".json") and os.path.exists(showcase + ".npz"):
+                    latest = showcase
+                elif files:
+                    latest = max(files, key=os.path.getmtime).replace(".json", "")
+                else:
+                    latest = None
+                if latest:
                     weights, meta = load_approximate_model(latest)
                     st.session_state.r4g_weights = weights
                     st.session_state.r4g_meta = meta

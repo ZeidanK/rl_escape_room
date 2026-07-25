@@ -6,10 +6,14 @@ from core.types import (
     Action,
     ApproximateSarsaConfig,
     ApproximateSarsaTrainingResult,
+    DQNConfig,
+    DQNTrainingResult,
     EpsilonDecayKind,
     EpsilonScheduleConfig,
     QLearningTrainingResult,
     QLearningConfig,
+    Room5ObstacleConfig,
+    Room5RewardConfig,
     SarsaConfig,
     SarsaTrainingResult,
     SlipConfig,
@@ -64,12 +68,22 @@ from training.algorithm_comparison import (
     save_comparison,
 )
 from environments.room4_continuous import ContinuousRewardConfig, Room4Continuous, Room4MotionConfig
+from environments.room5_obstacles import Room5Obstacles
 from agents.approximate_sarsa import (
     ApproximateSarsaAgent,
     evaluate_approximate_policy,
     load_approximate_model,
     rollout_approximate_policy,
     save_approximate_model,
+)
+from agents.dqn import (
+    DQNAgent,
+    DQNNetwork,
+    evaluate_dqn_policy,
+    extract_dqn_action_values,
+    load_dqn_model,
+    rollout_dqn_policy,
+    save_dqn_model,
 )
 from features.tile_coding import TileCodingConfig
 from visualization.approximate_sarsa_visualization import (
@@ -194,6 +208,136 @@ def _loaded_approximate_result(
         training_seed=int(metadata.get("training_seed", config.seed)),
     )
 
+
+def _loaded_dqn_result(
+    network: DQNNetwork,
+    metadata: dict,
+    fallback_config: DQNConfig,
+) -> DQNTrainingResult:
+    cfg = metadata.get("training_config", {})
+    epsilon = _epsilon_config_from_metadata(cfg.get("epsilon", {}), fallback_config.epsilon)
+    config = DQNConfig(
+        episodes=int(cfg.get("episodes", fallback_config.episodes)),
+        learning_rate=float(cfg.get("learning_rate", fallback_config.learning_rate)),
+        gamma=float(cfg.get("gamma", fallback_config.gamma)),
+        max_steps=int(cfg.get("max_steps", fallback_config.max_steps)),
+        seed=int(metadata.get("training_seed", fallback_config.seed)),
+        epsilon=epsilon,
+        replay_capacity=int(cfg.get("replay_capacity", fallback_config.replay_capacity)),
+        batch_size=int(cfg.get("batch_size", fallback_config.batch_size)),
+        warmup_steps=int(cfg.get("warmup_steps", fallback_config.warmup_steps)),
+        target_update_interval=int(cfg.get("target_update_interval", fallback_config.target_update_interval)),
+        hidden_units=int(metadata.get("hidden_units", fallback_config.hidden_units)),
+    )
+    return DQNTrainingResult(
+        config=config,
+        weights=network.weights,
+        metrics=(),
+        snapshots={},
+        final_epsilon=epsilon.minimum,
+        training_seed=config.seed,
+        input_dim=int(metadata.get("input_dim", network.input_dim)),
+        action_count=int(metadata.get("action_count", network.action_count)),
+    )
+
+
+def _preferred_model_stem(model_dir: str, showcase_stem: str) -> str | None:
+    import glob
+    import os
+
+    showcase = os.path.join(model_dir, showcase_stem)
+    if os.path.exists(showcase + ".json") and os.path.exists(showcase + ".npz"):
+        return showcase
+    files = glob.glob(os.path.join(model_dir, "*.json"))
+    files = [f for f in files if os.path.exists(f.replace(".json", ".npz"))]
+    if not files:
+        return None
+    latest = max(files, key=os.path.getmtime)
+    return latest.replace(".json", "")
+
+
+def _room5_training_rows(metrics) -> list[dict]:
+    return [
+        {
+            "episode": m.episode + 1,
+            "total_reward": m.total_reward,
+            "steps": m.steps,
+            "success": m.success,
+            "epsilon": m.epsilon,
+            "obstacle_collisions": m.obstacle_collisions,
+            "boundary_collisions": m.boundary_collisions,
+            "visible_obstacle_steps": m.visible_obstacle_steps,
+            "mean_loss": m.mean_loss,
+            "mean_abs_td_error": m.mean_abs_td_error,
+        }
+        for m in metrics
+    ]
+
+
+def _render_room5_svg(env: Room5Obstacles, rollout=None) -> str:
+    state = env.render()
+    margin = 24.0
+    canvas = 520.0
+    span = canvas - 2 * margin
+    sx = span / env.motion.room_width_m
+    sy = span / env.motion.room_height_m
+
+    def pt(x: float, y: float) -> tuple[float, float]:
+        return margin + x * sx, canvas - margin - y * sy
+
+    if rollout is not None:
+        points = [rollout.start_state[:2]]
+        points.extend(step.next_raw_state[:2] for step in rollout.trajectory)
+    else:
+        points = list(state.trajectory)
+    path_points = " ".join(f"{pt(x, y)[0]:.1f},{pt(x, y)[1]:.1f}" for x, y in points)
+    visible = {(round(o.center_x, 6), round(o.center_y, 6)) for o in state.visible_obstacles}
+
+    parts = [
+        f'<svg viewBox="0 0 {canvas:.0f} {canvas:.0f}" width="100%" '
+        'style="max-width:620px;background:#111827;border:1px solid #334155;border-radius:8px;">',
+        '<rect x="24" y="24" width="472" height="472" fill="#0f172a" stroke="#475569" stroke-width="2"/>',
+    ]
+    for i in range(11):
+        x = margin + i * span / 10
+        y = margin + i * span / 10
+        parts.append(f'<line x1="{x:.1f}" y1="24" x2="{x:.1f}" y2="496" stroke="#1e293b" stroke-width="1"/>')
+        parts.append(f'<line x1="24" y1="{y:.1f}" x2="496" y2="{y:.1f}" stroke="#1e293b" stroke-width="1"/>')
+
+    ex, ey = pt(*state.exit_center)
+    parts.append(
+        f'<circle cx="{ex:.1f}" cy="{ey:.1f}" r="{state.exit_radius_m * sx:.1f}" '
+        'fill="#22c55e" fill-opacity="0.28" stroke="#86efac" stroke-width="2"/>'
+    )
+    if points:
+        ox, oy = pt(*points[0])
+        parts.append(
+            f'<circle cx="{ox:.1f}" cy="{oy:.1f}" r="{state.observation_distance_m * sx:.1f}" '
+            'fill="#38bdf8" fill-opacity="0.08" stroke="#38bdf8" stroke-opacity="0.5" stroke-dasharray="5 5"/>'
+        )
+
+    for obstacle in state.obstacles:
+        cx, cy = pt(obstacle.center_x, obstacle.center_y)
+        size = obstacle.width_m * sx
+        stroke = "#facc15" if (round(obstacle.center_x, 6), round(obstacle.center_y, 6)) in visible else "#f97316"
+        parts.append(
+            f'<rect x="{cx - size / 2:.1f}" y="{cy - size / 2:.1f}" width="{size:.1f}" height="{size:.1f}" '
+            f'fill="#7f1d1d" stroke="{stroke}" stroke-width="2"/>'
+        )
+
+    if len(points) >= 2:
+        parts.append(
+            f'<polyline points="{path_points}" fill="none" stroke="#67e8f9" stroke-width="3" '
+            'stroke-linecap="round" stroke-linejoin="round"/>'
+        )
+    if points:
+        start_x, start_y = pt(*points[0])
+        end_x, end_y = pt(*points[-1])
+        parts.append(f'<circle cx="{start_x:.1f}" cy="{start_y:.1f}" r="7" fill="#60a5fa"/>')
+        parts.append(f'<circle cx="{end_x:.1f}" cy="{end_y:.1f}" r="8" fill="#f8fafc" stroke="#0f172a" stroke-width="2"/>')
+    parts.append("</svg>")
+    return "".join(parts)
+
 st.set_page_config(page_title="RL Escape Room", layout="wide", page_icon="🧊")
 st.title("RL Escape Room")
 
@@ -212,6 +356,9 @@ for key in [
     "approx_eval_gen", "approx_eval_gen_key",
     "approx_rollout", "approx_rollout_key",
     "approx_env_factory",
+    "dqn_result", "dqn_network", "dqn_train_key",
+    "dqn_eval_fixed", "dqn_eval_random", "dqn_eval_unseen",
+    "dqn_rollout", "dqn_rollout_key",
     "game_mode", "game_room", "show_lab",
 ]:
     if key not in st.session_state:
@@ -242,6 +389,7 @@ MODE_LABELS = [
     "Room 2 \u2014 SARSA",
     "Room 3 \u2014 Q-Learning",
     "Room 4 \u2014 Function Approximation",
+    "Room 5 \u2014 Dynamic Obstacles",
     "Algorithm Comparison",
     "---",
     "\U0001f4d6 About the Project",
@@ -262,6 +410,7 @@ SELECTABLE_MODES = [
     "Room 2 \u2014 SARSA",
     "Room 3 \u2014 Q-Learning",
     "Room 4 \u2014 Function Approximation",
+    "Room 5 \u2014 Dynamic Obstacles",
     "Algorithm Comparison",
 ]
 
@@ -274,6 +423,7 @@ _MODE_NAME_MAP = {
     "Room 2 \u2014 SARSA": "Room 2 \u2014 SARSA",
     "Room 3 \u2014 Q-Learning": "Room 3 \u2014 Q-Learning",
     "Room 4 \u2014 Function Approximation": "Room 4 \u2014 Function Approximation",
+    "Room 5 \u2014 Dynamic Obstacles": "Room 5 \u2014 Dynamic Obstacles",
     "Algorithm Comparison": "Algorithm Comparison",
 }
 
@@ -340,6 +490,10 @@ if st.session_state.mode == GAME_LABEL:
         render_room3_game()
     elif game_room == "room4":
         render_room4_game()
+    elif game_room == "room5":
+        st.session_state.game_room = None
+        st.session_state.mode = "Room 5 \u2014 Dynamic Obstacles"
+        st.rerun()
     else:
         render_home_page()
 
@@ -350,8 +504,9 @@ elif st.session_state.mode == ABOUT_LABEL:
     st.markdown(render_global_styles(), unsafe_allow_html=True)
     st.markdown("## About RL Escape Room")
     st.markdown("""
-    This project applies four reinforcement learning algorithms of increasing difficulty to
-    navigate a series of escape-room environments. Each room introduces a new challenge:
+    This project applies reinforcement learning algorithms of increasing difficulty to
+    navigate a series of escape-room environments. Rooms 1-4 cover the required assignment,
+    and Room 5 is an optional bonus extension:
 
     | Room | Algorithm | Key Concept |
     |------|-----------|-------------|
@@ -359,6 +514,7 @@ elif st.session_state.mode == ABOUT_LABEL:
     | 2 — Laser Corridor | SARSA | On-policy TD learning with risk sensitivity |
     | 3 — Key Vault | Q-Learning | Off-policy TD with augmented state space |
     | 4 — Momentum Chamber | Approximate SARSA | Linear function approximation with tile coding |
+    | 5 - Dynamic Obstacles | NumPy DQN | Replay buffer + target network in continuous space |
 
     The **Escape Room Showcase** presents the agents as a campaign-style game with animated
     replay, while the **Learning Laboratory** provides full analysis tools including training
@@ -388,13 +544,13 @@ elif st.session_state.mode == ABOUT_LABEL:
     - **Framework:** Streamlit
     - **Runtime:** Python 3.11+
     - **Numerics:** NumPy
-    - **RL Algorithms:** Value Iteration, SARSA, Q-Learning, Semi-Gradient SARSA
+    - **RL Algorithms:** Value Iteration, SARSA, Q-Learning, Semi-Gradient SARSA, NumPy DQN
     - **Function Approximation:** Tile Coding with linear basis functions
     - **Visualization:** SVG via `st.components.v1.html` and inline CSS
     """)
 
     st.markdown("### Repository")
-    st.markdown("[GitHub](https://github.com/anomalyco/rilearningPro)")
+    st.markdown("[GitHub](https://github.com/ZeidanK/rl_escape_room)")
 
 # ============================================================
 # MODE: Home (original, kept for backward compat / lab entry)
@@ -402,14 +558,13 @@ elif st.session_state.mode == ABOUT_LABEL:
 elif st.session_state.mode == "Home":
     st.header("Project Objective")
     st.markdown("""
-    Apply four reinforcement learning algorithms of increasing difficulty to
-    navigate a series of escape-room grids. Each room introduces a new challenge:
-    stochastic transitions, trap cells, key-collection mechanics, and continuous
-    state spaces.
+    Apply reinforcement learning algorithms of increasing difficulty to
+    navigate a series of escape-room environments. Rooms 1-4 cover the required
+    assignment path; Room 5 adds an optional DQN challenge with dynamic obstacles.
     """)
 
-    st.header("The Four Rooms")
-    cols = st.columns(4)
+    st.header("Rooms")
+    cols = st.columns(5)
     cols[0].markdown("**Room 1 — Ice Maze**")
     cols[0].markdown("Value Iteration on known MDP with slippery cells.")
     cols[1].markdown("**Room 2 — Laser Corridor**")
@@ -418,14 +573,24 @@ elif st.session_state.mode == "Home":
     cols[2].markdown("Q-Learning with key-collection and locked-exit states.")
     cols[3].markdown("**Room 4 — Momentum Chamber**")
     cols[3].markdown("Continuous state (x,y,vx,vy) with tile coding + linear approx SARSA.")
+    cols[4].markdown("**Room 5 - Dynamic Obstacles**")
+    cols[4].markdown("Continuous 10m room with 0.5m obstacles and NumPy DQN.")
 
     st.header("Room & Algorithm Summary")
     st.dataframe({
-        "Room": ["Room 1", "Room 2", "Room 3", "Room 4"],
-        "Algorithm": ["Value Iteration", "SARSA", "Q-Learning", "Approximate SARSA"],
-        "State Space": ["10×10 grid", "10×10 grid", "200 states (grid × key)", "Continuous (x,y,vx,vy)"],
+        "Room": ["Room 1", "Room 2", "Room 3", "Room 4", "Room 5"],
+        "Algorithm": ["Value Iteration", "SARSA", "Q-Learning", "Approximate SARSA", "NumPy DQN"],
+        "State Space": ["10x10 grid", "10x10 grid", "92 states (46 non-wall x key)", "Continuous (x,y,vx,vy)", "Continuous 22-feature vector"],
         "On/Off Policy": ["—", "On-policy", "Off-policy", "On-policy"],
-        "Model Known": ["Yes", "No", "No", "No"],
+        "State Space": [
+            "10x10 grid",
+            "10x10 grid",
+            "92 states (46 non-wall x key)",
+            "Continuous (x,y,vx,vy)",
+            "Continuous 22-feature vector",
+        ],
+        "On/Off Policy": ["-", "On-policy", "Off-policy", "On-policy", "Off-policy"],
+        "Model Known": ["Yes", "No", "No", "No", "No"],
     }, use_container_width=True)
 
     st.header("Instructions")
@@ -433,8 +598,9 @@ elif st.session_state.mode == "Home":
     1. Use the **sidebar** to select a mode.
     2. For Rooms 1–3, select a room, configure parameters, and run the algorithm.
     3. For Room 4, configure tile-coding and training parameters.
-    4. View training curves, policies, and trajectory replays.
-    5. The **Algorithm Comparison** mode compares SARSA and Q-Learning.
+    4. For Room 5, configure DQN replay, target-network, and obstacle settings.
+    5. View training curves, policies, and trajectory replays.
+    6. The **Algorithm Comparison** mode compares SARSA and Q-Learning; Room 5 remains a separate optional result.
     """)
 
     st.header("Symbols & Legend")
@@ -790,12 +956,10 @@ elif st.session_state.mode == "Room 2 \u2014 SARSA":
 
     # --- Load ---
     if load_clicked:
-        import glob, os
+        import os
         model_dir = os.path.join("storage", "models", "room2_sarsa")
-        pattern = os.path.join(model_dir, "*.json")
-        files = glob.glob(pattern)
-        if files:
-            latest = max(files).replace(".json", "")
+        latest = _preferred_model_stem(model_dir, "showcase_sarsa")
+        if latest:
             try:
                 q_vals, meta = load_model(latest, map_grid=ROOM2_GRID)
                 st.session_state.sarsa_result = _loaded_sarsa_result(q_vals, meta, sarsa_config)
@@ -1052,11 +1216,10 @@ elif st.session_state.mode == "Room 3 \u2014 Q-Learning":
     ql_result = st.session_state.ql_result
 
     if load_clicked:
-        import glob, os
+        import os
         model_dir = os.path.join("storage", "models", "room3_q_learning")
-        files = glob.glob(os.path.join(model_dir, "*.json"))
-        if files:
-            latest = max(files).replace(".json", "")
+        latest = _preferred_model_stem(model_dir, "showcase_ql")
+        if latest:
             try:
                 q_vals, meta = load_q_model(latest, map_grid=ROOM3_GRID)
                 st.session_state.ql_result = _loaded_q_learning_result(q_vals, meta, ql_config)
@@ -1346,11 +1509,10 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
     approx_result = st.session_state.approx_result
 
     if load_clicked:
-        import glob, os
+        import os
         model_dir = os.path.join("storage", "models", "room4_approximate_sarsa")
-        files = glob.glob(os.path.join(model_dir, "*.json"))
-        if files:
-            latest = max(files).replace(".json", "")
+        latest = _preferred_model_stem(model_dir, "showcase_approx")
+        if latest:
             try:
                 weights, meta = load_approximate_model(latest, expected_tile_coding=tc_cfg)
                 st.session_state.approx_result = _loaded_approximate_result(weights, meta, approx_config, tc_cfg)
@@ -1562,6 +1724,377 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
                                 "progress_scale": 1.0, "epsilon_decay": 0.997}]
                     conf = run_approx_confirmation(configs, n_episodes=500, eval_episodes=30, seeds=(42, 43, 44))
                     st.dataframe(conf, use_container_width=True)
+
+# ============================================================
+# MODE: Room 5 — Dynamic Obstacles
+# ============================================================
+elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
+    st.header("Room 5 - Dynamic Obstacles (Optional Bonus)")
+    st.caption(
+        "Continuous 10x10m escape room with seeded 0.5m square obstacles, "
+        "local observation records, replay buffer DQN updates, and separate fixed/random/unseen layout evaluation."
+    )
+
+    with st.sidebar:
+        st.header("DQN Parameters")
+        dqn_episodes = st.number_input("Episodes", min_value=10, max_value=20000, value=600, step=50,
+                                       key="dqn_episodes")
+        dqn_lr = st.slider("Learning Rate", 0.0001, 0.05, 0.001, step=0.0001,
+                           format="%.4f", key="dqn_lr")
+        dqn_gamma = st.slider("Gamma", 0.50, 0.99, 0.99, step=0.01, key="dqn_gamma")
+        dqn_max_steps = st.number_input("Max Steps", min_value=50, max_value=1500, value=260, step=10,
+                                        key="dqn_max_steps")
+
+        st.markdown("**Epsilon Schedule**")
+        dqn_eps_kind = st.selectbox("Decay Kind", ["exponential", "linear", "constant"], index=0,
+                                    key="dqn_eps_kind")
+        dqn_eps_start = st.slider("Epsilon Start", 0.0, 1.0, 1.0, step=0.05, key="dqn_eps_start")
+        dqn_eps_min = st.slider("Epsilon Min", 0.0, 1.0, 0.05, step=0.01, key="dqn_eps_min")
+        dqn_eps_decay = st.slider("Decay Rate", 0.90, 1.0, 0.995, step=0.001, key="dqn_eps_decay")
+        dqn_linear_decay = st.number_input("Linear Decay Episodes", min_value=1, max_value=20000, value=500,
+                                           step=50, key="dqn_linear_decay")
+
+        st.markdown("**Replay and Network**")
+        dqn_replay_capacity = st.number_input("Replay Capacity", min_value=100, max_value=200000, value=20000,
+                                              step=1000, key="dqn_replay_capacity")
+        dqn_batch_size = st.number_input("Batch Size", min_value=4, max_value=512, value=64, step=4,
+                                         key="dqn_batch_size")
+        dqn_warmup = st.number_input("Warmup Steps", min_value=0, max_value=10000, value=128, step=16,
+                                     key="dqn_warmup")
+        dqn_target_update = st.number_input("Target Update Interval", min_value=1, max_value=5000, value=100,
+                                            step=10, key="dqn_target_update")
+        dqn_hidden_units = st.number_input("Hidden Units", min_value=8, max_value=512, value=64, step=8,
+                                           key="dqn_hidden_units")
+
+        st.markdown("**Obstacle Layout**")
+        dqn_min_obs = st.number_input("Min Obstacles", min_value=0, max_value=12, value=3, step=1,
+                                      key="dqn_min_obs")
+        dqn_max_obs = st.number_input("Max Obstacles", min_value=int(dqn_min_obs), max_value=12, value=max(5, int(dqn_min_obs)),
+                                      step=1, key="dqn_max_obs")
+        dqn_obs_dist = st.slider("Observation Distance X (m)", 0.5, 8.0, 2.5, step=0.25,
+                                 key="dqn_obs_dist")
+        dqn_layout_seed = st.number_input("Layout Seed", min_value=0, max_value=2**31 - 1, value=42, step=1,
+                                          key="dqn_layout_seed")
+        dqn_fixed_layout = st.checkbox("Train on Fixed Layout", value=False, key="dqn_fixed_layout")
+        dqn_progress_scale = st.slider("Progress Reward Scale", 0.0, 5.0, 2.0, step=0.25,
+                                       key="dqn_progress_scale")
+
+        dqn_train_seed = st.number_input("Training Seed", min_value=0, max_value=2**31 - 1, value=42, step=1,
+                                         key="dqn_train_seed")
+        dqn_eval_ep = st.number_input("Eval Episodes", min_value=1, max_value=500, value=25, step=1,
+                                      key="dqn_eval_ep")
+        dqn_rollout_seed = st.number_input("Replay Seed", min_value=0, max_value=2**31 - 1, value=7, step=1,
+                                           key="dqn_rollout_seed")
+        dqn_rollout_layout_seed = st.number_input("Replay Layout Seed", min_value=0, max_value=2**31 - 1,
+                                                  value=1007, step=1, key="dqn_rollout_layout_seed")
+
+        col1, col2 = st.columns(2)
+        dqn_train_clicked = col1.button("Train DQN", type="primary", key="dqn_train_btn")
+        if st.session_state.get("dqn_confirm_reset"):
+            st.warning("Click again to confirm reset - this will clear Room 5 results.")
+            if col2.button("Confirm Reset", key="dqn_confirm"):
+                for key in [
+                    "dqn_result", "dqn_network", "dqn_eval_fixed",
+                    "dqn_eval_random", "dqn_eval_unseen", "dqn_rollout",
+                ]:
+                    st.session_state[key] = None
+                st.session_state.dqn_confirm_reset = False
+                st.rerun()
+            if st.button("Cancel", key="dqn_cancel_reset"):
+                st.session_state.dqn_confirm_reset = False
+                st.rerun()
+        elif col2.button("Reset Results", key="dqn_reset"):
+            st.session_state.dqn_confirm_reset = True
+            st.rerun()
+
+        dqn_eval_fixed_clicked = st.button("Evaluate Fixed Layout", key="dqn_eval_fixed_btn",
+                                           disabled=st.session_state.dqn_result is None)
+        dqn_eval_random_clicked = st.button("Evaluate Random Layouts", key="dqn_eval_random_btn",
+                                            disabled=st.session_state.dqn_result is None)
+        dqn_eval_unseen_clicked = st.button("Evaluate Unseen Layouts", key="dqn_eval_unseen_btn",
+                                            disabled=st.session_state.dqn_result is None)
+        dqn_rollout_clicked = st.button("Generate Greedy Replay", key="dqn_rollout_btn",
+                                        disabled=st.session_state.dqn_result is None)
+        dqn_save_clicked = st.button("Save Model", key="dqn_save_btn",
+                                     disabled=st.session_state.dqn_result is None)
+        dqn_load_clicked = st.button("Load Showcase/Latest Model", key="dqn_load_btn")
+
+    obstacle_max = max(int(dqn_min_obs), int(dqn_max_obs))
+    dqn_reward_cfg = Room5RewardConfig(distance_progress_scale=float(dqn_progress_scale))
+    dqn_epsilon_cfg = EpsilonScheduleConfig(
+        kind=EpsilonDecayKind(dqn_eps_kind),
+        start=float(dqn_eps_start),
+        minimum=float(dqn_eps_min),
+        decay=float(dqn_eps_decay),
+        linear_decay_episodes=int(dqn_linear_decay),
+    )
+
+    def make_room5_env(*, fixed_layout: bool | None = None, layout_seed: int | None = None) -> Room5Obstacles:
+        use_fixed = dqn_fixed_layout if fixed_layout is None else fixed_layout
+        obs_cfg = Room5ObstacleConfig(
+            min_obstacles=int(dqn_min_obs),
+            max_obstacles=obstacle_max,
+            observation_distance_m=float(dqn_obs_dist),
+            layout_seed=int(dqn_layout_seed if layout_seed is None else layout_seed),
+            fixed_layout=bool(use_fixed),
+        )
+        return Room5Obstacles(
+            motion_config=Room4MotionConfig(time_step_s=0.05),
+            obstacle_config=obs_cfg,
+            reward_config=dqn_reward_cfg,
+            max_steps=int(dqn_max_steps),
+        )
+
+    dqn_config = DQNConfig(
+        episodes=int(dqn_episodes),
+        learning_rate=float(dqn_lr),
+        gamma=float(dqn_gamma),
+        max_steps=int(dqn_max_steps),
+        seed=int(dqn_train_seed),
+        epsilon=dqn_epsilon_cfg,
+        replay_capacity=int(dqn_replay_capacity),
+        batch_size=int(dqn_batch_size),
+        warmup_steps=int(dqn_warmup),
+        target_update_interval=int(dqn_target_update),
+        hidden_units=int(dqn_hidden_units),
+    )
+
+    if dqn_train_clicked:
+        with st.spinner(f"Training NumPy DQN for {dqn_episodes} episodes..."):
+            agent = DQNAgent(lambda: make_room5_env(), dqn_config)
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+
+            def _dqn_cb(ep, total, metrics):
+                progress_bar.progress((ep + 1) / total)
+                if ep % max(1, total // 50) == 0 or ep == total - 1:
+                    status_text.text(
+                        f"Episode {ep + 1}/{total} | "
+                        f"Reward={metrics.total_reward:.1f} | "
+                        f"Eps={metrics.epsilon:.3f} | "
+                        f"Success={'Yes' if metrics.success else 'No'} | "
+                        f"Obstacle hits={metrics.obstacle_collisions}"
+                    )
+
+            result = agent.train(progress_callback=_dqn_cb, progress_every=1)
+            st.session_state.dqn_result = result
+            st.session_state.dqn_network = DQNNetwork.from_weights(dict(result.weights))
+            st.session_state.dqn_train_key = (
+                dqn_episodes, dqn_lr, dqn_gamma, dqn_max_steps, dqn_train_seed,
+                dqn_min_obs, obstacle_max, dqn_obs_dist, dqn_layout_seed, dqn_fixed_layout,
+            )
+            st.session_state.dqn_eval_fixed = None
+            st.session_state.dqn_eval_random = None
+            st.session_state.dqn_eval_unseen = None
+            st.session_state.dqn_rollout = None
+            progress_bar.empty()
+            status_text.empty()
+            st.rerun()
+
+    if dqn_load_clicked:
+        import os
+
+        model_dir = os.path.join("storage", "models", "room5_dqn")
+        stem = _preferred_model_stem(model_dir, "showcase_dqn")
+        if stem is None:
+            st.info("No Room 5 model found. Run training here or use tools/generate_local_models.py --showcase.")
+        else:
+            try:
+                network, meta = load_dqn_model(stem)
+                st.session_state.dqn_network = network
+                st.session_state.dqn_result = _loaded_dqn_result(network, meta, dqn_config)
+                st.session_state.dqn_eval_fixed = None
+                st.session_state.dqn_eval_random = None
+                st.session_state.dqn_eval_unseen = None
+                st.session_state.dqn_rollout = None
+                st.success(f"Loaded model from {stem}")
+                st.rerun()
+            except ValueError as e:
+                st.error(f"Load failed: {e}")
+
+    dqn_result = st.session_state.dqn_result
+    dqn_network = st.session_state.dqn_network
+
+    if dqn_result is not None:
+        if dqn_network is None:
+            dqn_network = DQNNetwork.from_weights(dict(dqn_result.weights))
+            st.session_state.dqn_network = dqn_network
+
+        if dqn_eval_fixed_clicked:
+            with st.spinner(f"Evaluating fixed validation layout ({dqn_eval_ep} episodes)..."):
+                st.session_state.dqn_eval_fixed = evaluate_dqn_policy(
+                    lambda: make_room5_env(fixed_layout=True),
+                    dqn_network,
+                    n_episodes=int(dqn_eval_ep),
+                    seeds=range(int(dqn_eval_ep)),
+                    layout_seeds=[int(dqn_layout_seed)],
+                    max_steps=int(dqn_max_steps),
+                    category="fixed_validation_layout",
+                )
+                st.rerun()
+
+        if dqn_eval_random_clicked:
+            with st.spinner(f"Evaluating seeded random layouts ({dqn_eval_ep} episodes)..."):
+                st.session_state.dqn_eval_random = evaluate_dqn_policy(
+                    lambda: make_room5_env(fixed_layout=False),
+                    dqn_network,
+                    n_episodes=int(dqn_eval_ep),
+                    seeds=range(int(dqn_eval_ep)),
+                    layout_seeds=[int(dqn_layout_seed) + i for i in range(int(dqn_eval_ep))],
+                    max_steps=int(dqn_max_steps),
+                    category="seeded_random_layouts",
+                )
+                st.rerun()
+
+        if dqn_eval_unseen_clicked:
+            with st.spinner(f"Evaluating unseen layouts ({dqn_eval_ep} episodes)..."):
+                st.session_state.dqn_eval_unseen = evaluate_dqn_policy(
+                    lambda: make_room5_env(fixed_layout=False),
+                    dqn_network,
+                    n_episodes=int(dqn_eval_ep),
+                    seeds=range(10_000, 10_000 + int(dqn_eval_ep)),
+                    layout_seeds=range(50_000, 50_000 + int(dqn_eval_ep)),
+                    max_steps=int(dqn_max_steps),
+                    category="unseen_random_layouts",
+                )
+                st.rerun()
+
+        if dqn_rollout_clicked:
+            with st.spinner("Generating greedy Room 5 replay..."):
+                st.session_state.dqn_rollout = rollout_dqn_policy(
+                    lambda: make_room5_env(fixed_layout=dqn_fixed_layout),
+                    dqn_network,
+                    seed=int(dqn_rollout_seed),
+                    layout_seed=int(dqn_rollout_layout_seed),
+                    max_steps=int(dqn_max_steps),
+                )
+                st.session_state.dqn_rollout_key = (
+                    int(dqn_rollout_seed), int(dqn_rollout_layout_seed), dqn_fixed_layout,
+                )
+                st.rerun()
+
+        if dqn_save_clicked:
+            import os
+            from datetime import datetime
+
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            stem = os.path.join("storage", "models", "room5_dqn", f"dqn_{ts}")
+            save_dqn_model(dqn_result, stem, environment_factory=lambda: make_room5_env())
+            st.success(f"Model saved to {stem}")
+
+    t1, t2, t3, t4 = st.tabs(["Training Progress", "Evaluation", "Greedy Replay", "Action Values"])
+
+    with t1:
+        preview_env = make_room5_env()
+        preview_env.reset(seed=int(dqn_train_seed), layout_seed=int(dqn_layout_seed))
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Observation Size", len(preview_env.state))
+        c2.metric("Obstacle Width", f"{preview_env.obstacle_width_m:.1f}m")
+        c3.metric("Obstacle Count", len(preview_env.obstacles))
+        c4.metric("Layout Signature", preview_env.layout_signature())
+        st.markdown(_render_room5_svg(preview_env), unsafe_allow_html=True)
+
+        if dqn_result is None:
+            st.info("Room 5 loads without automatic training. Use the sidebar to train or load a saved DQN model.")
+        elif dqn_result.metrics:
+            rows = _room5_training_rows(dqn_result.metrics)
+            rewards = np.array([row["total_reward"] for row in rows], dtype=float)
+            successes = np.array([1.0 if row["success"] else 0.0 for row in rows], dtype=float)
+            collisions = np.array([row["obstacle_collisions"] for row in rows], dtype=float)
+            epsilons = np.array([row["epsilon"] for row in rows], dtype=float)
+            losses = np.array([row["mean_loss"] for row in rows], dtype=float)
+            window = min(50, max(1, len(rows)))
+            recent = rows[-window:]
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Episodes", len(rows))
+            c2.metric(f"Recent Success ({window})", f"{sum(r['success'] for r in recent) / window:.1%}")
+            c3.metric("Final Epsilon", f"{dqn_result.final_epsilon:.4f}")
+            c4.metric("Recent Obstacle Rate", f"{sum(r['obstacle_collisions'] for r in recent) / window:.1%}")
+            st.subheader("Reward")
+            st.line_chart({"total_reward": rewards})
+            st.subheader("Success and Obstacle Collisions")
+            st.line_chart({"success": successes, "obstacle_collision": collisions})
+            st.subheader("Epsilon and Loss")
+            st.line_chart({"epsilon": epsilons, "mean_loss": losses})
+            st.dataframe(rows[-min(20, len(rows)):], use_container_width=True)
+        else:
+            st.info("Loaded model contains final weights only. Train locally to view per-episode DQN metrics.")
+
+    with t2:
+        summaries = [
+            ("Fixed Validation Layout", st.session_state.dqn_eval_fixed),
+            ("Seeded Random Layouts", st.session_state.dqn_eval_random),
+            ("Unseen Random Layouts", st.session_state.dqn_eval_unseen),
+        ]
+        shown = False
+        for label, summary in summaries:
+            if summary is None:
+                continue
+            shown = True
+            st.subheader(label)
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Success Rate", f"{summary.success_rate:.1%}")
+            c2.metric("Mean Return", f"{summary.mean_return:.2f}")
+            c3.metric("Mean Steps", f"{summary.mean_steps:.1f}")
+            c4.metric("Obstacle Hits", summary.obstacle_collision_count)
+            st.dataframe(
+                [
+                    {
+                        "seed": r.seed,
+                        "layout_seed": r.layout_seed,
+                        "success": r.success,
+                        "steps": r.steps,
+                        "return": r.total_reward,
+                        "obstacle_collisions": r.obstacle_collisions,
+                        "boundary_collisions": r.boundary_collisions,
+                    }
+                    for r in summary.rollouts[:10]
+                ],
+                use_container_width=True,
+            )
+        if not shown:
+            st.info("Run a fixed, random, or unseen-layout evaluation from the sidebar.")
+
+    with t3:
+        rollout = st.session_state.dqn_rollout
+        if rollout is None:
+            st.info("Generate a greedy replay from the sidebar after training or loading a Room 5 model.")
+        else:
+            disp_env = make_room5_env(fixed_layout=dqn_fixed_layout, layout_seed=rollout.layout_seed)
+            disp_env.reset(seed=rollout.seed, layout_seed=rollout.layout_seed)
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Success", "Yes" if rollout.success else "No")
+            c2.metric("Steps", rollout.steps)
+            c3.metric("Return", f"{rollout.total_reward:.2f}")
+            c4.metric("Obstacle Hits", rollout.obstacle_collisions)
+            st.markdown(_render_room5_svg(disp_env, rollout), unsafe_allow_html=True)
+            st.dataframe(
+                [
+                    {
+                        "step": step.index,
+                        "action": step.requested_action.name,
+                        "reward": step.reward,
+                        "cumulative": step.cumulative_reward,
+                        "visible_obstacles": step.visible_obstacle_count,
+                        "event": step.event,
+                        "distance_to_exit_m": step.distance_to_exit_m,
+                    }
+                    for step in rollout.trajectory[:50]
+                ],
+                use_container_width=True,
+            )
+
+    with t4:
+        if dqn_network is None:
+            st.info("Train or load a DQN model to inspect action values.")
+        else:
+            value_env = make_room5_env()
+            obs = value_env.reset(seed=int(dqn_train_seed), layout_seed=int(dqn_layout_seed))
+            q_vals = extract_dqn_action_values(dqn_network, obs)
+            st.dataframe(
+                [{"action": action, "q_value": value} for action, value in q_vals.items()],
+                use_container_width=True,
+            )
 
 # ============================================================
 # MODE: Algorithm Comparison

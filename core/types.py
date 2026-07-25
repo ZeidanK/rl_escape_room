@@ -644,3 +644,207 @@ class ApproximateEvaluationSummary:
 
 
 Room4Factory = Callable[[], Any]
+
+
+# ============================================================
+# Optional Room 5 — Dynamic obstacles + DQN types
+# ============================================================
+
+Room5Observation = tuple[float, ...]
+Room5Factory = Callable[[], Any]
+
+
+@dataclass(frozen=True)
+class Obstacle:
+    center_x: float
+    center_y: float
+    width_m: float = 0.5
+
+    def __post_init__(self) -> None:
+        if self.width_m <= 0:
+            raise ValueError(f"width_m must be positive; got {self.width_m}")
+
+
+@dataclass(frozen=True)
+class Room5ObstacleConfig:
+    min_obstacles: int = 3
+    max_obstacles: int = 5
+    obstacle_width_m: float = 0.5
+    observation_distance_m: float = 2.5
+    nearest_obstacles: int = 4
+    layout_seed: int = 42
+    fixed_layout: bool = False
+
+    def __post_init__(self) -> None:
+        if self.min_obstacles < 0:
+            raise ValueError("min_obstacles must be non-negative")
+        if self.max_obstacles < self.min_obstacles:
+            raise ValueError("max_obstacles must be >= min_obstacles")
+        if self.obstacle_width_m <= 0:
+            raise ValueError("obstacle_width_m must be positive")
+        if abs(self.obstacle_width_m - 0.5) > 1e-12:
+            raise ValueError("Room 5 obstacle width must be exactly 0.5 metres")
+        if self.observation_distance_m <= 0:
+            raise ValueError("observation_distance_m must be positive")
+        if self.nearest_obstacles <= 0:
+            raise ValueError("nearest_obstacles must be positive")
+
+
+@dataclass(frozen=True)
+class Room5RewardConfig:
+    step: float = -0.01
+    exit: float = 120.0
+    boundary_collision: float = -1.0
+    obstacle_collision: float = -60.0
+    timeout: float = -25.0
+    distance_progress_scale: float = 2.0
+
+
+@dataclass(frozen=True)
+class Room5TrajectoryStep:
+    index: int
+    observation: Room5Observation
+    raw_state: ContinuousState
+    requested_action: VelocityAction
+    reward: float
+    next_observation: Room5Observation
+    next_raw_state: ContinuousState
+    collision: str | None
+    event: str | None
+    terminated: bool
+    truncated: bool
+    cumulative_reward: float
+    visible_obstacle_count: int
+    distance_to_exit_m: float
+
+
+@dataclass(frozen=True)
+class Room5RolloutResult:
+    seed: int
+    layout_seed: int
+    start_state: ContinuousState
+    final_state: ContinuousState
+    total_reward: float
+    steps: int
+    simulated_time_s: float
+    success: bool
+    terminated: bool
+    truncated: bool
+    boundary_collisions: int
+    obstacle_collisions: int
+    visible_obstacle_steps: int
+    trajectory: tuple[Room5TrajectoryStep, ...]
+
+
+@dataclass(frozen=True)
+class Room5RenderState:
+    x: float
+    y: float
+    vx: int
+    vy: int
+    step_count: int
+    simulated_time_s: float
+    terminated: bool
+    truncated: bool
+    exit_center: tuple[float, float]
+    exit_radius_m: float
+    observation_distance_m: float
+    obstacles: tuple[Obstacle, ...]
+    visible_obstacles: tuple[Obstacle, ...]
+    trajectory: tuple[tuple[float, float], ...]
+
+
+@dataclass(frozen=True)
+class DQNConfig:
+    episodes: int = 600
+    learning_rate: float = 0.001
+    gamma: float = 0.99
+    max_steps: int = 260
+    seed: int = 42
+    epsilon: EpsilonScheduleConfig = field(
+        default_factory=lambda: EpsilonScheduleConfig(
+            start=1.0, minimum=0.05, decay=0.995,
+        )
+    )
+    replay_capacity: int = 20_000
+    batch_size: int = 64
+    warmup_steps: int = 128
+    target_update_interval: int = 100
+    hidden_units: int = 64
+    snapshot_episodes: tuple[int, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.episodes <= 0:
+            raise ValueError("episodes must be positive")
+        if not 0.0 < self.learning_rate <= 1.0:
+            raise ValueError("learning_rate must be in (0, 1]")
+        if not 0.0 <= self.gamma < 1.0:
+            raise ValueError("gamma must be in [0, 1)")
+        if self.max_steps <= 0:
+            raise ValueError("max_steps must be positive")
+        if self.replay_capacity <= 0:
+            raise ValueError("replay_capacity must be positive")
+        if self.batch_size <= 0:
+            raise ValueError("batch_size must be positive")
+        if self.warmup_steps < 0:
+            raise ValueError("warmup_steps must be non-negative")
+        if self.target_update_interval <= 0:
+            raise ValueError("target_update_interval must be positive")
+        if self.hidden_units <= 0:
+            raise ValueError("hidden_units must be positive")
+
+
+@dataclass(frozen=True)
+class DQNEpisodeMetrics:
+    episode: int
+    total_reward: float
+    steps: int
+    success: bool
+    terminated: bool
+    truncated: bool
+    epsilon: float
+    obstacle_collisions: int
+    boundary_collisions: int
+    visible_obstacle_steps: int
+    mean_loss: float
+    mean_abs_td_error: float
+    max_abs_td_error: float
+
+
+DQNProgressCallback = Callable[[int, int, DQNEpisodeMetrics], None]
+
+
+@dataclass(frozen=True)
+class DQNSnapshot:
+    episode: int
+    epsilon: float
+    weights: Mapping[str, np.ndarray]
+    rollout: Room5RolloutResult | None
+
+
+@dataclass(frozen=True)
+class DQNTrainingResult:
+    config: DQNConfig
+    weights: Mapping[str, np.ndarray]
+    metrics: tuple[DQNEpisodeMetrics, ...]
+    snapshots: Mapping[int, DQNSnapshot]
+    final_epsilon: float
+    training_seed: int
+    input_dim: int
+    action_count: int
+
+
+@dataclass(frozen=True)
+class DQNEvaluationSummary:
+    n_episodes: int
+    successes: int
+    success_rate: float
+    mean_return: float
+    std_return: float
+    mean_steps: float
+    mean_successful_steps: float | None
+    truncated_count: int
+    obstacle_collision_count: int
+    boundary_collision_count: int
+    rollouts: tuple[Room5RolloutResult, ...]
+    category: str = ""

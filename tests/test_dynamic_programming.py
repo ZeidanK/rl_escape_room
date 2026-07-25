@@ -119,11 +119,9 @@ class TestBellmanCorrectness:
         # Slippery cell at (1,5): RIGHT has 80% intended, 10% left (UP), 10% right (DOWN)
         state = (1, 5)
         q = agent.calculate_action_value(state, Action.RIGHT, {s: 0.0 for s in env.states})
-        # With zero values, each outcome contributes -1 (step penalty).
-        # The transition distribution does NOT add wall penalty for wall collisions
-        # when on a slippery cell (next_cell is reset to the original cell type).
-        # Expected: 0.8*(-1) + 0.1*(-1) + 0.1*(-1) = -1.0
-        assert q == pytest.approx(-1.0, abs=1e-10)
+        # With zero values, the UP slip collides with a wall and matches step():
+        # 0.8*(-1) + 0.1*(-4) + 0.1*(-1) = -1.3
+        assert q == pytest.approx(-1.3, abs=1e-10)
 
     def test_terminal_no_bootstrap(self):
         env = corridor_env()
@@ -237,13 +235,13 @@ class TestPolicyExtraction:
                 assert policy[s] is not None
 
     def test_tie_breaking_order(self):
-        # On start of corridor at (1,1), with equal values, all actions have the
-        # same Q (-1). Tie-breaking picks the first in enum order: UP (0).
+        # On start of corridor at (1,1), wall actions are lower value (-4).
+        # RIGHT is the first optimal non-collision move.
         env = corridor_env()
         agent = ValueIterationAgent(env, ValueIterationConfig(gamma=0.95, tie_tolerance=1e-12))
         equal_values = {s: 0.0 for s in env.states}
         policy = agent.extract_policy(equal_values)
-        assert policy[(1, 1)] == Action.UP
+        assert policy[(1, 1)] == Action.RIGHT
 
     def test_terminal_policy_none(self):
         env = corridor_env()
@@ -295,6 +293,24 @@ class TestEnvironmentPurity:
         assert env._truncated == trunc_before, "_truncated changed"
         assert (env.grid == grid_before).all(), "grid changed"
         assert env.rng.bit_generator.state["state"] == rng_before, "rng state changed"
+
+    @pytest.mark.parametrize(
+        ("state", "action"),
+        [
+            ((1, 0), Action.LEFT),  # boundary collision
+            ((1, 0), Action.UP),    # wall collision
+        ],
+    )
+    def test_known_model_collision_rewards_match_step(self, state, action):
+        env = Room1DP(slip_config=SlipConfig(1.0, 0.0, 0.0), seed=42, max_steps=200)
+        model_outcome = env.get_transition_distribution(state, action)[0]
+
+        env.reset(seed=42)
+        env._agent_pos = state
+        step_result = env.step(action)
+
+        assert model_outcome.next_state == step_result.next_state == state
+        assert model_outcome.reward == step_result.reward
 
 
 # ============================================================
