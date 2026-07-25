@@ -36,7 +36,7 @@ def _replay_step_count(replay) -> int:
 
 def render_back_button(key: str, target_mode: str = "\U0001f3ae Escape Room Showcase", target_room: str | None = None):
     """Render a back button to exit the game view."""
-    if st.button("\u2190 Back to Room Selection", key=key, use_container_width=True):
+    if st.button("\u2190 Back to Room Selection", key=key, width="stretch"):
         st.session_state.game_room = target_room
         st.session_state.mode = target_mode
         st.rerun()

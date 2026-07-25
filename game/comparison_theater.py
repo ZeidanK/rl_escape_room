@@ -174,7 +174,7 @@ def _render_comparison_results(matched, tuned):
     # Tuned comparison if available
     if tuned:
         st.markdown("### Tuned Model Comparison")
-        st.dataframe(tuned, use_container_width=True)
+        st.dataframe(tuned, width="stretch")
 
 
 def _velocity_arrow(vx: int, vy: int) -> str:

@@ -100,7 +100,7 @@ def render_room1_game():
     )
 
     with st.sidebar:
-        if st.button("\u2190 Back to Room Selection", key="r1g_back", use_container_width=True):
+        if st.button("\u2190 Back to Room Selection", key="r1g_back", width="stretch"):
             st.session_state.game_room = None
             st.session_state.mode = "\U0001f3ae Escape Room Showcase"
             st.rerun()

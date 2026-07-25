@@ -172,12 +172,12 @@ def render_home_page():
 
     nav_col1, nav_col2 = st.columns([1, 1])
     with nav_col1:
-        if st.button("\U0001f3ae Enter the Escape Room", use_container_width=True, type="primary"):
+        if st.button("\U0001f3ae Enter the Escape Room", width="stretch", type="primary"):
             st.session_state.mode = "\U0001f3ae Escape Room Showcase"
             st.session_state.game_room = None
             st.rerun()
     with nav_col2:
-        if st.button("\U0001f52c View Learning Laboratory", use_container_width=True):
+        if st.button("\U0001f52c View Learning Laboratory", width="stretch"):
             st.session_state.mode = "Home"
             st.session_state[PENDING_MODE_SELECTOR_KEY] = "Home"
             st.rerun()
@@ -207,7 +207,7 @@ def render_home_page():
 
             btn_label = "Enter Room" if not locked else "Locked"
             disabled = locked
-            if st.button(btn_label, key=f"enter_{room.room_id}", disabled=disabled, use_container_width=True):
+            if st.button(btn_label, key=f"enter_{room.room_id}", disabled=disabled, width="stretch"):
                 st.session_state.mode = "\U0001f3ae Escape Room Showcase"
                 st.session_state.game_room = room.room_id
                 st.rerun()

@@ -652,8 +652,9 @@ if PENDING_MODE_SELECTOR_KEY in st.session_state:
     pending_selector = st.session_state[PENDING_MODE_SELECTOR_KEY]
     del st.session_state[PENDING_MODE_SELECTOR_KEY]
     if pending_selector in SELECTABLE_MODES:
-        st.session_state[MODE_SELECTOR_KEY] = pending_selector
         st.session_state.mode = _MODE_NAME_MAP.get(pending_selector, pending_selector)
+        if MODE_SELECTOR_KEY in st.session_state:
+            del st.session_state[MODE_SELECTOR_KEY]
 
 # Custom sidebar with categorized radio buttons
 render_html(
@@ -773,7 +774,7 @@ elif st.session_state.mode == ABOUT_LABEL:
         if i % 2 == 0:
             cols = st.columns(2)
         try:
-            cols[i % 2].image(path, caption=caption, use_container_width=True)
+            cols[i % 2].image(path, caption=caption, width="stretch")
         except Exception:
             cols[i % 2].markdown(f"*Screenshot not found: {path}*")
 
@@ -829,7 +830,7 @@ elif st.session_state.mode == "Home":
         ],
         "On/Off Policy": ["-", "On-policy", "Off-policy", "On-policy", "Off-policy"],
         "Model Known": ["Yes", "No", "No", "No", "No"],
-    }, use_container_width=True)
+    }, width="stretch")
 
     st.header("Instructions")
     st.markdown("""
@@ -860,7 +861,7 @@ elif st.session_state.mode == "Home":
         with open(csv_path, newline="") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
-        st.dataframe(rows, use_container_width=True)
+        st.dataframe(rows, width="stretch")
     else:
         st.info("Final summary not yet generated.")
 
@@ -1049,7 +1050,7 @@ elif st.session_state.mode == "Room 1 \u2014 DP":
             if len(vi_result.delta_history) > 1:
                 st.line_chart({"delta": np.array(vi_result.delta_history)})
         with t2:
-            st.dataframe(np.round(build_value_matrix(env, vi_result.values), 2), use_container_width=True)
+            st.dataframe(np.round(build_value_matrix(env, vi_result.values), 2), width="stretch")
         with t3:
             svg = render_policy_grid_canvas(env.grid, vi_result.policy, room_id="room1")
             render_html(f'<div class="grid-container" style="overflow:hidden;">{svg}</div>')
@@ -1333,7 +1334,7 @@ elif st.session_state.mode == "Room 2 \u2014 SARSA":
                     c3.metric("Epsilon at Snapshot", f"{snap.epsilon:.4f}")
                     traj = tuple(s.state for s in snap.rollout.steps)
                     overlay = render_sarsa_trajectory_overlay(env_sample, traj)
-                    st.dataframe(overlay, use_container_width=True)
+                    st.dataframe(overlay, width="stretch")
             else:
                 rollout = st.session_state.sarsa_rollout
                 if rollout is not None:
@@ -1344,7 +1345,7 @@ elif st.session_state.mode == "Room 2 \u2014 SARSA":
                     c3.metric("Collisions", rollout.collisions)
                     traj = tuple(s.state for s in rollout.steps)
                     overlay = render_sarsa_trajectory_overlay(env_sample, traj)
-                    st.dataframe(overlay, use_container_width=True)
+                    st.dataframe(overlay, width="stretch")
 
         # Tab 5: Final Evaluation
         with t5:
@@ -1634,7 +1635,7 @@ elif st.session_state.mode == "Room 3 \u2014 Q-Learning":
                     c3.metric("Epsilon", f"{snap.epsilon:.4f}")
                     traj = tuple(s.state for s in snap.rollout.steps)
                     overlay = render_q_learning_trajectory_overlay(env_sample, snap.rollout)
-                    st.dataframe(overlay, use_container_width=True)
+                    st.dataframe(overlay, width="stretch")
             else:
                 rollout = st.session_state.ql_rollout
                 if rollout is not None:
@@ -1644,7 +1645,7 @@ elif st.session_state.mode == "Room 3 \u2014 Q-Learning":
                     c2.metric("Reward", f"{rollout.total_reward:.1f}")
                     c3.metric("Collisions", rollout.collisions)
                     overlay = render_q_learning_trajectory_overlay(env_sample, rollout)
-                    st.dataframe(overlay, use_container_width=True)
+                    st.dataframe(overlay, width="stretch")
 
         with t6:
             ev = st.session_state.ql_eval_summary
@@ -2027,7 +2028,7 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
             env_disp = make_approx_env(start_mode=StartMode.FIXED)
             surface = build_approx_value_surface(env_disp, approx_result.weights, effective_tc_cfg,
                                                  fixed_vx=vs_vx, fixed_vy=vs_vy, grid_size=vs_size)
-            st.dataframe(np.round(surface, 2), use_container_width=True)
+            st.dataframe(np.round(surface, 2), width="stretch")
 
         # Tab 6: Evaluation
         with t6:
@@ -2066,7 +2067,7 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
             if st.button("Run Stage A Screening", key="approx_stage_a"):
                 with st.spinner("Running Stage A screening..."):
                     stage_a = run_screening_stage_a(n_episodes=200, eval_episodes=20, seed=train_seed)
-                    st.dataframe(stage_a, use_container_width=True)
+                    st.dataframe(stage_a, width="stretch")
                     import json, os
                     from datetime import datetime
                     path = os.path.join("storage", "experiments", "room4_approximate_sarsa",
@@ -2083,7 +2084,7 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
                     configs = [{"num_tilings": 8, "tiles_xy": 10, "alpha": 0.10,
                                 "progress_scale": 1.0, "epsilon_decay": 0.997}]
                     conf = run_approx_confirmation(configs, n_episodes=500, eval_episodes=30, seeds=(42, 43, 44))
-                    st.dataframe(conf, use_container_width=True)
+                    st.dataframe(conf, width="stretch")
 
 # ============================================================
 # MODE: Room 5 — Dynamic Obstacles
@@ -2424,7 +2425,7 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
             st.line_chart({"success": successes, "obstacle_collision": collisions})
             st.subheader("Epsilon and Loss")
             st.line_chart({"epsilon": epsilons, "mean_loss": losses})
-            st.dataframe(rows[-min(20, len(rows)):], use_container_width=True)
+            st.dataframe(rows[-min(20, len(rows)):], width="stretch")
         else:
             ev_fixed = st.session_state.dqn_eval_fixed
             ev_random = st.session_state.dqn_eval_random
@@ -2472,7 +2473,7 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
                     }
                     for r in summary.rollouts[:10]
                 ],
-                use_container_width=True,
+                width="stretch",
             )
         if not shown:
             pass
@@ -2501,7 +2502,7 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
                     }
                     for step in rollout.trajectory[:50]
                 ],
-                use_container_width=True,
+                width="stretch",
             )
 
     with t4:
@@ -2511,7 +2512,7 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
             q_vals = extract_dqn_action_values(dqn_network, obs)
             st.dataframe(
                 [{"action": action, "q_value": value} for action, value in q_vals.items()],
-                use_container_width=True,
+                width="stretch",
             )
 
 # ============================================================
@@ -2593,7 +2594,7 @@ elif st.session_state.mode == "Algorithm Comparison":
                 "SARSA Traps": s.total_traps,
                 "Q-Learn Traps": q.total_traps,
             })
-        st.dataframe(data, use_container_width=True)
+        st.dataframe(data, width="stretch")
 
         s_sr = [r.success_rate for r in sarsa_m]
         q_sr = [r.success_rate for r in q_m]
@@ -2631,6 +2632,6 @@ elif st.session_state.mode == "Algorithm Comparison":
                 "Mean Steps": f"{r.mean_steps_mean:.1f}",
                 "Traps": r.total_traps,
             })
-        st.dataframe(tuned_data, use_container_width=True)
+        st.dataframe(tuned_data, width="stretch")
     else:
         st.info("Press **Run Comparison** in the sidebar to start.")
