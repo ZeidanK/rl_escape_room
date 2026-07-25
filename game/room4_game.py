@@ -93,6 +93,33 @@ def _q_function_from_weights(weights: np.ndarray, tc_cfg: TileCodingConfig, moti
     return q_func
 
 
+def _preferred_room4_model_stem() -> str | None:
+    import glob
+    import os
+
+    model_dir = os.path.join("storage", "models", "room4_approximate_sarsa")
+    showcase = os.path.join(model_dir, "showcase_approx")
+    if os.path.exists(showcase + ".json") and os.path.exists(showcase + ".npz"):
+        return showcase
+
+    files = glob.glob(os.path.join(model_dir, "*.json"))
+    files = [f for f in files if os.path.exists(f.replace(".json", ".npz"))]
+    if not files:
+        return None
+    return max(files, key=os.path.getmtime).replace(".json", "")
+
+
+def _load_room4_game_model(filepath_stem: str) -> None:
+    weights, meta = load_approximate_model(filepath_stem)
+    st.session_state.r4g_weights = weights
+    st.session_state.r4g_meta = meta
+    st.session_state.r4g_rollout = None
+    st.session_state.r4g_loaded = True
+    st.session_state.r4g_model_stem = filepath_stem
+    st.session_state.r4g_load_error = None
+    st.session_state.r4g_autoload_disabled = False
+
+
 def _final_distance_to_exit_m(rollout, motion_cfg: Room4MotionConfig) -> float:
     x, y = rollout.final_state[:2]
     ex, ey = motion_cfg.exit_center
@@ -113,6 +140,26 @@ def render_room4_game():
 
     render_back_button("r4g_back")
 
+    # Initialize session state before controls so first entry can auto-load
+    # bundled showcase artifacts without waiting for a manual sidebar click.
+    for key in ["r4g_weights", "r4g_meta", "r4g_rollout", "r4g_loaded", "r4g_model_stem", "r4g_load_error"]:
+        if key not in st.session_state:
+            st.session_state[key] = None
+    if "r4g_autoload_disabled" not in st.session_state:
+        st.session_state.r4g_autoload_disabled = False
+
+    if (
+        st.session_state.r4g_weights is None
+        and st.session_state.r4g_meta is None
+        and not st.session_state.r4g_autoload_disabled
+    ):
+        latest = _preferred_room4_model_stem()
+        if latest is not None:
+            try:
+                _load_room4_game_model(latest)
+            except ValueError as e:
+                st.session_state.r4g_load_error = str(e)
+
     # Sidebar controls
     with st.sidebar:
         st.header("Room 4 Controls")
@@ -122,32 +169,20 @@ def render_room4_game():
         load_col, reset_col = st.columns(2)
         if load_col.button("Load Latest Model", key="r4g_load"):
             try:
-                import glob, os
-                model_dir = os.path.join("storage", "models", "room4_approximate_sarsa")
-                showcase = os.path.join(model_dir, "showcase_approx")
-                files = glob.glob(os.path.join(model_dir, "*.json"))
-                files = [f for f in files if os.path.exists(f.replace(".json", ".npz"))]
-                if os.path.exists(showcase + ".json") and os.path.exists(showcase + ".npz"):
-                    latest = showcase
-                elif files:
-                    latest = max(files, key=os.path.getmtime).replace(".json", "")
-                else:
-                    latest = None
+                latest = _preferred_room4_model_stem()
                 if latest:
-                    weights, meta = load_approximate_model(latest)
-                    st.session_state.r4g_weights = weights
-                    st.session_state.r4g_meta = meta
-                    st.session_state.r4g_loaded = True
+                    _load_room4_game_model(latest)
                     st.success(f"Loaded model from {latest}")
                 else:
-                    st.info("No saved models found. Train in Learning Laboratory first.")
+                    st.caption("No saved Room 4 models found.")
             except Exception as e:
                 st.error(f"Load failed: {e}")
             st.rerun()
         
         if reset_col.button("Reset", key="r4g_reset"):
-            for key in ["r4g_weights", "r4g_meta", "r4g_rollout", "r4g_loaded"]:
+            for key in ["r4g_weights", "r4g_meta", "r4g_rollout", "r4g_loaded", "r4g_model_stem", "r4g_load_error"]:
                 st.session_state[key] = None
+            st.session_state.r4g_autoload_disabled = True
             st.rerun()
 
         st.markdown("---")
@@ -159,17 +194,16 @@ def render_room4_game():
         grid_res = st.slider("Grid Resolution", 10, 50, 30, key="r4g_grid",
                              help="Resolution for trajectory discretization display.")
 
-    # Initialize session state
-    for key in ["r4g_weights", "r4g_meta", "r4g_rollout", "r4g_loaded"]:
-        if key not in st.session_state:
-            st.session_state[key] = None
-
     weights = st.session_state.r4g_weights
     meta = st.session_state.r4g_meta
     rollout = st.session_state.r4g_rollout
 
     if weights is None or meta is None:
-        st.info("Press **Load Latest Model** to view a trained policy.")
+        load_error = st.session_state.get("r4g_load_error")
+        if load_error:
+            st.caption(f"Room 4 model auto-load skipped: {load_error}")
+        else:
+            st.caption("No Room 4 model is loaded.")
         return
 
     # Build environment from saved metadata so the replay uses the same motion

@@ -59,24 +59,58 @@ def _prepare_storage(tmp_path, monkeypatch) -> None:
     (tmp_path / "storage" / "models").mkdir(parents=True)
 
 
-def test_room4_analysis_mode_renders_without_auto_training():
-    at = AppTest.from_file(str(APP_PATH), default_timeout=30)
+def test_room2_analysis_mode_auto_loads_showcase_outputs():
+    at = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    at.run()
+    room2_option = next(option for option in at.sidebar.radio[0].options if "Room 2" in option)
+    at.sidebar.radio[0].set_value(room2_option).run()
+
+    assert len(at.exception) == 0
+    assert at.session_state["sarsa_result"] is not None
+    assert at.session_state["sarsa_eval_summary"] is not None
+    assert len(at.info) == 0
+
+
+def test_room3_analysis_mode_auto_loads_showcase_outputs():
+    at = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    at.run()
+    room3_option = next(option for option in at.sidebar.radio[0].options if "Room 3" in option)
+    at.sidebar.radio[0].set_value(room3_option).run()
+
+    assert len(at.exception) == 0
+    assert at.session_state["ql_result"] is not None
+    assert at.session_state["ql_eval_summary"] is not None
+    assert len(at.info) == 0
+
+
+def test_room4_analysis_mode_auto_loads_showcase_outputs():
+    at = AppTest.from_file(str(APP_PATH), default_timeout=90)
     at.run()
     room4_option = next(option for option in at.sidebar.radio[0].options if "Room 4" in option)
     at.sidebar.radio[0].set_value(room4_option).run()
 
     assert len(at.exception) == 0
-    assert at.session_state["approx_result"] is None
+    assert at.session_state["approx_result"] is not None
+    assert at.session_state["approx_eval_fixed"] is not None
+    assert at.session_state["approx_eval_gen"] is not None
+    assert at.session_state["approx_rollout"] is not None
+    assert len(at.info) == 0
 
 
-def test_room5_analysis_mode_renders_without_auto_training():
-    at = AppTest.from_file(str(APP_PATH), default_timeout=30)
+def test_room5_analysis_mode_auto_loads_showcase_outputs():
+    at = AppTest.from_file(str(APP_PATH), default_timeout=60)
     at.run()
     room5_option = next(option for option in at.sidebar.radio[0].options if "Room 5" in option)
     at.sidebar.radio[0].set_value(room5_option).run()
 
     assert len(at.exception) == 0
-    assert at.session_state["dqn_result"] is None
+    assert at.session_state["dqn_result"] is not None
+    assert at.session_state["dqn_network"] is not None
+    assert at.session_state["dqn_eval_fixed"] is not None
+    assert at.session_state["dqn_eval_random"] is not None
+    assert at.session_state["dqn_eval_unseen"] is not None
+    assert at.session_state["dqn_rollout"] is not None
+    assert len(at.info) == 0
 
 
 def test_room5_tiny_training_evaluation_and_replay():

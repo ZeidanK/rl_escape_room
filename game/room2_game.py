@@ -55,6 +55,33 @@ def _max_steps_from_meta(meta: dict, default: int = 200) -> int:
     return int(_training_config(meta).get("max_steps", default))
 
 
+def _preferred_room2_model_stem() -> str | None:
+    import glob
+    import os
+
+    model_dir = os.path.join("storage", "models", "room2_sarsa")
+    showcase = os.path.join(model_dir, "showcase_sarsa")
+    if os.path.exists(showcase + ".json") and os.path.exists(showcase + ".npz"):
+        return showcase
+
+    files = glob.glob(os.path.join(model_dir, "*.json"))
+    files = [f for f in files if os.path.exists(f.replace(".json", ".npz"))]
+    if not files:
+        return None
+    return max(files, key=os.path.getmtime).replace(".json", "")
+
+
+def _load_room2_game_model(filepath_stem: str) -> None:
+    q_vals, meta = load_model(filepath_stem, map_grid=ROOM2_GRID)
+    st.session_state.r2g_q_vals = q_vals
+    st.session_state.r2g_meta = meta
+    st.session_state.r2g_replay = None
+    st.session_state.r2g_loaded = True
+    st.session_state.r2g_model_stem = filepath_stem
+    st.session_state.r2g_load_error = None
+    st.session_state.r2g_autoload_disabled = False
+
+
 def render_room2_game():
     # Showcase view for a trained SARSA model.  It loads Q-values from storage,
     # builds a greedy rollout, and lets the user replay the learned policy.
@@ -69,6 +96,24 @@ def render_room2_game():
 
     render_back_button("r2g_back")
 
+    for key in ["r2g_q_vals", "r2g_meta", "r2g_replay", "r2g_loaded", "r2g_model_stem", "r2g_load_error"]:
+        if key not in st.session_state:
+            st.session_state[key] = None
+    if "r2g_autoload_disabled" not in st.session_state:
+        st.session_state.r2g_autoload_disabled = False
+
+    if (
+        st.session_state.r2g_q_vals is None
+        and st.session_state.r2g_meta is None
+        and not st.session_state.r2g_autoload_disabled
+    ):
+        latest = _preferred_room2_model_stem()
+        if latest is not None:
+            try:
+                _load_room2_game_model(latest)
+            except ValueError as e:
+                st.session_state.r2g_load_error = str(e)
+
     # Sidebar controls
     with st.sidebar:
         st.header("Room 2 Controls")
@@ -78,32 +123,20 @@ def render_room2_game():
         load_col, reset_col = st.columns(2)
         if load_col.button("Load Latest Model", key="r2g_load"):
             try:
-                import glob, os
-                model_dir = os.path.join("storage", "models", "room2_sarsa")
-                showcase = os.path.join(model_dir, "showcase_sarsa")
-                files = glob.glob(os.path.join(model_dir, "*.json"))
-                files = [f for f in files if os.path.exists(f.replace(".json", ".npz"))]
-                if os.path.exists(showcase + ".json") and os.path.exists(showcase + ".npz"):
-                    latest = showcase
-                elif files:
-                    latest = max(files, key=os.path.getmtime).replace(".json", "")
-                else:
-                    latest = None
+                latest = _preferred_room2_model_stem()
                 if latest:
-                    q_vals, meta = load_model(latest, map_grid=ROOM2_GRID)
-                    st.session_state.r2g_q_vals = q_vals
-                    st.session_state.r2g_meta = meta
-                    st.session_state.r2g_loaded = True
+                    _load_room2_game_model(latest)
                     st.success(f"Loaded model from {latest}")
                 else:
-                    st.info("No saved models found. Train in Learning Laboratory first.")
+                    st.caption("No saved Room 2 models found.")
             except Exception as e:
                 st.error(f"Load failed: {e}")
             st.rerun()
         
         if reset_col.button("Reset", key="r2g_reset"):
-            for key in ["r2g_q_vals", "r2g_meta", "r2g_replay", "r2g_loaded"]:
+            for key in ["r2g_q_vals", "r2g_meta", "r2g_replay", "r2g_loaded", "r2g_model_stem", "r2g_load_error"]:
                 st.session_state[key] = None
+            st.session_state.r2g_autoload_disabled = True
             st.rerun()
 
         st.markdown("---")
@@ -114,17 +147,16 @@ def render_room2_game():
         show_values = st.checkbox("State Values", value=False, key="r2g_val")
         show_labels = st.checkbox("Cell Labels", value=False, key="r2g_lbl")
 
-    # Initialize session state
-    for key in ["r2g_q_vals", "r2g_meta", "r2g_replay", "r2g_loaded"]:
-        if key not in st.session_state:
-            st.session_state[key] = None
-
     q_vals = st.session_state.r2g_q_vals
     meta = st.session_state.r2g_meta
     replay = st.session_state.r2g_replay
 
     if q_vals is None or meta is None:
-        st.info("Press **Load Latest Model** to view a trained policy.")
+        load_error = st.session_state.get("r2g_load_error")
+        if load_error:
+            st.caption(f"Room 2 model auto-load skipped: {load_error}")
+        else:
+            st.caption("No Room 2 model is loaded.")
         return
 
     # Extract the greedy policy from loaded Q-values for arrows on the grid.
