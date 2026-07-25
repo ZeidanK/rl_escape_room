@@ -7,6 +7,7 @@ from core.types import Action, CellType, Position
 from environments.grid_environment import GridEnvironment
 
 
+# Helpers that translate DP outputs into table/grid formats for Streamlit.
 ARROW_SYMBOLS: dict[Action, str] = {
     Action.UP: "↑",
     Action.RIGHT: "→",
@@ -19,6 +20,8 @@ def build_value_matrix(
     env: GridEnvironment,
     values: Mapping[Position, float],
 ) -> np.ndarray:
+    # Convert sparse value mapping into a 10x10 matrix while leaving walls as
+    # NaN so they render differently in tables/heatmaps.
     rows, cols = env.grid_shape
     matrix = np.full((rows, cols), np.nan)
     for r in range(rows):
@@ -38,6 +41,7 @@ def build_policy_symbols(
     env: GridEnvironment,
     policy: Mapping[Position, Action | None],
 ) -> list[list[str]]:
+    # Human-readable policy grid: arrows for actions, S/E/# for special cells.
     rows, cols = env.grid_shape
     symbols: list[list[str]] = []
     for r in range(rows):
@@ -66,6 +70,7 @@ def render_trajectory_overlay(
     env: GridEnvironment,
     trajectory: tuple[Position, ...],
 ) -> np.ndarray:
+    # Overlay one rollout path on top of the static map.
     rows, cols = env.grid_shape
     overlay = np.full((rows, cols), "", dtype=object)
     for r in range(rows):

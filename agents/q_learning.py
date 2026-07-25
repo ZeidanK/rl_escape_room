@@ -27,6 +27,9 @@ from core.types import (
 )
 from environments.grid_environment import GridEnvironment
 
+# Q-Learning is off-policy: it may explore during training, but each update
+# assumes the next state will follow the greedy best action.
+
 # Shared rollout — works with any state type the factory environment returns
 def rollout_q_learning_policy(
     environment_factory: Callable[[], GridEnvironment],
@@ -36,6 +39,8 @@ def rollout_q_learning_policy(
     epsilon: float = 0.0,
     max_steps: int | None = None,
 ) -> RolloutResult:
+    # Evaluation/replay can use Room 3's augmented state or a simpler grid
+    # state, so the Q-table key type is intentionally generic here.
     env = environment_factory()
     env.reset(seed=seed)
     limit = max_steps if max_steps is not None else env.max_steps
@@ -116,6 +121,8 @@ def evaluate_q_learning_policy(
     retain_rollouts: bool = True,
     max_retained_rollouts: int | None = None,
 ) -> QLearningEvaluationSummary:
+    # The evaluation summary includes Room 3-specific key metrics because
+    # reaching the locked exit without the key is not a success.
     if seeds is None:
         seeds = range(n_episodes)
     rollouts: list[RolloutResult] = []
@@ -179,6 +186,7 @@ def evaluate_q_learning_policy(
 
 
 class QLearningAgent:
+    # Owns the Room 3 Q-table and off-policy training loop.
     def __init__(
         self,
         environment_factory: Room3Factory,
@@ -232,6 +240,9 @@ class QLearningAgent:
         q_table: dict[Room3State, np.ndarray],
     ) -> float:
         """Apply one Q-Learning (off-policy) update and return TD error."""
+        # Q-Learning target: r + gamma * max_a Q(s', a).  This differs from
+        # SARSA because it ignores which exploratory action will actually be
+        # taken next.
         config = self.config
         q_sa = q_table[state][int(action)]
         if terminated or truncated:
@@ -249,7 +260,8 @@ class QLearningAgent:
     ) -> QLearningTrainingResult:
         config = self.config
 
-        # RNG streams
+        # Separate RNG streams keep environment sampling, policy exploration,
+        # and snapshot rollouts reproducible but independent.
         seed_seq = np.random.SeedSequence(config.seed)
         env_ss, policy_ss, snapshot_ss, _ = seed_seq.spawn(4)
         policy_rng = np.random.Generator(np.random.PCG64(policy_ss))
@@ -370,6 +382,8 @@ def _build_metadata(
     slip_config,
     map_grid,
 ) -> dict:
+    # Metadata stores the state schema because Room 3 Q-values are keyed by
+    # (row, column, has_key), not only by grid position.
     recent_metrics = result.metrics[-100:]
     return {
         "schema_version": _MODEL_VERSION,
@@ -438,6 +452,8 @@ def save_q_model(
     slip_config=None,
     map_grid=None,
 ) -> str:
+    # JSON stores schema/config; NPZ stores aligned state rows and action-value
+    # rows so loading stays fast and deterministic.
     import json
     import os
 

@@ -1,3 +1,5 @@
+# Convenience exports so other modules can import common agents from
+# agents rather than from each individual algorithm file.
 from agents.dynamic_programming import (
     ValueIterationAgent,
     evaluate_policy,

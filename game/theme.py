@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True)
 class RoomTheme:
+    # Central style palette for one room.  Canvas rendering, HUDs, and home
+    # cards read from this instead of hardcoding colors in each view.
     room_id: str
     name: str
     primary: str
@@ -28,6 +30,8 @@ class RoomTheme:
 
 
 ROOM_THEMES: dict[str, RoomTheme] = {
+    # One theme per room keeps the showcase visually distinct while preserving
+    # a shared layout/component system.
     "room1": RoomTheme(
         room_id="room1",
         name="Frozen Maze",
@@ -256,6 +260,8 @@ GLOBAL_CSS = """
 
 
 def render_global_styles() -> str:
+    # Streamlit accepts CSS through markdown, so this returns one combined
+    # style string that app.py injects once per page.
     room_styles = "\n".join(
         f"<style>\n{t.css_custom}\n</style>" for t in ROOM_THEMES.values()
     )
@@ -263,6 +269,7 @@ def render_global_styles() -> str:
 
 
 def get_theme(room_id: str) -> RoomTheme:
+    # Default to room1 so an unknown room id still renders instead of failing.
     return ROOM_THEMES.get(room_id, ROOM_THEMES["room1"])
 
 

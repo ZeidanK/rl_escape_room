@@ -2,6 +2,8 @@ import streamlit as st
 
 import numpy as np
 
+# Main Streamlit entry point.  This file wires together the environments,
+# agents, visualizations, saved models, and high-level navigation modes.
 from core.types import (
     Action,
     ApproximateSarsaConfig,
@@ -99,6 +101,7 @@ from training.approximate_sarsa_experiments import (
 )
 
 ROOM_CLASSES = {
+    # Manual-play mode lets the user choose one of the grid rooms directly.
     "Room 1 — Ice Maze (DP)": Room1DP,
     "Room 2 — Laser Corridor (SARSA)": Room2SARSA,
     "Room 3 — Key Vault (Q-Learning)": Room3QLearning,
@@ -113,6 +116,8 @@ ACTION_BUTTONS = {
 
 
 def _epsilon_config_from_metadata(raw: dict, fallback: EpsilonScheduleConfig) -> EpsilonScheduleConfig:
+    # Saved models may have older or partial metadata, so the fallback keeps
+    # loading robust while preserving the trained schedule when available.
     try:
         kind = EpsilonDecayKind(raw.get("kind", fallback.kind.value))
     except ValueError:
@@ -131,6 +136,8 @@ def _loaded_sarsa_result(
     metadata: dict,
     fallback_config: SarsaConfig,
 ) -> SarsaTrainingResult:
+    # Reconstruct just enough of a training result for the UI from saved
+    # Q-values.  Loaded showcase models do not include every training metric.
     cfg = metadata.get("training_config", {})
     epsilon = _epsilon_config_from_metadata(cfg.get("epsilon", {}), fallback_config.epsilon)
     config = SarsaConfig(
@@ -157,6 +164,7 @@ def _loaded_q_learning_result(
     metadata: dict,
     fallback_config: QLearningConfig,
 ) -> QLearningTrainingResult:
+    # Same idea as SARSA loading, but the Q-table keys include has_key.
     cfg = metadata.get("training_config", {})
     epsilon = _epsilon_config_from_metadata(cfg.get("epsilon", {}), fallback_config.epsilon)
     config = QLearningConfig(
@@ -183,6 +191,8 @@ def _loaded_approximate_result(
     fallback_config: ApproximateSarsaConfig,
     tile_coding_config: TileCodingConfig,
 ) -> ApproximateSarsaTrainingResult:
+    # Rebuild the result wrapper around loaded linear weights so plotting and
+    # evaluation code can use the same interface as freshly trained models.
     cfg = metadata.get("training_config", {})
     epsilon = _epsilon_config_from_metadata(cfg.get("epsilon", {}), fallback_config.epsilon)
     try:
@@ -214,6 +224,8 @@ def _loaded_dqn_result(
     metadata: dict,
     fallback_config: DQNConfig,
 ) -> DQNTrainingResult:
+    # Wrap a loaded NumPy network in the training-result shape expected by the
+    # Room 5 UI.
     cfg = metadata.get("training_config", {})
     epsilon = _epsilon_config_from_metadata(cfg.get("epsilon", {}), fallback_config.epsilon)
     config = DQNConfig(
@@ -242,6 +254,8 @@ def _loaded_dqn_result(
 
 
 def _preferred_model_stem(model_dir: str, showcase_stem: str) -> str | None:
+    # Prefer committed showcase artifacts, then fall back to the newest local
+    # model that has both metadata (.json) and weights (.npz).
     import glob
     import os
 
@@ -275,6 +289,8 @@ def _room5_training_rows(metrics) -> list[dict]:
 
 
 def _render_room5_svg(env: Room5Obstacles, rollout=None) -> str:
+    # Room 5 uses a custom SVG because its continuous obstacle layout does not
+    # fit the grid renderer used by Rooms 1-3.
     state = env.render()
     margin = 24.0
     canvas = 520.0
@@ -342,6 +358,9 @@ st.set_page_config(page_title="RL Escape Room", layout="wide", page_icon="🧊")
 st.title("RL Escape Room")
 
 # --- Session state ---
+# Streamlit reruns the script after each interaction.  Session state preserves
+# trained models, selected rooms, replays, and cached evaluation summaries
+# between those reruns.
 for key in [
     "env", "last_result", "room_key",
     "vi_result", "vi_solve_key", "vi_rollout_result", "vi_rollout_key",
@@ -369,6 +388,8 @@ if "mode" not in st.session_state:
 # ============================================================
 # Game mode imports
 # ============================================================
+# Imported after page setup because these modules render Streamlit content and
+# depend on the app-wide theme/session state.
 from game.home_page import render_home_page, ROOM_DEFS, ROOM_NARRATIVES
 from game.room1_game import render_room1_game
 from game.room2_game import render_room2_game
@@ -466,6 +487,8 @@ sidebar_selection = st.sidebar.radio(
 sidebar_effective = _MODE_NAME_MAP.get(sidebar_selection, sidebar_selection)
 
 # Sidebar always overrides; clear deep-linked game room on nav change
+# If a user navigates away from a room, discard the deep-linked room selection
+# so returning to the showcase starts at the room-selection screen.
 if sidebar_effective != mode:
     st.session_state.game_room = None
     st.session_state.mode = sidebar_effective
@@ -480,6 +503,8 @@ AchievementTracker.from_session_state()
 # MODE: Escape Room Showcase
 # ============================================================
 if st.session_state.mode == GAME_LABEL:
+    # Campaign-style showcase: route to a room-specific game view, or the home
+    # selection screen when no room is active.
     st.markdown(render_global_styles(), unsafe_allow_html=True)
     game_room = st.session_state.get("game_room")
     if game_room == "room1":

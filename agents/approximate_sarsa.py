@@ -31,6 +31,8 @@ from features.tile_coding import TileCoder, TileCodingConfig
 from agents.tabular_utils import epsilon_for_episode, default_snapshot_episodes
 
 
+# Room 4 cannot store a table for every possible continuous state, so this
+# module uses tile coding plus a linear action-value function.
 def _select_continuous_action(
     action_values: np.ndarray,
     epsilon: float,
@@ -45,6 +47,8 @@ def _select_continuous_action(
 
 
 class LinearTileQFunction:
+    # Linear Q(s,a): sum the weights for the active tile-coded features of
+    # state s in the row for action a.
     def __init__(
         self,
         tile_coder: TileCoder,
@@ -80,6 +84,8 @@ class LinearTileQFunction:
         self._weights[int(action), feats] += scaled_td_error
 
     def update_at(self, feats: tuple[int, ...], action: int, scaled_td_error: float) -> None:
+        # Semi-gradient update: only active feature weights for the selected
+        # action are adjusted.
         self._weights[action, feats] += scaled_td_error
 
 
@@ -92,6 +98,8 @@ def rollout_approximate_policy(
     max_steps: int | None = None,
     start_state: ContinuousState | None = None,
 ) -> ContinuousRolloutResult:
+    # Runs a trained linear Q-function in the continuous environment and keeps
+    # the full trajectory for visualization.
     env = environment_factory()
     start_state = env.reset(seed=seed, start_state=start_state)
     limit = max_steps if max_steps is not None else env._max_steps
@@ -161,6 +169,8 @@ def _greedy_continuous_action(action_values: np.ndarray) -> VelocityAction:
 
 
 class ApproximateSarsaAgent:
+    # Training loop for semi-gradient SARSA.  It follows the same on-policy
+    # idea as tabular SARSA, but updates linear weights instead of a Q-table.
     def __init__(
         self,
         environment_factory: Room4Factory,
@@ -172,6 +182,8 @@ class ApproximateSarsaAgent:
         self.actions_list = list(VelocityAction)
 
     def _make_tile_coder(self) -> TileCoder:
+        # Build the tile coder from the environment size so feature indexes are
+        # aligned with the actual 10x10m room.
         env = self.env_factory()
         tc = TileCoder(
             self.config.tile_coding,
@@ -194,6 +206,9 @@ class ApproximateSarsaAgent:
         progress_every: int = 1,
     ) -> ApproximateSarsaTrainingResult:
         config = self.config
+        # Separate RNG streams make training reproducible while preventing
+        # exploration, environment starts, and snapshots from influencing each
+        # other through shared random draws.
         seed_seq = np.random.SeedSequence(config.seed)
         env_ss, policy_ss, snapshot_ss, bookkeeping_ss = seed_seq.spawn(4)
         policy_rng = np.random.Generator(np.random.PCG64(policy_ss))
@@ -236,6 +251,7 @@ class ApproximateSarsaAgent:
                 nxt_feats = q_func.features(nxt)
 
                 if result.terminated or result.truncated:
+                    # No bootstrap term after terminal/truncated transitions.
                     td_error = result.reward - q_func.value_at(state_feats, action_int)
                     q_func.update_at(state_feats, action_int, norm * td_error)
                     ep_td_errors.append(td_error)
@@ -244,6 +260,8 @@ class ApproximateSarsaAgent:
                 av_next = q_func.action_values_at(nxt_feats)
                 next_action = _select_continuous_action(av_next, epsilon, policy_rng, self.actions_list)
                 next_action_int = int(next_action)
+                # On-policy semi-gradient SARSA target:
+                # r + gamma * Q(next_state, next_action).
                 target = result.reward + config.gamma * q_func.value_at(nxt_feats, next_action_int)
                 td_error = target - q_func.value_at(state_feats, action_int)
                 q_func.update_at(state_feats, action_int, norm * td_error)
@@ -414,6 +432,8 @@ def evaluate_approximate_policy_all_categories(
     n_episodes: int = 25,
     max_steps: int | None = None,
 ) -> Mapping[str, ApproximateEvaluationSummary]:
+    # Evaluates the same learned weights across fixed and random start
+    # categories to show whether tile coding generalized beyond training.
     env_sample = environment_factory()
     tile_coder = TileCoder(tile_coding_config, room_width=env_sample.motion.room_width_m, room_height=env_sample.motion.room_height_m)
     q_func = LinearTileQFunction(tile_coder, n_actions=9)
@@ -593,6 +613,8 @@ def save_approximate_model(
     motion_config=None,
     reward_config=None,
 ) -> str:
+    # Save weights atomically and include a checksum, because these artifacts
+    # are loaded by the Streamlit showcase without retraining.
     if tile_coding_config is None:
         tile_coding_config = result.config.tile_coding
     if motion_config is None:

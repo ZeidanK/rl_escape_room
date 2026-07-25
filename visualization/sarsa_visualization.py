@@ -7,6 +7,8 @@ from core.types import Action, CellType, Position, TrainingEpisodeMetrics
 from environments.grid_environment import GridEnvironment
 
 
+# Visualization helpers for Room 2.  They do not train the agent; they only
+# convert Q-values and metrics into UI-friendly structures.
 ARROW_SYMBOLS: dict[Action, str] = {
     Action.UP: "↑",
     Action.RIGHT: "→",
@@ -31,6 +33,7 @@ def build_greedy_policy_symbols(
     q_values: Mapping[Position, tuple[float, ...]],
     greedy_policy: Mapping[Position, Action | None],
 ) -> list[list[str]]:
+    # Build a compact text policy grid with cell markers preserved.
     rows, cols = env.grid_shape
     symbols: list[list[str]] = []
     for r in range(rows):
@@ -69,6 +72,8 @@ def build_greedy_policy_symbols(
 def build_q_value_tables(
     q_values: Mapping[Position, tuple[float, ...]],
 ) -> dict[Position, dict[str, float]]:
+    # Streamlit tables prefer dictionaries with action names rather than raw
+    # action-index tuples.
     return {
         state: {
             "UP": vals[0],
@@ -84,6 +89,7 @@ def build_q_value_tables(
 def build_training_dataframe(
     metrics: tuple[TrainingEpisodeMetrics, ...],
 ) -> dict:
+    # Return column-oriented data that Streamlit can chart directly.
     keys = [
         "episode", "total_reward", "steps", "success", "epsilon",
         "collision_count", "slipped_action_count", "trap_count",
@@ -108,6 +114,7 @@ def render_sarsa_trajectory_overlay(
     env: GridEnvironment,
     trajectory: tuple[Position, ...],
 ) -> np.ndarray:
+    # Text overlay used in the training-stage replay tab.
     rows, cols = env.grid_shape
     overlay = np.full((rows, cols), "", dtype=object)
     cell_chars = {int(k): v for k, v in CELL_SYMBOLS.items()}

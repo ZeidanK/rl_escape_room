@@ -29,6 +29,8 @@ def render_hud(
     inventory: str | None = None,
     custom_items: list[tuple[str, str]] | None = None,
 ) -> str:
+    # Collect only the fields available for the current room/step.  This keeps
+    # one HUD component usable for grid rooms, continuous rooms, and DQN.
     badges_html = ""
     if status_badges:
         badges_html = '<div class="hud-row" style="margin-top:6px;">' + "".join(status_badges) + "</div>"

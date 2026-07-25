@@ -5,6 +5,8 @@ from typing import Any
 from core.types import Action, Position
 
 
+# Dataclasses for the game-style UI layer.  These are separate from core/types
+# because they describe presentation state, not environment/training results.
 class AchievementId(Enum):
     FIRST_ESCAPE = auto()
     ICE_MASTER = auto()
@@ -25,6 +27,8 @@ class Achievement:
 
 @dataclass(frozen=True)
 class ReplayStep:
+    # UI-friendly version of a rollout step.  It includes cumulative reward and
+    # optional explanatory fields used by the side panels.
     step_index: int
     state: Any
     action: Action | None
@@ -44,6 +48,7 @@ class ReplayStep:
 
 @dataclass(frozen=True)
 class ReplayState:
+    # Stores playback controls for animated replays across Streamlit reruns.
     room_id: str
     steps: tuple[ReplayStep, ...]
     current_index: int
@@ -67,6 +72,7 @@ class RoomUnlockStatus:
 
 @dataclass(frozen=True)
 class GameRoomState:
+    # Metadata shown on the campaign home cards.
     room_id: str
     room_name: str
     room_index: int

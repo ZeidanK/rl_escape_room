@@ -16,6 +16,8 @@ def render_explain_panel(
     algorithm: str = "Value Iteration",
     explanation: str | None = None,
 ) -> str:
+    # Builds a compact HTML panel.  Escaping user-visible values keeps the
+    # generated markup safe even when labels come from metadata.
     html = '<div class="explain-panel">'
     html += '<h4>Why this action?</h4>'
 
@@ -39,6 +41,7 @@ def render_explain_panel(
 
 
 def get_algorithm_explanation(algorithm_key: str) -> str:
+    # Short plain-English explanations shown beside Q-values in the game view.
     explanations = {
         "vi": "The action maximizes expected reward using the known transition model (Dynamic Programming). "
                "Value Iteration computes the optimal policy by repeatedly applying the Bellman optimality operator.",

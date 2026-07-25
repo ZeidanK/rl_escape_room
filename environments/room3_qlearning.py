@@ -6,6 +6,8 @@ from core.types import CellType, Position, RewardConfig, SlipConfig
 from environments.grid_environment import parse_grid_map, GridEnvironment
 
 
+# Room 3 adds memory to the tabular state: the same cell can mean something
+# different depending on whether the key has already been collected.
 ROOM3_MAP = [
     "##########",
     "#S..#...K#",
@@ -23,6 +25,8 @@ ROOM3_GRID = parse_grid_map(ROOM3_MAP)
 
 
 class Room3QLearning(GridEnvironment):
+    # Q-Learning sees states as (row, column, has_key), so this subclass
+    # overrides state encoding and the special key/locked-exit cell behaviour.
     def __init__(
         self,
         max_steps: int = 300,
@@ -44,6 +48,8 @@ class Room3QLearning(GridEnvironment):
         return {CellType.EXIT, CellType.LOCKED_EXIT}
 
     def _encode_state(self) -> tuple[int, int, bool]:
+        # The boolean key flag doubles the state space, allowing the policy to
+        # choose different actions before and after the key is collected.
         r, c = self._agent_pos
         return (r, c, self._key_collected)
 
@@ -93,6 +99,7 @@ class Room3QLearning(GridEnvironment):
         return super().reset(seed=seed)
 
     def _on_enter_cell(self, position: Position, cell: CellType) -> tuple[float, bool, dict]:
+        # The locked exit becomes terminal only after the key flag is true.
         if cell == CellType.KEY:
             if not self._key_collected:
                 self._key_collected = True

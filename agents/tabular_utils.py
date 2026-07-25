@@ -7,6 +7,8 @@ import numpy as np
 from core.types import Action, EpsilonDecayKind, EpsilonScheduleConfig, Position
 
 
+# Shared helpers for tabular agents.  SARSA and Q-Learning both use epsilon
+# schedules, epsilon-greedy action choice, and immutable Q-table snapshots.
 def epsilon_for_episode(
     episode_index: int,
     config: EpsilonScheduleConfig,
@@ -28,6 +30,8 @@ def select_epsilon_greedy_action(
     rng: np.random.Generator,
     q_table: dict[Any, np.ndarray],
 ) -> Action:
+    # Explore with probability epsilon; otherwise choose randomly among the
+    # best tied actions so training is not biased toward action index 0.
     q_values = q_table[state]
     if rng.random() < epsilon:
         return Action(rng.integers(0, len(q_values)))
@@ -54,6 +58,8 @@ def extract_deterministic_greedy_policy(
 def freeze_q_table(
     q_table: Mapping[Any, np.ndarray],
 ) -> Mapping[Any, tuple[float, ...]]:
+    # Convert mutable NumPy arrays into tuples so returned results cannot be
+    # accidentally mutated by UI or evaluation code.
     return MappingProxyType({
         s: tuple(float(v) for v in arr)
         for s, arr in q_table.items()
@@ -95,6 +101,8 @@ def default_snapshot_episodes(total: int) -> tuple[int, ...]:
 
 
 def map_signature(grid: np.ndarray) -> str:
+    # Saved models store this short hash to detect when a Q-table was trained
+    # on a different room layout.
     import hashlib
     raw = grid.tobytes()
     return hashlib.sha256(raw).hexdigest()[:16]

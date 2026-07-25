@@ -39,6 +39,8 @@ def _git_commit() -> str:
 
 
 def _candidate_configs() -> list[dict[str, Any]]:
+    # Small candidate set keeps optional DQN experiments practical on a student
+    # laptop while still comparing meaningful design choices.
     return [
         {
             "name": "baseline_progress",
@@ -68,6 +70,8 @@ def _candidate_configs() -> list[dict[str, Any]]:
 
 
 def _make_components(params: dict[str, Any], *, episodes: int, seed: int):
+    # Build all config objects from one parameter dictionary so screening and
+    # confirmation use exactly the same environment/model recipe.
     motion = Room4MotionConfig(time_step_s=0.1, exit_radius_m=0.6)
     obstacle = Room5ObstacleConfig(
         min_obstacles=1,
@@ -207,6 +211,8 @@ def _rollout_dict(rollout) -> dict[str, Any]:
 
 
 def _rank_key(entry: dict[str, Any]) -> tuple[float, float, float, float]:
+    # Prefer policies that succeed, then return more reward, hit fewer
+    # obstacles, and finish in fewer steps.
     ev = entry["random_layout_evaluation"]
     return (
         float(ev["success_rate"]),
@@ -222,6 +228,8 @@ def run_room5_experiments(
     confirmation_seeds: tuple[int, ...] = (0, 1, 2, 3, 4),
     save_showcase_stem: Path | None = None,
 ) -> dict[str, Any]:
+    # Two-stage optional pipeline: screen a few DQN settings, then confirm the
+    # best one across multiple seeds and save a showcase model if requested.
     started = time.perf_counter()
     screening_entries: list[dict[str, Any]] = []
 

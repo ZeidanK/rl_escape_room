@@ -16,6 +16,8 @@ from environments.base_environment import BaseEnvironment
 
 
 class Room4Continuous(BaseEnvironment):
+    # Continuous 10x10m environment for Approximate SARSA.  State is
+    # (x, y, vx, vy), and actions directly choose the next velocity.
     def __init__(
         self,
         motion_config: Room4MotionConfig | None = None,
@@ -71,6 +73,8 @@ class Room4Continuous(BaseEnvironment):
         return self.motion.exit_radius_m
 
     def _sample_start(self, rng: np.random.Generator) -> tuple[float, float]:
+        # Different start modes are used to test whether tile coding
+        # generalizes beyond a single fixed start point.
         if self._start_mode == StartMode.FIXED:
             return self.motion.start_position
         elif self._start_mode == StartMode.RANDOM_LOWER_LEFT:
@@ -89,6 +93,8 @@ class Room4Continuous(BaseEnvironment):
             return (0.5, 0.5)
 
     def reset(self, seed: int | None = None, *, start_state: ContinuousState | None = None) -> ContinuousState:
+        # Explicit start_state is used during evaluation on fixed unseen starts;
+        # otherwise the selected start mode samples a valid position.
         if seed is not None:
             self.rng = np.random.default_rng(seed)
         if start_state is not None:
@@ -116,6 +122,8 @@ class Room4Continuous(BaseEnvironment):
         return self.state
 
     def step(self, action: int) -> StepResult:
+        # Euler-style motion: velocity is selected, position advances by
+        # velocity * time_step, then rewards are assigned from the new position.
         if self.is_done:
             raise RuntimeError("Episode already terminated; call reset() first")
         self._step_count += 1
@@ -175,6 +183,7 @@ class Room4Continuous(BaseEnvironment):
             info["boundary_penalty"] = penalty
 
         if self.rewards.distance_progress_scale > 0:
+            # Positive progress means the agent moved closer to the exit.
             progress = distance_before - distance_after
             progress_reward = self.rewards.distance_progress_scale * progress
             reward += progress_reward

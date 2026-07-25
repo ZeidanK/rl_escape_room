@@ -1,3 +1,4 @@
+# Convenience exports for visualization helpers used by app.py and game views.
 from visualization.dp_visualization import (
     build_policy_symbols,
     build_value_matrix,

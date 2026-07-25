@@ -11,6 +11,8 @@ from agents.dynamic_programming import (
 )
 
 
+# Experiment grid for Room 1.  It sweeps gamma, tolerance, and slip settings,
+# then ranks configurations by convergence and evaluation performance.
 STORAGE_DIR = os.path.join("storage", "experiments", "room1_dp")
 
 
@@ -28,6 +30,8 @@ def create_fresh_env(*, slip_config: SlipConfig) -> Room1DP:
 
 
 def run_room1_experiments() -> list[dict]:
+    # Value Iteration itself is deterministic for a fixed model; the evaluation
+    # seeds measure how the solved policy behaves under stochastic slips.
     os.makedirs(STORAGE_DIR, exist_ok=True)
     results: list[dict] = []
     eval_seeds = range(100)

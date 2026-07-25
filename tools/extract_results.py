@@ -3,6 +3,8 @@ import csv
 import json
 
 # Matched comparison
+# Convenience script for pulling report-ready numbers out of final JSON/CSV
+# artifacts.  It prints summaries; it does not modify experiment results.
 with open("storage/experiments/final/sarsa_vs_q_learning_matched.json") as f:
     data = json.load(f)
 

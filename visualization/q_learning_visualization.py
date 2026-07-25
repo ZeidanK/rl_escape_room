@@ -11,12 +11,15 @@ from visualization.sarsa_visualization import (
 )
 
 
+# Room 3 visualization differs from SARSA because each physical cell has two
+# possible states: before key collection and after key collection.
 def build_room3_policy_symbols(
     environment,
     policy: Mapping[Room3State, Action | None],
     *,
     has_key: bool,
 ) -> list[list[str]]:
+    # Render one policy slice at a time, controlled by has_key.
     env = environment
     rows, cols = 10, 10
     symbols: list[list[str]] = []
@@ -68,6 +71,7 @@ def build_room3_q_value_table(
     column: int,
     has_key: bool,
 ) -> dict:
+    # Build the action-value detail shown for one selected Room 3 state.
     state = (row, column, has_key)
     vals = q_values.get(state, (0.0, 0.0, 0.0, 0.0))
     actions_list = [
@@ -91,6 +95,8 @@ def build_room3_q_value_table(
 def build_q_learning_training_dataframe(
     metrics: tuple[QLearningEpisodeMetrics, ...],
 ) -> dict:
+    # Column-oriented metrics for Streamlit charts, including key-specific
+    # learning signals.
     keys = [
         "episode", "total_reward", "steps", "success", "terminated", "truncated",
         "epsilon", "key_collected", "key_collection_step", "locked_exit_attempts",

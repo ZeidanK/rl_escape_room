@@ -38,6 +38,7 @@ from environments.room5_obstacles import Room5Obstacles
 
 
 def _epsilon(decay: float, minimum: float = 0.05) -> EpsilonScheduleConfig:
+    # All generated showcase models use exponential exploration decay.
     return EpsilonScheduleConfig(
         kind=EpsilonDecayKind.EXPONENTIAL,
         start=1.0,
@@ -47,11 +48,14 @@ def _epsilon(decay: float, minimum: float = 0.05) -> EpsilonScheduleConfig:
 
 
 def _stem(output_root: Path, subdir: str, showcase_name: str, local_prefix: str, showcase: bool) -> Path:
+    # Showcase mode uses stable filenames checked by the Streamlit app; normal
+    # local mode writes timestamped files so older models are not overwritten.
     filename = showcase_name if showcase else f"{local_prefix}_local_{_timestamp()}"
     return output_root / subdir / filename
 
 
 def train_room2(output_root: Path, episodes: int, seed: int, *, showcase: bool = False) -> Path:
+    # Train the SARSA model that the Room 2 showcase can load quickly.
     env_factory = lambda: Room2SARSA(max_steps=200)
     config = SarsaConfig(
         episodes=episodes,
@@ -68,6 +72,7 @@ def train_room2(output_root: Path, episodes: int, seed: int, *, showcase: bool =
 
 
 def train_room3(output_root: Path, episodes: int, seed: int, *, showcase: bool = False) -> Path:
+    # Train the Q-Learning model that includes the key-collection state flag.
     env_factory = lambda: Room3QLearning(max_steps=300)
     config = QLearningConfig(
         episodes=episodes,
@@ -84,6 +89,7 @@ def train_room3(output_root: Path, episodes: int, seed: int, *, showcase: bool =
 
 
 def train_room4(output_root: Path, episodes: int, seed: int, *, showcase: bool = False) -> Path:
+    # Train the tile-coded linear model used by the continuous Room 4 showcase.
     motion = Room4MotionConfig()
     reward = ContinuousRewardConfig(distance_progress_scale=1.0)
     tile_config = TileCodingConfig(num_tilings=16, tiles_x=16, tiles_y=16)
@@ -116,6 +122,7 @@ def train_room4(output_root: Path, episodes: int, seed: int, *, showcase: bool =
 
 
 def train_room5(output_root: Path, episodes: int, seed: int, *, showcase: bool = False) -> Path:
+    # Train the optional DQN model for the obstacle room.
     motion = Room4MotionConfig(time_step_s=0.05)
     obstacle = Room5ObstacleConfig(min_obstacles=3, max_obstacles=5, observation_distance_m=2.5, layout_seed=seed)
     reward = Room5RewardConfig(distance_progress_scale=2.0)
@@ -149,6 +156,8 @@ def _timestamp() -> str:
 
 
 def main() -> None:
+    # Command-line entry point.  --smoke is useful when checking that saving and
+    # loading work without waiting for full training.
     parser = argparse.ArgumentParser(description="Train local models for Streamlit showcase rooms.")
     parser.add_argument("--output-root", default="storage/models", type=Path)
     parser.add_argument("--seed", default=42, type=int)

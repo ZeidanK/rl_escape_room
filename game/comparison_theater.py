@@ -8,6 +8,8 @@ import hashlib
 
 
 def render_comparison_theater():
+    # Interactive Streamlit view for running or displaying the SARSA vs
+    # Q-Learning comparison.
     st.markdown("## SARSA vs Q-Learning — Visual Race")
     st.markdown(
         '<div style="color:#90a4ae;font-size:0.9em;">'
@@ -64,6 +66,8 @@ def render_comparison_theater():
 
 def _run_comparison(episodes, alpha, gamma, decay, seeds, eval_ep):
     """Run the comparison and store results in session state."""
+    # The comparison can be slow, so results are saved both to session state and
+    # disk for later viewing.
     from training.algorithm_comparison import run_matched_comparison, run_tuned_comparison, save_comparison
     
     with st.spinner("Running matched comparison..."):
@@ -100,6 +104,7 @@ def _run_comparison(episodes, alpha, gamma, decay, seeds, eval_ep):
 
 def _render_comparison_results(matched, tuned):
     """Render the comparison results."""
+    # Display paired seed results side-by-side before showing aggregate metrics.
     sarsa_list = matched.get("sarsa", [])
     q_list = matched.get("q_learning", [])
     

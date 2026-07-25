@@ -6,16 +6,22 @@ from typing import Any
 import numpy as np
 
 
+# Shared type definitions for the whole project.  Most other modules import
+# from here so environment outputs, training results, and Streamlit views all
+# speak the same "language".
 Position = tuple[int, int]
 
 
 class Action(IntEnum):
+    # Grid rooms use four compass actions.  The enum values also act as array
+    # indexes in tabular Q-tables, so keep the order stable.
     UP = 0
     RIGHT = 1
     DOWN = 2
     LEFT = 3
 
 
+# Movement lookup for the grid-world environments.
 ACTION_DELTAS: dict[Action, Position] = {
     Action.UP: (-1, 0),
     Action.RIGHT: (0, 1),
@@ -59,6 +65,8 @@ class RoomKind(IntEnum):
 
 @dataclass(frozen=True)
 class SlipConfig:
+    # Probabilities used when the agent stands on a slippery cell.
+    # "intended" keeps the chosen direction; "left"/"right" rotate it.
     intended_probability: float = 0.80
     left_probability: float = 0.10
     right_probability: float = 0.10
@@ -75,6 +83,8 @@ class SlipConfig:
 
 @dataclass(frozen=True)
 class RewardConfig:
+    # Default reward shaping for the grid rooms.  The environment adds the
+    # step penalty first, then adds cell-specific rewards or penalties.
     step_penalty: float = -1.0
     exit_reward: float = 100.0
     wall_penalty: float = -3.0
@@ -91,6 +101,8 @@ class RewardConfig:
 
 @dataclass(frozen=True)
 class StepResult:
+    # Common return type for env.step(...).  This mirrors the Gymnasium style:
+    # terminated means a true terminal outcome, truncated means max steps.
     next_state: Any
     reward: float
     terminated: bool
@@ -118,6 +130,8 @@ class GridRenderState:
 
 @dataclass(frozen=True)
 class RoomSpec:
+    # Metadata used by docs and UI to describe each room without constructing
+    # the environment itself.
     room_id: str
     name: str
     kind: RoomKind
@@ -140,6 +154,7 @@ class RoomSpec:
 
 @dataclass(frozen=True)
 class ValueIterationConfig:
+    # Parameters for synchronous Value Iteration in Room 1.
     gamma: float = 0.95
     tolerance: float = 1e-6
     max_iterations: int = 10_000
@@ -158,6 +173,8 @@ class ValueIterationConfig:
 
 @dataclass(frozen=True)
 class ValueIterationResult:
+    # Immutable output of the DP solve step: final values, greedy policy, and
+    # convergence history for charts.
     values: Mapping[Position, float]
     policy: Mapping[Position, Action | None]
     iterations: int
@@ -169,6 +186,8 @@ class ValueIterationResult:
 
 @dataclass(frozen=True)
 class TrajectoryStep:
+    # One grid rollout step.  requested_action and effective_action differ
+    # when slippery-cell stochasticity changes the movement.
     index: int
     state: Position
     requested_action: Action
@@ -184,6 +203,7 @@ class TrajectoryStep:
 
 @dataclass(frozen=True)
 class RolloutResult:
+    # Summary of one grid rollout plus the detailed step list used by replays.
     steps: tuple[TrajectoryStep, ...]
     terminated: bool
     truncated: bool
@@ -231,6 +251,8 @@ class EpsilonDecayKind(str, Enum):
 
 @dataclass(frozen=True)
 class EpsilonScheduleConfig:
+    # Exploration schedule shared by SARSA, Q-Learning, Approximate SARSA, and
+    # DQN.  Epsilon controls how often the policy takes a random action.
     kind: EpsilonDecayKind = EpsilonDecayKind.EXPONENTIAL
     start: float = 1.0
     minimum: float = 0.05
@@ -253,6 +275,7 @@ class EpsilonScheduleConfig:
 
 @dataclass(frozen=True)
 class SarsaConfig:
+    # Training parameters for on-policy tabular SARSA in Room 2.
     episodes: int = 5_000
     alpha: float = 0.10
     gamma: float = 0.95
@@ -274,6 +297,8 @@ class SarsaConfig:
 
 @dataclass(frozen=True)
 class TrainingEpisodeMetrics:
+    # Per-episode metrics are kept so the app can plot learning curves and
+    # compare early/late behaviour after training.
     episode: int
     total_reward: float
     steps: int
@@ -301,6 +326,7 @@ class SarsaSnapshot:
 
 @dataclass(frozen=True)
 class SarsaTrainingResult:
+    # Final learned Q-table plus snapshots from selected training episodes.
     config: SarsaConfig
     q_values: Mapping[Position, tuple[float, ...]]
     metrics: tuple[TrainingEpisodeMetrics, ...]
@@ -335,6 +361,7 @@ Room3Factory = Callable[[], Any]
 
 @dataclass(frozen=True)
 class QLearningConfig:
+    # Training parameters for off-policy tabular Q-Learning in Room 3.
     episodes: int = 5_000
     alpha: float = 0.10
     gamma: float = 0.95
@@ -356,6 +383,7 @@ class QLearningConfig:
 
 @dataclass(frozen=True)
 class QLearningEpisodeMetrics:
+    # Room 3 tracks key-specific events in addition to generic rollout metrics.
     episode: int
     total_reward: float
     steps: int
@@ -418,6 +446,8 @@ ContinuousState = tuple[float, float, int, int]
 
 
 class VelocityAction(IntEnum):
+    # Continuous rooms use velocity choices rather than grid moves.  The enum
+    # values still map cleanly to action-value array rows.
     STOP = 0
     NORTH = 1
     NORTH_EAST = 2
@@ -430,6 +460,7 @@ class VelocityAction(IntEnum):
 
 
 VELOCITY_BY_ACTION: dict[VelocityAction, tuple[int, int]] = {
+    # These integer velocities are multiplied by the environment time step.
     VelocityAction.STOP: (0, 0),
     VelocityAction.NORTH: (0, 1),
     VelocityAction.NORTH_EAST: (1, 1),
@@ -450,6 +481,8 @@ class StartMode(str, Enum):
 
 @dataclass(frozen=True)
 class ContinuousRewardConfig:
+    # Reward shaping for Room 4, where distance progress can guide learning
+    # before the agent reliably reaches the exit.
     step: float = -0.01
     exit: float = 100.0
     boundary_collision: float = -1.0
@@ -459,6 +492,7 @@ class ContinuousRewardConfig:
 
 @dataclass(frozen=True)
 class Room4MotionConfig:
+    # Physical layout and time discretization for the continuous 10x10m room.
     room_width_m: float = 10.0
     room_height_m: float = 10.0
     time_step_s: float = 0.02
@@ -490,6 +524,8 @@ class Room4MotionConfig:
 
 @dataclass(frozen=True)
 class TileCodingConfig:
+    # Tile coding turns continuous (x, y, vx, vy) states into sparse binary
+    # feature indexes used by the linear Approximate SARSA model.
     num_tilings: int = 8
     tiles_x: int = 10
     tiles_y: int = 10
@@ -509,6 +545,7 @@ class TileCodingConfig:
 
 @dataclass(frozen=True)
 class ApproximateSarsaConfig:
+    # Training parameters for semi-gradient SARSA with function approximation.
     episodes: int = 3_000
     alpha: float = 0.10
     gamma: float = 0.99
@@ -574,6 +611,8 @@ class ApproximateSarsaTrainingResult:
 
 @dataclass(frozen=True)
 class ContinuousTrajectoryStep:
+    # One replay step for continuous rooms; positions are real-valued rather
+    # than grid coordinates.
     index: int
     state: ContinuousState
     requested_action: VelocityAction
@@ -656,6 +695,7 @@ Room5Factory = Callable[[], Any]
 
 @dataclass(frozen=True)
 class Obstacle:
+    # Square obstacle represented by its centre point and width in metres.
     center_x: float
     center_y: float
     width_m: float = 0.5
@@ -667,6 +707,8 @@ class Obstacle:
 
 @dataclass(frozen=True)
 class Room5ObstacleConfig:
+    # Room 5 can use either a fixed obstacle layout for repeatable showcase
+    # replays or seeded generated layouts for broader evaluation.
     min_obstacles: int = 3
     max_obstacles: int = 5
     obstacle_width_m: float = 0.5
@@ -756,6 +798,8 @@ class Room5RenderState:
 
 @dataclass(frozen=True)
 class DQNConfig:
+    # Lightweight NumPy DQN settings: replay buffer, target-network update
+    # cadence, and exploration schedule.
     episodes: int = 600
     learning_rate: float = 0.001
     gamma: float = 0.99

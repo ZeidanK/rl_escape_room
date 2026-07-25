@@ -6,6 +6,7 @@ import numpy as np
 from core.types import Action, CellType, Position
 from game.theme import RoomTheme, get_theme, GLOBAL_CSS, ROOM_THEMES
 
+# Shared SVG symbols for grid policies and cell labels.
 ARROW_CHARS: dict[Action, str] = {
     Action.UP: "\u2191",
     Action.RIGHT: "\u2192",
@@ -55,6 +56,8 @@ def _render_svg_cell(
     is_locked: bool = True,
     has_key: bool = False,
 ) -> list[str]:
+    # Render one grid cell as SVG fragments.  The caller assembles all cells
+    # into a full board, which keeps room styling centralized here.
     lines: list[str] = []
     bg = _cell_bg_color(cell, theme) if not slip_effect else "#4fc3f7"
     rx = 3
@@ -224,6 +227,8 @@ def render_grid_canvas(
     is_locked: bool = True,
     current_cell_highlight: str | None = None,
 ) -> str:
+    # Main renderer for Rooms 1-3.  It can layer policy arrows, value numbers,
+    # agent position, and replay trajectory on top of the same grid.
     theme = get_theme(room_id)
     rows, cols = grid.shape
     width = cols * cell_size
@@ -249,6 +254,8 @@ def render_grid_canvas(
 
             pol_arrow = None
             if show_policy and policy is not None:
+                # Room 3 policies are keyed by (row, col, has_key); Rooms 1-2
+                # are keyed by just (row, col).
                 if has_key is not None:
                     action = policy.get((r, c, has_key))
                 else:
@@ -273,6 +280,8 @@ def render_grid_canvas(
             )
 
     if trajectory:
+        # Draw visited states as a faint path so replay movement is visible
+        # without hiding the policy arrows underneath.
         for i, pos in enumerate(trajectory):
             if agent_pos and pos == agent_pos:
                 continue
@@ -309,6 +318,7 @@ def render_vi_animation_frame(
     cell_size: int = 50,
     room_id: str = "room1",
 ) -> str:
+    # Heatmap frame used to show Value Iteration values changing over sweeps.
     theme = get_theme(room_id)
     rows, cols = grid.shape
     width = cols * cell_size

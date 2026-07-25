@@ -15,6 +15,9 @@ from agents.approximate_sarsa import ApproximateSarsaAgent, evaluate_approximate
 from environments.room4_continuous import Room4Continuous, ContinuousRewardConfig, Room4MotionConfig
 
 
+# Room 4 experiment runner for tile-coding Approximate SARSA.  The search is
+# split into stages because full continuous-control training is slower than
+# the tabular rooms.
 def _make_env_factory(
     start_mode: StartMode = StartMode.RANDOM_LOWER_LEFT,
     distance_progress_scale: float = 1.0,
@@ -39,6 +42,8 @@ def run_screening_stage_a(
     Stage A: One factor at a time around defaults.
     Defaults: 8 tilings, 10x10 tiles, alpha=0.10, progress_scale=1.0
     """
+    # One-factor-at-a-time screening helps identify useful ranges before
+    # testing combinations.
     results = []
     params_to_test = {
         "num_tilings": [4, 8, 16],
@@ -115,6 +120,8 @@ def run_screening_stage_b(
     """
     Stage B: Combine best 2 values per factor based on Stage A fixed-start SR.
     """
+    # Stage B narrows the search to combinations of the strongest Stage A
+    # values, reducing total training time.
     best_of = {}
     for param in ["num_tilings", "tiles_xy", "alpha", "progress_scale", "epsilon_decay"]:
         scored = {}

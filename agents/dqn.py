@@ -78,6 +78,8 @@ class DQNNetwork:
         return net
 
     def predict(self, obs: Room5Observation | np.ndarray) -> np.ndarray:
+        # Forward pass.  Supports either one observation vector or a batch,
+        # which lets training reuse the same method for replay batches.
         x = np.asarray(obs, dtype=np.float64)
         if x.ndim == 1:
             h = np.maximum(0.0, x @ self.W1 + self.b1)
@@ -92,6 +94,8 @@ class DQNNetwork:
         targets: np.ndarray,
         learning_rate: float,
     ) -> tuple[float, float, float]:
+        # Manual backpropagation for mean-squared TD error.  This keeps Room 5
+        # dependency-light while still behaving like a small DQN.
         z1 = states @ self.W1 + self.b1
         h = np.maximum(0.0, z1)
         q = h @ self.W2 + self.b2
@@ -128,6 +132,7 @@ class _Transition:
 
 
 class ReplayBuffer:
+    # Fixed-size circular buffer for off-policy DQN updates.
     def __init__(self, capacity: int, input_dim: int) -> None:
         self.capacity = capacity
         self.input_dim = input_dim
@@ -182,6 +187,8 @@ def _greedy_action(q_values: np.ndarray) -> int:
 
 
 class DQNAgent:
+    # Optional Room 5 agent.  It uses an online network for action selection
+    # and a target network for more stable TD targets.
     def __init__(
         self,
         environment_factory: Room5Factory,
@@ -207,6 +214,9 @@ class DQNAgent:
         progress_every: int = 1,
     ) -> DQNTrainingResult:
         cfg = self.config
+        # Independent RNG streams make the training run reproducible while
+        # keeping layout generation, exploration, replay sampling, and network
+        # initialization separate.
         seed_seq = np.random.SeedSequence(cfg.seed)
         env_ss, policy_ss, replay_ss, network_ss, snapshot_ss = seed_seq.spawn(5)
         env_rng = np.random.Generator(np.random.PCG64(env_ss))
@@ -265,6 +275,8 @@ class DQNAgent:
                 if len(replay) >= max(cfg.batch_size, cfg.warmup_steps):
                     states, actions, rewards, next_states, dones = replay.sample(cfg.batch_size, replay_rng)
                     next_q = target.predict(next_states)
+                    # DQN target uses the target network for the bootstrap
+                    # value, and removes the future term on terminal steps.
                     targets = rewards + cfg.gamma * (1.0 - dones.astype(float)) * np.max(next_q, axis=1)
                     loss, mean_td, max_td = online.train_batch(
                         states, actions, targets, cfg.learning_rate
@@ -275,6 +287,8 @@ class DQNAgent:
 
                 global_step += 1
                 if global_step % cfg.target_update_interval == 0:
+                    # Periodically copy online weights into the target network
+                    # instead of chasing a moving target every gradient step.
                     target.set_weights(online.weights)
                 state = next_state
                 if done:
@@ -342,6 +356,8 @@ def rollout_dqn_policy(
     epsilon: float = 0.0,
     max_steps: int | None = None,
 ) -> Room5RolloutResult:
+    # Runs a trained DQN greedily by default and records both observations and
+    # raw physical states for replay visualizations.
     env = environment_factory()
     layout = seed if layout_seed is None else layout_seed
     obs = env.reset(seed=seed, layout_seed=layout)
@@ -552,6 +568,8 @@ def _metadata_for_result(result: DQNTrainingResult, env_sample) -> dict:
 
 
 def save_dqn_model(result: DQNTrainingResult, filepath_stem: str, *, environment_factory: Room5Factory | None = None) -> str:
+    # Store numeric weights in NPZ and schema/config metadata in JSON so the
+    # app can validate the model before using it.
     dirpath = os.path.dirname(filepath_stem)
     if dirpath:
         os.makedirs(dirpath, exist_ok=True)
@@ -615,4 +633,3 @@ def load_dqn_model(filepath_stem: str) -> tuple[DQNNetwork, dict]:
 def extract_dqn_action_values(network: DQNNetwork, observation: Room5Observation) -> dict[str, float]:
     q_values = network.predict(observation)
     return {VelocityAction(i).name: float(q_values[i]) for i in range(len(q_values))}
-

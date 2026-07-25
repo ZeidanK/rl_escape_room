@@ -33,6 +33,8 @@ def _training_config(meta: dict) -> dict:
 
 
 def _tile_config_from_meta(meta: dict) -> TileCodingConfig:
+    # Older saved artifacts may store tiles as one "tiles_xy" value; newer
+    # artifacts store separate x/y counts.
     tc = meta.get("tile_coding_config", {})
     tiles_xy = meta.get("tiles_xy", 10)
     return TileCodingConfig(
@@ -83,6 +85,8 @@ def _start_mode_from_meta(meta: dict) -> StartMode:
 
 
 def _q_function_from_weights(weights: np.ndarray, tc_cfg: TileCodingConfig, motion_cfg: Room4MotionConfig) -> LinearTileQFunction:
+    # Recreate the linear Q-function wrapper around saved weights so rollout
+    # code can ask for action values exactly like after training.
     tile_coder = TileCoder(tc_cfg, room_width=motion_cfg.room_width_m, room_height=motion_cfg.room_height_m)
     q_func = LinearTileQFunction(tile_coder, n_actions=len(VelocityAction))
     q_func._weights = weights.copy()
@@ -96,6 +100,8 @@ def _final_distance_to_exit_m(rollout, motion_cfg: Room4MotionConfig) -> float:
 
 
 def render_room4_game():
+    # Showcase view for a trained approximate SARSA model in continuous space.
+    # It loads weights, rebuilds the tile coder, then draws the trajectory.
     theme = get_theme("room4")
 
     st.markdown(
@@ -166,7 +172,8 @@ def render_room4_game():
         st.info("Press **Load Latest Model** to view a trained policy.")
         return
 
-    # Build environment from meta
+    # Build environment from saved metadata so the replay uses the same motion
+    # and reward settings as training.
     tc_cfg = _tile_config_from_meta(meta)
     motion_cfg = _motion_config_from_meta(meta)
     reward_cfg = _reward_config_from_meta(meta)
@@ -182,7 +189,8 @@ def render_room4_game():
         seed=seed,
     )
 
-    # Build rollout if not already built
+    # Build rollout once and cache it; replay/render controls should not change
+    # the evaluated trajectory unless the model is reset/reloaded.
     if rollout is None:
         q_func = _q_function_from_weights(weights, tc_cfg, motion_cfg)
         make_env = lambda: Room4Continuous(

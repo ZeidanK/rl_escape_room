@@ -19,6 +19,9 @@ from core.types import (
 from environments.base_environment import BaseEnvironment
 
 
+# Text-map symbols used by the 10x10 grid rooms.  Keeping maps as strings makes
+# the room layouts easy to inspect in code while still converting to numeric
+# arrays for fast environment logic.
 CHAR_TO_CELL: dict[str, CellType] = {
     ".": CellType.EMPTY,
     "#": CellType.WALL,
@@ -34,6 +37,8 @@ CELL_TO_CHAR: dict[CellType, str] = {v: k for k, v in CHAR_TO_CELL.items()}
 
 
 def parse_grid_map(lines: list[str]) -> np.ndarray:
+    # All required grid rooms are 10x10.  Validation happens here so room files
+    # can define their maps declaratively and fail early if a symbol is wrong.
     if len(lines) != 10:
         raise ValueError(f"Grid must have exactly 10 rows; received {len(lines)}")
     for i, row in enumerate(lines):
@@ -51,6 +56,9 @@ def parse_grid_map(lines: list[str]) -> np.ndarray:
 
 
 class GridEnvironment(BaseEnvironment):
+    # Base implementation for Rooms 1-3: walls, slippery cells, traps, step
+    # limits, rewards, and rendering are shared.  Room-specific subclasses only
+    # override the pieces that differ, such as Room 3's key state.
     def __init__(
         self,
         grid: np.ndarray,
@@ -160,6 +168,8 @@ class GridEnvironment(BaseEnvironment):
         self._check_reachability()
 
     def _check_reachability(self) -> None:
+        # Breadth-first search confirms the assignment room is solvable from
+        # START before training begins.
         start = tuple(np.argwhere(self._grid == CellType.START)[0])
         visited = set()
         queue = deque([start])
@@ -201,6 +211,8 @@ class GridEnvironment(BaseEnvironment):
         return self._encode_state()
 
     def step(self, action: Action | int) -> StepResult:
+        # Main grid transition: sample any slip, move if possible, apply reward
+        # shaping, and mark terminal/truncated status.
         if self.is_done:
             raise RuntimeError("Cannot call step() after the episode has ended. Call reset() first.")
         action = Action(action)
@@ -284,6 +296,8 @@ class GridEnvironment(BaseEnvironment):
         return self._get_cell(position) != CellType.WALL
 
     def _sample_effective_action(self, action: Action) -> Action:
+        # Slippery cells model stochastic dynamics.  The agent requests an
+        # action, but the environment may rotate it left or right.
         cell = self._get_cell(self._agent_pos)
         if cell != CellType.SLIPPERY:
             return action
@@ -296,6 +310,8 @@ class GridEnvironment(BaseEnvironment):
             return TURN_RIGHT[action]
 
     def _on_enter_cell(self, position: Position, cell: CellType) -> tuple[float, bool, dict]:
+        # Hook used by subclasses to customize special cells.  The base grid
+        # knows only traps and normal exits.
         info: dict[str, Any] = {}
         if cell == CellType.TRAP:
             info["event"] = "trap"
@@ -309,6 +325,8 @@ class GridEnvironment(BaseEnvironment):
 
 
 class KnownModelGridEnvironment(GridEnvironment):
+    # Room 1 uses Dynamic Programming, so the agent needs the full transition
+    # distribution P(s'|s,a) instead of only sampled transitions from step().
     def get_transition_distribution(
         self,
         state: Position,
@@ -329,6 +347,8 @@ class KnownModelGridEnvironment(GridEnvironment):
             action_probs = [(1.0, action)]
         outcomes: dict[tuple, TransitionOutcome] = {}
         for prob, effective_action in action_probs:
+            # Multiple effective actions can collapse to the same outcome, for
+            # example when both hit a wall.  Merge them by summing probability.
             dr, dc = ACTION_DELTAS[effective_action]
             nr, nc = r + dr, c + dc
             collision = False

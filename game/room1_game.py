@@ -25,6 +25,8 @@ from game.room_transitions import render_transition_content
 
 
 def _compute_vi_frames(agent: ValueIterationAgent, max_frames: int = 20) -> list[np.ndarray]:
+    # Re-runs the same Bellman sweeps used by Value Iteration, but records a
+    # small number of value matrices for the convergence animation.
     env = agent.env
     states = list(env.states)
     actions = env.actions
@@ -70,6 +72,8 @@ def _compute_vi_frames(agent: ValueIterationAgent, max_frames: int = 20) -> list
 
 
 def _extract_q_from_values(values, env) -> dict[str, float]:
+    # Local action values at the agent's current cell, used by the explanation
+    # panel to show why the policy prefers one action.
     agent_r, agent_c = env.agent_position
     state = (agent_r, agent_c)
     q_vals = {}
@@ -83,6 +87,8 @@ def _extract_q_from_values(values, env) -> dict[str, float]:
 
 
 def render_room1_game():
+    # Full vertical slice for Room 1: solve DP, roll out the policy, animate
+    # value convergence, render the grid, and update achievements.
     theme = get_theme("room1")
 
     st.markdown(
@@ -134,6 +140,8 @@ def render_room1_game():
     for key in ["r1g_env", "r1g_vi_result", "r1g_replay", "r1g_anim_frames",
                  "r1g_anim_iter", "r1g_last_action", "r1g_slip_effect", "r1g_q_explain",
                  "r1g_anim_playing", "r1g_last_replay_advance", "r1g_last_anim_advance"]:
+        # Room-specific session keys keep this game view independent from the
+        # Learning Laboratory state in app.py.
         if key not in st.session_state:
             st.session_state[key] = None
 

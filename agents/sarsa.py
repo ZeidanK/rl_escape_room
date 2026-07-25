@@ -33,6 +33,8 @@ select_action = select_epsilon_greedy_action
 extract_greedy_policy = extract_deterministic_greedy_policy
 
 
+# SARSA is an on-policy TD control algorithm: the update uses the next action
+# that the current epsilon-greedy behaviour policy actually selected.
 def rollout_sarsa_policy(
     environment_factory: Room2Factory,
     q_values: Mapping[Position, tuple[float, ...]],
@@ -41,6 +43,8 @@ def rollout_sarsa_policy(
     epsilon: float = 0.0,
     max_steps: int | None = None,
 ) -> RolloutResult:
+    # Convert immutable saved Q-values back to arrays for fast action lookup
+    # during a replay/evaluation episode.
     env = environment_factory()
     env.reset(seed=seed)
     limit = max_steps if max_steps is not None else env.max_steps
@@ -108,6 +112,8 @@ def evaluate_sarsa_policy(
     seeds: range | None = None,
     max_steps: int | None = None,
 ) -> SarsaEvaluationSummary:
+    # Evaluation uses epsilon=0, so reported performance is for the learned
+    # greedy policy rather than the exploratory training policy.
     if seeds is None:
         seeds = range(n_episodes)
     rollouts: list[RolloutResult] = []
@@ -149,6 +155,7 @@ def evaluate_sarsa_policy(
 
 
 class SarsaAgent:
+    # Owns the training loop and Q-table for Room 2.
     def __init__(
         self,
         environment_factory: Room2Factory,
@@ -202,6 +209,9 @@ class SarsaAgent:
         truncated: bool,
         q_table: dict[Position, np.ndarray],
     ) -> float:
+        # SARSA target: r + gamma * Q(s', a'), where a' was chosen by the same
+        # epsilon-greedy policy used for behaviour.  Terminal steps have no
+        # bootstrapped future value.
         config = self.config
         q_sa = q_table[state][int(action)]
         if terminated or truncated:
@@ -220,7 +230,8 @@ class SarsaAgent:
     ) -> SarsaTrainingResult:
         config = self.config
 
-        # RNG streams
+        # Separate RNG streams make experiments reproducible without coupling
+        # environment randomness, exploration choices, and snapshot rollouts.
         seed_seq = np.random.SeedSequence(config.seed)
         env_ss, policy_ss, snapshot_ss, bookkeeping_ss = seed_seq.spawn(4)
         policy_rng = np.random.Generator(np.random.PCG64(policy_ss))
@@ -275,6 +286,8 @@ class SarsaAgent:
                     result.next_state, epsilon=epsilon, rng=policy_rng, q_table=q_table,
                 )
 
+                # On-policy part: choose next_action first, then use it in the
+                # update before advancing to the next state.
                 td = self.update(
                     state, action, result.reward, result.next_state, next_action,
                     terminated=False, truncated=False,
@@ -338,6 +351,8 @@ def _build_metadata(
     slip_config,
     map_grid,
 ) -> dict:
+    # Metadata records the exact training setup alongside the weights so a
+    # loaded model can be matched back to the correct room layout.
     recent_metrics = result.metrics[-100:]
     return {
         "version": _MODEL_VERSION,
@@ -400,6 +415,8 @@ def save_model(
     slip_config=None,
     map_grid=None,
 ) -> str:
+    # Saves human-readable metadata in JSON and numeric Q-values in compressed
+    # NPZ for compact loading in the deployed Streamlit app.
     import json
     import os
 

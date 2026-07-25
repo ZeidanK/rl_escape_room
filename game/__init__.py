@@ -1,3 +1,4 @@
+# Public game/UI helpers re-exported for the Streamlit entry point.
 from game.models import (
     GameRoomState,
     ReplayStep,

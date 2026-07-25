@@ -7,6 +7,8 @@ from game.models import RoomTransition, Achievement
 
 def render_transition_content(transition: RoomTransition, theme_color: str = "#4fc3f7") -> tuple[str, bool]:
     """Returns (card_html, is_success). Caller wraps in overlay div + st.button()."""
+    # This function returns HTML only.  Streamlit button handling stays in the
+    # caller because buttons cannot be embedded directly in markdown HTML.
     achievements_html = ""
     if transition.achievements_unlocked:
         ach_items = "".join(
@@ -57,6 +59,7 @@ def render_transition_content(transition: RoomTransition, theme_color: str = "#4
 
 
 def render_achievement_toast(achievement: Achievement) -> str:
+    # Small standalone HTML snippet for newly unlocked achievements.
     return f"""
     <div class="achievement-toast">
         <div style="font-size:1.5em;">{achievement.emoji}</div>

@@ -33,6 +33,7 @@ from game.home_page import ROOM_DEFS
 
 
 def _training_config(meta: dict) -> dict:
+    # Saved model metadata may nest the training config under this key.
     return meta.get("training_config", {})
 
 
@@ -55,6 +56,8 @@ def _max_steps_from_meta(meta: dict, default: int = 200) -> int:
 
 
 def render_room2_game():
+    # Showcase view for a trained SARSA model.  It loads Q-values from storage,
+    # builds a greedy rollout, and lets the user replay the learned policy.
     theme = get_theme("room2")
 
     st.markdown(
@@ -124,10 +127,11 @@ def render_room2_game():
         st.info("Press **Load Latest Model** to view a trained policy.")
         return
 
-    # Extract policy from Q-values
+    # Extract the greedy policy from loaded Q-values for arrows on the grid.
     greedy_policy = extract_greedy_policy(q_vals)
     
-    # Build replay if not already built
+    # Build replay if not already built.  The replay is cached in session state
+    # so moving the slider/buttons does not rerun the rollout from scratch.
     if replay is None:
         seed = _seed_from_meta(meta)
         slip_config = _slip_config_from_meta(meta)

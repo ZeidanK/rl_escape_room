@@ -15,6 +15,8 @@ from core.types import (
 from features.tile_coding import TileCoder, TileCodingConfig
 
 
+# Visualization helpers for continuous Room 4.  They sample the learned linear
+# Q-function over a grid so a continuous policy can be displayed in 2D.
 @st.cache_data
 def build_training_dataframe(
     metrics: tuple[ApproximateEpisodeMetrics, ...],
@@ -56,6 +58,7 @@ def render_continuous_trajectory(
     *,
     max_arrows: int = 30,
 ) -> dict:
+    # Discretize a continuous rollout into a small text grid for quick display.
     room_w = env.motion.room_width_m
     room_h = env.motion.room_height_m
     grid_size = 20
@@ -140,6 +143,8 @@ def build_action_field(
     fixed_vy: int = 0,
     grid_size: int = 10,
 ) -> np.ndarray:
+    # For each sampled (x,y), fix velocity and record the greedy velocity
+    # action.  This gives a policy-field approximation.
     tile_coder = TileCoder(tile_coding_config, room_width=env.motion.room_width_m, room_height=env.motion.room_height_m)
     n_actions = 9
     q_func = LinearTileQFunction(tile_coder, n_actions=n_actions)
@@ -165,6 +170,7 @@ def build_value_surface(
     fixed_vy: int = 0,
     grid_size: int = 20,
 ) -> np.ndarray:
+    # Sample max_a Q(s,a) over positions for a coarse value surface.
     tile_coder = TileCoder(tile_coding_config, room_width=env.motion.room_width_m, room_height=env.motion.room_height_m)
     n_actions = 9
     q_func = LinearTileQFunction(tile_coder, n_actions=n_actions)
@@ -178,6 +184,5 @@ def build_value_surface(
             av = q_func.action_values(state)
             surface[row, col] = float(np.max(av))
     return surface
-
 
 

@@ -8,6 +8,8 @@ from game.models import Achievement, AchievementId
 
 ACHIEVEMENTS_FILE = Path("storage/achievements.json")
 
+# Achievement definitions are intentionally data-only.  The checks below decide
+# when an achievement unlocks based on rollout metrics.
 ALL_ACHIEVEMENTS: dict[AchievementId, Achievement] = {
     AchievementId.FIRST_ESCAPE: Achievement(
         id=AchievementId.FIRST_ESCAPE,
@@ -49,6 +51,8 @@ ALL_ACHIEVEMENTS: dict[AchievementId, Achievement] = {
 
 
 class AchievementTracker:
+    # Keeps achievements in both session state and a tiny JSON file so progress
+    # survives Streamlit reruns and local restarts.
     def __init__(self):
         self._unlocked: set[AchievementId] = set()
 
@@ -56,6 +60,7 @@ class AchievementTracker:
         return ach_id in self._unlocked
 
     def unlock(self, ach_id: AchievementId) -> Achievement | None:
+        # Return the newly unlocked achievement so the UI can show a toast once.
         if ach_id not in self._unlocked:
             self._unlocked.add(ach_id)
             self._save()
@@ -97,6 +102,7 @@ class AchievementTracker:
         return list(ALL_ACHIEVEMENTS.values())
 
     def _save(self):
+        # Achievement storage is non-critical; failures should not break the app.
         try:
             ACHIEVEMENTS_FILE.parent.mkdir(parents=True, exist_ok=True)
             data = [a.value for a in self._unlocked]

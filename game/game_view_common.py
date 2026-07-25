@@ -19,6 +19,8 @@ from game.home_page import ROOM_DEFS
 
 
 def _iter_replay_steps(replay) -> Sequence:
+    # Some rollout objects use "steps" as an integer count, while ReplayState
+    # uses it as a tuple.  This helper normalizes that difference for UI logic.
     steps = getattr(replay, "steps", ())
     if isinstance(steps, int):
         return ()
@@ -145,7 +147,8 @@ def render_replay_controls(replay: ReplayState, prefix: str, room_id: str = "roo
         if st.button("4x", key=f"{rk}_sp4"):
             updated = replace(replay, speed=4.0)
 
-    # Non-blocking auto-advance
+    # Non-blocking auto-advance.  Streamlit still reruns the script, but this
+    # avoids sleeping/blocking while the replay is playing.
     if replay.playing and replay.current_index < len(replay.steps) - 1:
         delay = 0.4 / replay.speed
         last_key = f"{rk}_last_replay_advance"
@@ -184,7 +187,7 @@ def check_and_unlock_achievements(room_id: str, replay) -> list:
     newly_unlocked: list = []
     replay_steps = _iter_replay_steps(replay)
 
-    # FIRST_ESCAPE
+    # FIRST_ESCAPE is intentionally broad: any successful room can unlock it.
     ach = tracker.try_unlock_first_escape()
     if ach:
         newly_unlocked.append(ach)
@@ -240,7 +243,7 @@ def render_room_transition(room_id: str, replay, achievements: list):
     if not replay.success:
         return False
     
-    # Check if at end of replay
+    # Only show the success transition after the replay reaches its last frame.
     replay_steps = _iter_replay_steps(replay)
     if replay_steps and getattr(replay, "current_index", 0) < len(replay_steps) - 1:
         return False
@@ -353,6 +356,8 @@ def render_game_grid(env, agent_pos, room_id: str, policy=None, values=None,
                      slip_effect: bool = False, trajectory=None, cell_size: int = 48,
                      has_key: bool | None = None):
     """Render the game grid with error handling and fallback."""
+    # Most game views call this wrapper instead of canvas_renderer directly so
+    # a rendering error falls back to a text grid instead of crashing the page.
     try:
         svg = render_grid_canvas(
             env.grid,

@@ -16,6 +16,8 @@ from environments.grid_environment import KnownModelGridEnvironment
 
 
 class ValueIterationAgent:
+    # Room 1 agent.  Because the environment exposes exact transition
+    # probabilities, the agent can solve the MDP without sampling episodes.
     def __init__(
         self,
         environment: KnownModelGridEnvironment,
@@ -25,6 +27,8 @@ class ValueIterationAgent:
         self.config = config or ValueIterationConfig()
 
     def solve(self) -> ValueIterationResult:
+        # Synchronous Value Iteration: every state is updated from the previous
+        # value table, then the whole table is replaced at the end of the sweep.
         config = self.config
         env = self.env
         states = env.states
@@ -43,6 +47,8 @@ class ValueIterationAgent:
                     continue
                 best_value: float | None = None
                 for a in actions:
+                    # Bellman optimality backup:
+                    # V(s) = max_a sum P(s'|s,a) [r + gamma * V(s')].
                     q = self.calculate_action_value(s, a, values)
                     if best_value is None or q > best_value:
                         best_value = q
@@ -81,6 +87,8 @@ class ValueIterationAgent:
         action: Action,
         values: dict[Position, float],
     ) -> float:
+        # Expected return for taking one action from one state under the known
+        # transition model.
         env = self.env
         config = self.config
         outcomes = env.get_transition_distribution(state, action)
@@ -97,6 +105,8 @@ class ValueIterationAgent:
         self,
         values: dict[Position, float],
     ) -> dict[Position, Action | None]:
+        # Once values have converged, choose the action with the highest
+        # one-step lookahead value in each non-terminal state.
         env = self.env
         actions = env.actions
         policy: dict[Position, Action | None] = {}
@@ -122,6 +132,8 @@ def rollout_policy(
     seed: int,
     max_steps: int | None = None,
 ) -> RolloutResult:
+    # Runs a solved policy through the actual stochastic environment so the UI
+    # can show one concrete escape trajectory.
     env.reset(seed=seed)
     limit = max_steps if max_steps is not None else env.max_steps
     steps: list[TrajectoryStep] = []
@@ -192,6 +204,8 @@ def evaluate_policy(
     n_episodes: int = 100,
     seeds: range | None = None,
 ) -> PolicyEvaluationSummary:
+    # Repeats rollouts over many seeds to estimate success rate and average
+    # return rather than relying on one lucky/unlucky path.
     if seeds is None:
         seeds = range(n_episodes)
     results: list[RolloutResult] = []

@@ -4,6 +4,8 @@ from core.types import RewardConfig, SlipConfig
 from environments.grid_environment import parse_grid_map, KnownModelGridEnvironment
 
 
+# Room 1 is the "known model" room.  The map is fixed and the agent can query
+# exact transition probabilities, which is why Value Iteration is appropriate.
 ROOM1_MAP = [
     "##########",
     "S....I...#",
@@ -21,6 +23,8 @@ ROOM1_GRID = parse_grid_map(ROOM1_MAP)
 
 
 class Room1DP(KnownModelGridEnvironment):
+    # No custom behaviour is needed beyond the known-model grid base class.
+    # The subclass mainly names the room and supplies its fixed layout.
     def __init__(
         self,
         max_steps: int = 200,

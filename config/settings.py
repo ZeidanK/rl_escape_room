@@ -3,6 +3,9 @@ from dataclasses import dataclass, field
 
 @dataclass
 class RLConfig:
+    # General-purpose config shape kept for simple experiments and historical
+    # compatibility.  The room-specific agents use richer config dataclasses in
+    # core/types.py.
     episodes: int = 5000
     max_steps: int = 500
     gamma: float = 0.95
@@ -15,6 +18,7 @@ class RLConfig:
 
 @dataclass
 class EpisodeRecord:
+    # Lightweight record for a single training episode.
     episode_number: int
     total_reward: float
     steps: int
@@ -27,6 +31,7 @@ class EpisodeRecord:
 
 @dataclass
 class TrainingResult:
+    # Container for experiment outputs that may include a saved model path.
     algorithm_name: str
     room_name: str
     config: dict

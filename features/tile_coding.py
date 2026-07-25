@@ -6,6 +6,9 @@ _VELOCITY_INDEX: dict[int, int] = {-1: 0, 0: 1, 1: 2}
 
 
 class TileCoder:
+    # Converts continuous Room 4 states into a small set of active feature
+    # indexes.  Multiple offset tilings let nearby positions share some, but
+    # not all, features.
     def __init__(self, config: TileCodingConfig, room_width: float, room_height: float) -> None:
         self.config = config
         self.room_width = room_width
@@ -25,6 +28,9 @@ class TileCoder:
         return self._feature_count
 
     def active_features(self, state: ContinuousState) -> tuple[int, ...]:
+        # One active tile per tiling.  Velocity is included as discrete bins so
+        # the agent can learn different values for the same location at
+        # different movement directions.
         x, y, vx, vy = state
         x = float(np.clip(x, 0.0, self.room_width))
         y = float(np.clip(y, 0.0, self.room_height))

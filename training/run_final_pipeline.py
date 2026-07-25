@@ -30,11 +30,16 @@ from training.experiment_utils import (
 )
 from training.room5_dqn_experiments import FINAL_ROOM5_PATH, run_room5_experiments
 
+# This file is the "run everything for the report" script.  It calls each
+# room's experiment runner, skips completed JSON trials, and writes final
+# artifacts under storage/experiments/final.
+
 # ============================================================
 # Benchmarking
 # ============================================================
 
 def run_benchmark() -> dict:
+    # Estimate runtime before launching the expensive sweeps.
     print("=" * 60)
     print("  BENCHMARK: Estimating runtime")
     print("=" * 60)
@@ -82,6 +87,7 @@ def print_estimates(bench: dict):
 # ============================================================
 
 def run_room1():
+    # Room 1 is cheap because Value Iteration solves the known model directly.
     from training.dp_experiments import run_room1_experiments
     print("=" * 60)
     print("  ROOM 1: Value Iteration")
@@ -110,6 +116,7 @@ def _sarsa_trial_id(cfg: dict, seed: int) -> str:
 
 
 def _run_sarsa_screening():
+    # Room 2 screening: one seed per hyperparameter combination.
     from agents.sarsa import SarsaAgent, evaluate_sarsa_policy
     from core.types import EpsilonScheduleConfig, SarsaConfig
     from environments.room2_sarsa import ROOM2_GRID, Room2SARSA
@@ -169,6 +176,7 @@ def _run_sarsa_screening():
 
 
 def _run_sarsa_confirmation(top_configs: list[dict]):
+    # Confirmation repeats selected SARSA configs across multiple seeds.
     from agents.sarsa import SarsaAgent, evaluate_sarsa_policy
     from core.types import EpsilonScheduleConfig, SarsaConfig
     from environments.room2_sarsa import Room2SARSA
@@ -243,6 +251,7 @@ def _run_sarsa_confirmation(top_configs: list[dict]):
 
 
 def run_room2():
+    # Orchestrates Room 2 screening, ranking, and confirmation.
     print("=" * 60)
     print("  ROOM 2: SARSA")
     print("=" * 60)
@@ -316,6 +325,7 @@ def _q_trial_id(cfg: dict, seed: int) -> str:
 
 
 def _run_q_screening():
+    # Room 3 screening mirrors SARSA but includes key/locked-exit metrics.
     from agents.q_learning import QLearningAgent, evaluate_q_learning_policy
     from core.types import EpsilonScheduleConfig, QLearningConfig
     from environments.room3_qlearning import Room3QLearning
@@ -378,6 +388,7 @@ def _run_q_screening():
 
 
 def _run_q_confirmation(top_configs: list[dict]):
+    # Confirmation repeats selected Q-Learning configs across multiple seeds.
     from agents.q_learning import QLearningAgent, evaluate_q_learning_policy
     from core.types import EpsilonScheduleConfig, QLearningConfig
     from environments.room3_qlearning import Room3QLearning
@@ -459,6 +470,7 @@ def _run_q_confirmation(top_configs: list[dict]):
 
 
 def run_room3():
+    # Orchestrates Room 3 screening, ranking, and confirmation.
     print("=" * 60)
     print("  ROOM 3: Q-Learning")
     print("=" * 60)
@@ -526,6 +538,8 @@ ROOM4_FINAL_DIR = os.path.join(FINAL_DIR, "room4_approximate_sarsa")
 
 
 def _room4_factory(dp_scale=1.0):
+    # Factory wrapper so each Room 4 training/evaluation run gets a fresh
+    # environment with identical reward shaping.
     from core.types import StartMode
     from environments.room4_continuous import (
         ContinuousRewardConfig, Room4Continuous, Room4MotionConfig,
@@ -539,6 +553,8 @@ def _room4_factory(dp_scale=1.0):
 
 
 def run_room4():
+    # Room 4 uses a staged search because tile-coding training is more
+    # expensive than tabular training.
     from agents.approximate_sarsa import (
         ApproximateSarsaAgent,
         evaluate_approximate_policy_all_categories,
@@ -818,6 +834,7 @@ def _cat_to_dict(summary) -> dict:
 # ============================================================
 
 def run_comparison():
+    # Final SARSA-vs-Q-Learning benchmark on the same Room 2 environment.
     print("=" * 60)
     print("  SARSA vs Q-Learning Comparison")
     print("=" * 60)
@@ -882,6 +899,7 @@ def run_comparison():
 # ============================================================
 
 def generate_summary_csv():
+    # Collect final JSON artifacts into one CSV table for quick reporting.
     import csv
     rows = []
     commit = git_commit()
@@ -1052,6 +1070,7 @@ def generate_summary_csv():
 # ============================================================
 
 def run_all(benchmark_only: bool = False):
+    # High-level entry point used when running this file as a script.
     print(f"Final Experiment Pipeline — {datetime.now().isoformat()}")
     print(f"Git commit: {git_commit()}")
     print()

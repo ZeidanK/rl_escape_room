@@ -10,6 +10,8 @@ from environments.room3_qlearning import Room3QLearning
 from agents.q_learning import QLearningAgent, evaluate_q_learning_policy
 
 
+# Room 3 experiment runner.  It tracks key-collection success in addition to
+# ordinary escape success because collecting the key is required to finish.
 STORAGE_DIR = os.path.join("storage", "experiments", "room3_q_learning")
 SCREENING_DIR = os.path.join(STORAGE_DIR, "screening")
 CONFIRMATION_DIR = os.path.join(STORAGE_DIR, "confirmation")
@@ -47,6 +49,8 @@ def _build_config(alpha, gamma, decay, episodes, seed) -> QLearningConfig:
 def run_screening_experiments(
     episodes: int = 1_000,
 ) -> list[dict]:
+    # Initial hyperparameter sweep.  Uses fewer episodes/eval runs so many
+    # configurations can be compared quickly.
     os.makedirs(SCREENING_DIR, exist_ok=True)
     factory = _make_room3()
     results: list[dict] = []
@@ -138,6 +142,8 @@ def run_confirmation_experiments(
     top_k: int = 5,
     episodes: int = 5_000,
 ) -> list[dict]:
+    # Re-run top screening configurations with more training and seeds, then
+    # include the default config as a baseline.
     screening_results = run_screening_experiments()
     top_configs = screening_results[:top_k]
 

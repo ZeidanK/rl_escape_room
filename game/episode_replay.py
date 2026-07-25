@@ -10,6 +10,8 @@ def build_replay_from_rollout(
     stage_label: str = "Final",
     snapshot_epsilon: float | None = None,
 ) -> ReplayState:
+    # Convert algorithm rollout objects into a stable UI playback model.  The
+    # replay object is small enough to keep in Streamlit session state.
     steps: list[ReplayStep] = []
     cum_reward = 0.0
     for i, ts in enumerate(rollout.steps):
@@ -46,6 +48,7 @@ def render_replay_bar(
     replay: ReplayState,
     replay_key: str = "replay",
 ) -> str:
+    # This returns HTML only; button controls live in game_view_common.py.
     total = len(replay.steps)
     cur = replay.current_index
     pct = int(100 * cur / max(1, total - 1)) if total > 1 else 0
@@ -66,6 +69,8 @@ def render_replay_bar(
 
 
 def get_current_step(replay: ReplayState) -> ReplayStep | None:
+    # Defensive helper so views can ask for the current step even before a
+    # replay exists or after an index reset.
     if not replay.steps or replay.current_index >= len(replay.steps):
         return None
     return replay.steps[replay.current_index]

@@ -1,5 +1,7 @@
 from core.types import RoomSpec, RoomKind, RewardConfig
 
+# Human-readable room metadata for docs/UI.  The actual environment rules live
+# under environments/, while these specs describe the assignment structure.
 ROOM_SPECS: dict[str, RoomSpec] = {
     "room1_dp": RoomSpec(
         room_id="room1",

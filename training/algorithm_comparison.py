@@ -34,6 +34,7 @@ from environments.room2_sarsa import ROOM2_GRID, Room2SARSA
 
 @dataclass(frozen=True)
 class ComparisonResult:
+    # One algorithm/seed evaluation result for the shared Room 2 benchmark.
     algorithm: str
     config_label: str
     seed: int
@@ -64,6 +65,8 @@ class TunedComparisonResult:
 
 
 def _room2_factory():
+    # Both algorithms use the exact same Room 2 environment for the matched
+    # comparison, isolating algorithm differences from environment changes.
     return Room2SARSA(max_steps=200, reward_config=RewardConfig(), slip_config=SlipConfig(0.8, 0.1, 0.1))
 
 
@@ -78,6 +81,8 @@ def run_matched_comparison(
     max_steps: int = 200,
 ) -> tuple[list[ComparisonResult], list[ComparisonResult]]:
     """Comparison A: identical hyperparameters for both algorithms."""
+    # Matched comparison answers: "What happens if SARSA and Q-Learning get the
+    # same alpha/gamma/epsilon settings?"
     if training_seeds is None:
         training_seeds = [0, 1, 2, 3, 4]
     if eval_seeds is None:
@@ -154,6 +159,8 @@ def run_tuned_comparison(
     max_steps: int = 200,
 ) -> list[TunedComparisonResult]:
     """Comparison B: each algorithm's best-tuned config."""
+    # Tuned comparison answers: "What happens when each algorithm gets a
+    # reasonable tuned configuration?"
     if training_seeds is None:
         training_seeds = [0, 1, 2]
     if eval_seeds is None:
@@ -262,6 +269,8 @@ def save_comparison_to_final(
     matched: tuple[list[ComparisonResult], list[ComparisonResult]],
     tuned: list[TunedComparisonResult],
 ) -> str:
+    # Final artifacts include paired seed differences so the report can discuss
+    # the direction of change, not only aggregate means.
     from training.experiment_utils import FINAL_DIR, now_iso, git_commit, room2_map_signature
     os.makedirs(FINAL_DIR, exist_ok=True)
 

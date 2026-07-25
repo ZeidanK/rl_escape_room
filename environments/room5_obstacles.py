@@ -24,6 +24,8 @@ from environments.base_environment import BaseEnvironment
 
 
 FIXED_ROOM5_OBSTACLES: tuple[Obstacle, ...] = (
+    # Stable showcase layout.  Generated layouts are still used for broader
+    # evaluation so the DQN is not judged only on one obstacle arrangement.
     Obstacle(3.0, 4.2),
     Obstacle(4.8, 6.0),
     Obstacle(6.5, 4.0),
@@ -101,6 +103,8 @@ class Room5Obstacles(BaseEnvironment):
         layout_seed: int | None = None,
         start_state: ContinuousState | None = None,
     ) -> Room5Observation:
+        # Room 5 separates the dynamics seed from layout_seed so a policy can
+        # be evaluated on the same movement randomness but different maps.
         if seed is not None:
             self.rng = np.random.default_rng(seed)
         self._layout_seed = self.obstacle_config.layout_seed if layout_seed is None else int(layout_seed)
@@ -122,6 +126,8 @@ class Room5Obstacles(BaseEnvironment):
         return self.state
 
     def step(self, action: int | VelocityAction) -> StepResult:
+        # Similar to Room 4, but with obstacle collision checks and a richer
+        # observation vector for the DQN.
         if self.is_done:
             raise RuntimeError("Episode already terminated; call reset() first")
         self._step_count += 1
@@ -208,6 +214,8 @@ class Room5Obstacles(BaseEnvironment):
         )
 
     def visible_obstacles(self) -> tuple[Obstacle, ...]:
+        # The agent only observes nearby obstacles, sorted by distance.  This
+        # keeps the observation vector fixed-size while still local.
         visible: list[tuple[float, Obstacle]] = []
         for obstacle in self._obstacles:
             distance = self._distance_to_obstacle_center(obstacle)
@@ -247,6 +255,8 @@ class Room5Obstacles(BaseEnvironment):
         )
 
     def _observation(self) -> Room5Observation:
+        # Observation schema: normalized position, velocity, exit direction,
+        # then up to K visible obstacle records with padding for missing ones.
         width = self.motion.room_width_m
         height = self.motion.room_height_m
         ex, ey = self.motion.exit_center
@@ -282,6 +292,8 @@ class Room5Obstacles(BaseEnvironment):
         return tuple(float(v) for v in obs)
 
     def _make_layout(self, layout_seed: int) -> tuple[Obstacle, ...]:
+        # Seeded layout generation makes experiments reproducible while still
+        # allowing held-out layouts for generalization checks.
         if self.obstacle_config.fixed_layout:
             return tuple(FIXED_ROOM5_OBSTACLES[: self.obstacle_config.max_obstacles])
         rng = np.random.default_rng(layout_seed)
@@ -308,6 +320,8 @@ class Room5Obstacles(BaseEnvironment):
         return tuple(obstacles)
 
     def _layout_candidate_is_valid(self, candidate: Obstacle, obstacles: list[Obstacle]) -> bool:
+        # Leave clearance around the start, exit, and existing obstacles so the
+        # generated room is fair and physically navigable.
         start_x, start_y = self.motion.start_position
         exit_x, exit_y = self.motion.exit_center
         clearance = self.obstacle_config.obstacle_width_m + self.motion.exit_radius_m + 0.35

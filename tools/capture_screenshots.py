@@ -15,6 +15,7 @@ APP_FILE = "app.py"
 BASE_URL = "http://localhost:8501"
 
 MODES = [
+    # These correspond to the screenshots referenced in README/docs.
     ("Home", "home.png"),
     ("Room 1 \u2014 DP", "room1_value_policy.png"),
     ("Room 2 \u2014 SARSA", "room2_training.png"),
@@ -25,6 +26,8 @@ MODES = [
 
 
 def main():
+    # Start a temporary Streamlit server, capture each page, then always stop
+    # the server in the finally block.
     proc = subprocess.Popen(
         [sys.executable, "-m", "streamlit", "run", APP_FILE],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,

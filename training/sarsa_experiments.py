@@ -10,6 +10,8 @@ from environments.room2_sarsa import ROOM2_MAP, Room2SARSA
 from agents.sarsa import SarsaAgent, evaluate_sarsa_policy
 
 
+# Room 2 experiment runner.  Screening tries many hyperparameter combinations;
+# confirmation repeats candidates with more seeds/episodes.
 STORAGE_DIR = os.path.join("storage", "experiments", "room2_sarsa")
 
 ALPHA_VALUES = [0.05, 0.10, 0.30, 0.50]
@@ -45,6 +47,7 @@ def _build_config(alpha, gamma, decay, episodes, seed) -> SarsaConfig:
 def run_screening_experiments(
     episodes: int = 2_000,
 ) -> list[dict]:
+    # Fast pass over alpha/gamma/epsilon-decay to identify promising settings.
     os.makedirs(STORAGE_DIR, exist_ok=True)
     factory = create_factory()
     results: list[dict] = []
@@ -121,6 +124,8 @@ def run_screening_experiments(
 def run_confirmation_experiments(
     episodes: int = 5_000,
 ) -> list[dict]:
+    # Slower pass with more episodes and seeds to reduce dependence on one
+    # lucky random training run.
     os.makedirs(STORAGE_DIR, exist_ok=True)
     factory = create_factory()
     results: list[dict] = []

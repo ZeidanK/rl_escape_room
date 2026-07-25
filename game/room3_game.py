@@ -34,6 +34,7 @@ from game.home_page import ROOM_DEFS
 
 
 def _training_config(meta: dict) -> dict:
+    # Saved model metadata may nest the training config under this key.
     return meta.get("training_config", {})
 
 
@@ -56,6 +57,8 @@ def _max_steps_from_meta(meta: dict, default: int = 300) -> int:
 
 
 def _has_key_before_current_step(replay) -> bool:
+    # Used to decide which policy slice to explain/render before the current
+    # replay event has been applied.
     if replay is None:
         return False
     return any(
@@ -74,6 +77,8 @@ def _has_key_after_current_step(replay) -> bool:
 
 
 def render_room3_game():
+    # Showcase view for a trained Q-Learning model.  The key flag matters for
+    # rendering because one physical cell has two possible Q-table states.
     theme = get_theme("room3")
 
     st.markdown(
@@ -156,12 +161,13 @@ def render_room3_game():
         }
         slip_effect = True
 
-    # Build environment for rendering
+    # Build environment for rendering.  The rollout itself is generated below
+    # from the loaded model and matching metadata.
     env = Room3QLearning(max_steps=_max_steps_from_meta(meta),
                          slip_config=_slip_config_from_meta(meta),
                          seed=_seed_from_meta(meta))
     
-    # Build replay if needed
+    # Build replay if needed and cache it across Streamlit reruns.
     if replay is None:
         seed = _seed_from_meta(meta)
         slip_config = _slip_config_from_meta(meta)

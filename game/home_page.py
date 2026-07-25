@@ -8,6 +8,8 @@ from game.models import GameRoomState, RoomUnlockStatus, Achievement, Achievemen
 from game.achievements import AchievementTracker, ALL_ACHIEVEMENTS
 
 
+# Campaign-card metadata.  The rooms are currently all unlocked, but the status
+# structure allows progression rules or best-run stats to be added later.
 ROOM_DEFS = [
     GameRoomState(
         room_id="room1",
@@ -93,6 +95,8 @@ def _get_room_emoji(idx: int) -> str:
 def render_home_page():
     # Global styles are injected by app.py — do not duplicate here
 
+    # This page is the game-style entry point.  The Learning Laboratory remains
+    # available separately for training curves and detailed analysis.
     st.markdown("""
     <div class="home-title">
         <h1>RL ESCAPE ROOM</h1>
@@ -134,6 +138,7 @@ def render_home_page():
     st.markdown("<hr style='border-color:#333;margin:24px 0;'>", unsafe_allow_html=True)
 
     tracker = AchievementTracker.from_session_state()
+    # Achievement icons are shown on each room card only after they unlock.
     unlocked_list = tracker.get_unlocked()
     unlocked_ids = {a.id for a in unlocked_list}
 
@@ -205,6 +210,7 @@ def render_home_page():
 
 
 def _room_achievements(room_id: str) -> list[AchievementId]:
+    # Used to decide which achievement icons belong on each room card.
     mapping = {
         "room1": [AchievementId.FIRST_ESCAPE, AchievementId.ICE_MASTER, AchievementId.SPEED_RUNNER],
         "room2": [AchievementId.FIRST_ESCAPE, AchievementId.LASER_DODGER, AchievementId.SPEED_RUNNER],
