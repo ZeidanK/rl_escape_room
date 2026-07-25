@@ -3,6 +3,7 @@
 import html as html_mod
 
 import streamlit as st
+from game.html_rendering import render_html
 from game.theme import difficulty_badge
 from game.models import GameRoomState, RoomUnlockStatus, Achievement, AchievementId
 from game.achievements import AchievementTracker, ALL_ACHIEVEMENTS
@@ -97,20 +98,20 @@ def render_home_page():
 
     # This page is the game-style entry point.  The Learning Laboratory remains
     # available separately for training curves and detailed analysis.
-    st.markdown("""
+    render_html("""
     <div class="home-title">
         <h1>RL ESCAPE ROOM</h1>
         <p>Can five learning agents escape five increasingly difficult chambers?</p>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
-    st.markdown("""
+    render_html("""
     <div style="text-align:center;padding:10px 0 20px;color:#616161;font-size:0.85em;">
         Known Model \u2192 Unknown Model \u2192 Memory/State Extension \u2192 Continuous Control \u2192 Obstacle DQN
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
-    st.markdown("""
+    render_html("""
     <div style="display:flex;justify-content:center;gap:8px;margin-bottom:24px;">
         <span style="background:#1b5e20;color:#76ff03;padding:2px 12px;border-radius:12px;font-size:0.75em;">Room 1</span>
         <span style="color:#444;">\u2192</span>
@@ -122,7 +123,7 @@ def render_home_page():
         <span style="color:#444;">\u2192</span>
         <span style="background:#0f766e;color:#5eead4;padding:2px 12px;border-radius:12px;font-size:0.75em;">Room 5</span>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
     nav_col1, nav_col2 = st.columns([1, 1])
     with nav_col1:
@@ -135,7 +136,7 @@ def render_home_page():
             st.session_state.mode = "Home"
             st.rerun()
 
-    st.markdown("<hr style='border-color:#333;margin:24px 0;'>", unsafe_allow_html=True)
+    render_html("<hr style='border-color:#333;margin:24px 0;'>")
 
     tracker = AchievementTracker.from_session_state()
     # Achievement icons are shown on each room card only after they unlock.
@@ -167,7 +168,7 @@ def render_home_page():
                     f'</div>'
                 )
 
-            st.markdown(f"""
+            render_html(f"""
             <div class="{card_class}">
                 <div style="display:flex;justify-content:space-between;align-items:start;">
                     <div>
@@ -185,7 +186,7 @@ def render_home_page():
                 {best_str}
                 {f'<div style="margin-top:6px;">{ach_str}</div>' if ach_str else ''}
             </div>
-            """, unsafe_allow_html=True)
+            """)
 
             btn_label = "Enter Room" if not locked else "Locked"
             disabled = locked
@@ -194,7 +195,7 @@ def render_home_page():
                 st.session_state.game_room = room.room_id
                 st.rerun()
 
-    st.markdown("<hr style='border-color:#333;margin:24px 0;'>", unsafe_allow_html=True)
+    render_html("<hr style='border-color:#333;margin:24px 0;'>")
     st.markdown("### Achievements")
     if unlocked_list:
         ach_html = "".join(
@@ -203,10 +204,9 @@ def render_home_page():
             f'font-size:0.85em;">{a.emoji} {a.name}</span>'
             for a in unlocked_list
         )
-        st.markdown(f'<div>{ach_html}</div>', unsafe_allow_html=True)
+        render_html(f'<div>{ach_html}</div>')
     else:
-        st.markdown('<div style="color:#616161;font-size:0.9em;">Complete rooms to unlock achievements.</div>',
-                    unsafe_allow_html=True)
+        render_html('<div style="color:#616161;font-size:0.9em;">Complete rooms to unlock achievements.</div>')
 
 
 def _room_achievements(room_id: str) -> list[AchievementId]:

@@ -3,6 +3,7 @@
 import html as html_mod
 
 from core.types import Action
+from game.html_rendering import normalize_html
 
 
 def _action_name(a: Action | int | None) -> str:
@@ -85,7 +86,7 @@ def render_hud(
             f'</div>'
         )
 
-    return f"""
+    return normalize_html(f"""
     <div class="game-hud">
         <div class="game-hud-title">{room_name}</div>
         <div class="game-hud-subtitle">{algorithm}</div>
@@ -93,4 +94,4 @@ def render_hud(
         {slip_html}
         {badges_html}
     </div>
-    """
+    """)

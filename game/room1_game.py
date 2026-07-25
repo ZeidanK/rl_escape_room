@@ -6,6 +6,7 @@ from dataclasses import replace
 import streamlit as st
 import numpy as np
 
+from game.html_rendering import render_html
 from game.theme import get_theme
 
 from core.types import (
@@ -91,12 +92,11 @@ def render_room1_game():
     # value convergence, render the grid, and update achievements.
     theme = get_theme("room1")
 
-    st.markdown(
+    render_html(
         f'<div class="narrative-box">'
         f'The agent wakes inside a frozen chamber. The floor is unstable, and intended movements '
         f'may cause sideways slips. Because the full model is known, it calculates the optimal '
-        f'escape policy before moving.</div>',
-        unsafe_allow_html=True,
+        f'escape policy before moving.</div>'
     )
 
     with st.sidebar:
@@ -247,7 +247,7 @@ def render_room1_game():
                     env.grid, frame_values, anim_iter + 1, total,
                     cell_size=48, room_id="room1",
                 )
-                st.markdown(f'<div style="overflow:hidden;">{svg}</div>', unsafe_allow_html=True)
+                render_html(f'<div style="overflow:hidden;">{svg}</div>')
             except Exception as e:
                 st.error(f"Failed to render animation frame: {e}")
                 st.code(str(frame_values))
@@ -274,7 +274,7 @@ def render_room1_game():
     elif replay and not replay.success:
         status_badges.append('<span class="badge-failure">FAILED</span>')
 
-    st.markdown(render_hud(
+    render_html(render_hud(
         room_name="\u2744\ufe0f Room 1: The Frozen Maze",
         algorithm=f"Value Iteration (DP) | Converged in {vi_result.iterations} iters",
         state_str=str(env.agent_position) if current_step_data else None,
@@ -284,7 +284,7 @@ def render_room1_game():
         epsilon=current_step_data.epsilon_at_time if current_step_data else None,
         status_badges=status_badges,
         slip_info=slip_info,
-    ), unsafe_allow_html=True)
+    ))
 
     col_grid, col_info = st.columns([3, 1])
 
@@ -314,7 +314,7 @@ def render_room1_game():
                 slip_effect=slip_effect,
                 trajectory=trajectory,
             )
-            st.markdown(f'<div class="grid-container" style="overflow:hidden;">{svg}</div>', unsafe_allow_html=True)
+            render_html(f'<div class="grid-container" style="overflow:hidden;">{svg}</div>')
         except Exception as e:
             st.error(f"SVG rendering failed: {e}")
             st.code(env.render_ansi(), language="text")
@@ -328,16 +328,15 @@ def render_room1_game():
             st.markdown(f"**Intended:** {intended}")
             if current_step_data.slipped:
                 st.markdown(f"**Actual:** {effective}")
-                st.markdown('<span class="badge-slip">SLIPPED</span>', unsafe_allow_html=True)
+                render_html('<span class="badge-slip">SLIPPED</span>')
             st.markdown(f"**Reward:** {current_step_data.reward:+.1f}")
             st.markdown(f"**Cumulative:** {current_step_data.cumulative_reward:.1f}")
             if current_step_data.collision:
-                st.markdown(f'<span class="badge-collision">COLLISION: {current_step_data.collision}</span>',
-                            unsafe_allow_html=True)
+                render_html(f'<span class="badge-collision">COLLISION: {current_step_data.collision}</span>')
             if current_step_data.event:
                 ev = current_step_data.event
                 if ev == "exit":
-                    st.markdown('<span class="badge-success">EXIT REACHED</span>', unsafe_allow_html=True)
+                    render_html('<span class="badge-success">EXIT REACHED</span>')
         else:
             st.markdown("No step data.")
 
@@ -346,16 +345,16 @@ def render_room1_game():
         q_vals = _extract_q_from_values(values, env) if values else None
         sel_action = current_step_data.action if current_step_data else None
         explanation = get_algorithm_explanation("vi")
-        st.markdown(render_explain_panel(
+        render_html(render_explain_panel(
             q_vals,
             selected_action=sel_action,
             algorithm="Value Iteration",
             explanation=explanation,
-        ), unsafe_allow_html=True)
+        ))
 
     # Replay controls — real st.button widgets (not JS onclick)
     if replay:
-        st.markdown(render_replay_bar(replay, replay_key="r1g"), unsafe_allow_html=True)
+        render_html(render_replay_bar(replay, replay_key="r1g"))
 
         rk = "r1g"
         cur = replay.current_index
@@ -449,7 +448,7 @@ def render_room1_game():
         )
         theme = get_theme("room1")
         transition_html, _ = render_transition_content(transition, theme.primary)
-        st.markdown(f'<div class="transition-overlay">{transition_html}</div>', unsafe_allow_html=True)
+        render_html(f'<div class="transition-overlay">{transition_html}</div>')
         
         # Continue button to return to room selection
         if st.button("Continue to Room Selection", key="r1g_continue", type="primary"):
@@ -457,7 +456,7 @@ def render_room1_game():
             st.session_state.mode = "\U0001f3ae Escape Room Showcase"
             st.rerun()
 
-    st.markdown("""
+    render_html("""
     <div class="game-legend">
         <span class="legend-item"><span class="legend-swatch" style="background:#1a3a5c;"></span> Empty</span>
         <span class="legend-item"><span class="legend-swatch" style="background:#455a64;"></span> Wall</span>
@@ -467,4 +466,4 @@ def render_room1_game():
         <span class="legend-item"><span class="legend-swatch" style="background:#29b6f6;"></span> Agent</span>
         <span class="legend-item">\u2191\u2192\u2193\u2190 Policy</span>
     </div>
-    """, unsafe_allow_html=True)
+    """)

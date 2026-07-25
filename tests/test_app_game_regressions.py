@@ -40,6 +40,25 @@ def _render_room4_game():
     render_room4_game()
 
 
+def _render_home_with_unlocked_achievements():
+    import streamlit as st
+
+    from game.achievements import AchievementId, AchievementTracker
+    from game.html_rendering import render_html
+    from game.home_page import render_home_page
+    from game.theme import render_global_styles
+
+    tracker = AchievementTracker()
+    tracker._unlocked = {
+        AchievementId.FIRST_ESCAPE,
+        AchievementId.ICE_MASTER,
+        AchievementId.SPEED_RUNNER,
+    }
+    st.session_state.achievement_tracker = tracker
+    render_html(render_global_styles())
+    render_home_page()
+
+
 def _click_button_by_label(at: AppTest, label: str) -> AppTest:
     for button in at.button:
         if button.label == label:
@@ -59,6 +78,42 @@ def _prepare_storage(tmp_path, monkeypatch) -> None:
     (tmp_path / "storage" / "models").mkdir(parents=True)
 
 
+def _assert_no_placeholder_messages(at: AppTest) -> None:
+    bad_fragments = [
+        "appears after local training",
+        "available yet",
+        "No trajectory available",
+        "Run an evaluation from the sidebar",
+        "Generate a greedy replay from the sidebar",
+        "Train or load",
+        "Press **Load Latest Model**",
+    ]
+    messages = [
+        getattr(element, "value", "")
+        for group in (at.info, at.caption, at.warning)
+        for element in group
+    ]
+    assert not any(fragment in message for fragment in bad_fragments for message in messages)
+
+
+def _assert_no_raw_html_text(at: AppTest) -> None:
+    raw_fragments = ["<div", "<span", "<script", "<style"]
+    messages = [
+        getattr(element, "value", "")
+        for group_name in ("code", "text")
+        for element in getattr(at, group_name, [])
+    ]
+    assert not any(fragment in message for fragment in raw_fragments for message in messages)
+
+
+def test_home_page_with_unlocked_achievements_does_not_show_raw_html():
+    at = AppTest.from_function(_render_home_with_unlocked_achievements, default_timeout=60)
+    at.run()
+
+    assert len(at.exception) == 0
+    _assert_no_raw_html_text(at)
+
+
 def test_room2_analysis_mode_auto_loads_showcase_outputs():
     at = AppTest.from_file(str(APP_PATH), default_timeout=60)
     at.run()
@@ -68,7 +123,9 @@ def test_room2_analysis_mode_auto_loads_showcase_outputs():
     assert len(at.exception) == 0
     assert at.session_state["sarsa_result"] is not None
     assert at.session_state["sarsa_eval_summary"] is not None
+    assert at.session_state["sarsa_rollout"] is not None
     assert len(at.info) == 0
+    _assert_no_placeholder_messages(at)
 
 
 def test_room3_analysis_mode_auto_loads_showcase_outputs():
@@ -80,7 +137,9 @@ def test_room3_analysis_mode_auto_loads_showcase_outputs():
     assert len(at.exception) == 0
     assert at.session_state["ql_result"] is not None
     assert at.session_state["ql_eval_summary"] is not None
+    assert at.session_state["ql_rollout"] is not None
     assert len(at.info) == 0
+    _assert_no_placeholder_messages(at)
 
 
 def test_room4_analysis_mode_auto_loads_showcase_outputs():
@@ -95,6 +154,7 @@ def test_room4_analysis_mode_auto_loads_showcase_outputs():
     assert at.session_state["approx_eval_gen"] is not None
     assert at.session_state["approx_rollout"] is not None
     assert len(at.info) == 0
+    _assert_no_placeholder_messages(at)
 
 
 def test_room5_analysis_mode_auto_loads_showcase_outputs():
@@ -111,6 +171,7 @@ def test_room5_analysis_mode_auto_loads_showcase_outputs():
     assert at.session_state["dqn_eval_unseen"] is not None
     assert at.session_state["dqn_rollout"] is not None
     assert len(at.info) == 0
+    _assert_no_placeholder_messages(at)
 
 
 def test_room5_tiny_training_evaluation_and_replay():
@@ -144,7 +205,7 @@ def test_room5_tiny_training_evaluation_and_replay():
     assert at.session_state["dqn_rollout"] is not None
 
 
-def test_room2_game_loads_saved_sarsa_model(tmp_path, monkeypatch):
+def test_room2_game_auto_loads_saved_sarsa_model(tmp_path, monkeypatch):
     _prepare_storage(tmp_path, monkeypatch)
     model_dir = tmp_path / "storage" / "models" / "room2_sarsa"
     model_dir.mkdir()
@@ -157,13 +218,13 @@ def test_room2_game_loads_saved_sarsa_model(tmp_path, monkeypatch):
 
     at = AppTest.from_function(_render_room2_game, default_timeout=60)
     at.run()
-    _click_button_by_label(at, "Load Latest Model")
 
     assert len(at.exception) == 0
     assert at.session_state["r2g_replay"] is not None
+    _assert_no_placeholder_messages(at)
 
 
-def test_room3_game_loads_saved_q_learning_model(tmp_path, monkeypatch):
+def test_room3_game_auto_loads_saved_q_learning_model(tmp_path, monkeypatch):
     _prepare_storage(tmp_path, monkeypatch)
     model_dir = tmp_path / "storage" / "models" / "room3_q_learning"
     model_dir.mkdir()
@@ -176,13 +237,13 @@ def test_room3_game_loads_saved_q_learning_model(tmp_path, monkeypatch):
 
     at = AppTest.from_function(_render_room3_game, default_timeout=60)
     at.run()
-    _click_button_by_label(at, "Load Latest Model")
 
     assert len(at.exception) == 0
     assert at.session_state["r3g_replay"] is not None
+    _assert_no_placeholder_messages(at)
 
 
-def test_room4_game_loads_saved_approximate_model(tmp_path, monkeypatch):
+def test_room4_game_auto_loads_saved_approximate_model(tmp_path, monkeypatch):
     _prepare_storage(tmp_path, monkeypatch)
     model_dir = tmp_path / "storage" / "models" / "room4_approximate_sarsa"
     model_dir.mkdir()
@@ -203,10 +264,10 @@ def test_room4_game_loads_saved_approximate_model(tmp_path, monkeypatch):
 
     at = AppTest.from_function(_render_room4_game, default_timeout=60)
     at.run()
-    _click_button_by_label(at, "Load Latest Model")
 
     assert len(at.exception) == 0
     assert at.session_state["r4g_rollout"] is not None
+    _assert_no_placeholder_messages(at)
 
 
 def test_approximate_policy_evaluation_honors_start_mode():

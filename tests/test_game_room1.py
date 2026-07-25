@@ -9,9 +9,11 @@ from game.canvas_renderer import render_grid_canvas, render_vi_animation_frame
 from game.hud import render_hud
 from game.episode_replay import build_replay_from_rollout, render_replay_bar, get_current_step
 from game.explain_panel import render_explain_panel, get_algorithm_explanation
+from game.html_rendering import normalize_html
 from game.theme import render_global_styles, get_theme, ROOM_THEMES
-from game.models import ReplayState, ReplayStep, Achievement, AchievementId
+from game.models import ReplayState, ReplayStep, Achievement, AchievementId, RoomTransition
 from game.achievements import AchievementTracker, ALL_ACHIEVEMENTS
+from game.room_transitions import render_transition_content
 from game.room1_game import _compute_vi_frames, _extract_q_from_values
 
 
@@ -127,9 +129,19 @@ class TestVIAnimation:
 
 
 class TestHUD:
+    def test_normalize_html_dedents_home_page_achievement_card(self):
+        raw = """
+            <div style="margin-top:6px;"><span style="font-size:0.8em;margin-right:4px;" title="First Escape">🏆</span><span style="font-size:0.8em;margin-right:4px;" title="Ice Master">❄️</span><span style="font-size:0.8em;margin-right:4px;" title="Speed Runner">⏱️</span></div>
+        """
+        html = normalize_html(raw)
+        assert html.startswith('<div style="margin-top:6px;">')
+        assert html == html.strip()
+
     def test_render_hud_basic(self):
         html = render_hud(room_name="Test", algorithm="VI")
         assert 'class="game-hud"' in html
+        assert html.startswith('<div class="game-hud">')
+        assert html == html.strip()
 
     def test_render_hud_with_all_fields(self):
         html = render_hud(
@@ -179,6 +191,8 @@ class TestEpisodeReplay:
         )
         html = render_replay_bar(replay, replay_key="test")
         assert "replay-bar" in html
+        assert html.startswith('<div class="replay-bar">')
+        assert html == html.strip()
 
     def test_get_current_step(self):
         step = ReplayStep(
@@ -218,6 +232,23 @@ class TestExplainPanel:
             expl = get_algorithm_explanation(key)
             assert len(expl) > 20
         assert get_algorithm_explanation("unknown") == ""
+
+
+class TestTransitions:
+    def test_render_transition_content_html_is_normalized(self):
+        transition = RoomTransition(
+            room_id="room1",
+            success=True,
+            steps=12,
+            total_reward=42.0,
+            new_best=True,
+            message="Escaped cleanly.",
+            achievements_unlocked=(ALL_ACHIEVEMENTS[AchievementId.FIRST_ESCAPE],),
+        )
+        html, is_success = render_transition_content(transition)
+        assert is_success is True
+        assert html.startswith('<div class="transition-card"')
+        assert html == html.strip()
 
 
 class TestGlobalStyles:

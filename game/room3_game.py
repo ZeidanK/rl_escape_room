@@ -5,6 +5,7 @@ from dataclasses import replace
 import streamlit as st
 import numpy as np
 
+from game.html_rendering import render_html
 from game.theme import get_theme
 from game.game_view_common import (
     render_back_button,
@@ -108,11 +109,10 @@ def render_room3_game():
     # rendering because one physical cell has two possible Q-table states.
     theme = get_theme("room3")
 
-    st.markdown(
+    render_html(
         f'<div class="narrative-box" style="border-left-color:{theme.primary};">'
         f'The exit is locked. The agent must remember whether it has collected the key because '
-        f'the same location has different meaning before and after collection.</div>',
-        unsafe_allow_html=True,
+        f'the same location has different meaning before and after collection.</div>'
     )
 
     render_back_button("r3g_back")
@@ -221,7 +221,7 @@ def render_room3_game():
     has_key_before = _has_key_before_current_step(replay)
     has_key_after = _has_key_after_current_step(replay)
 
-    st.markdown(render_hud(
+    render_html(render_hud(
         room_name="\U0001f511 Room 3: The Key Vault",
         algorithm=f"Q-Learning (Off-Policy TD) | \u03b1={float(cfg.get('alpha', meta.get('alpha', 0.1))):.2f} \u03b3={float(cfg.get('gamma', meta.get('gamma', 0.95))):.2f}",
         state_str=str(env.agent_position) if current_step_data else None,
@@ -232,7 +232,7 @@ def render_room3_game():
         status_badges=status_badges,
         slip_info=slip_info,
         inventory="KEY" if has_key_after else None,
-    ), unsafe_allow_html=True)
+    ))
 
     # Main grid area
     col_grid, col_info = st.columns([3, 1])
@@ -275,17 +275,17 @@ def render_room3_game():
             q_vals_state = {a.name: q_vals.get(state_key, (0,0,0,0))[i]
                            for i, a in enumerate(Action)}
         sel_action = current_step_data.action if current_step_data else None
-        st.markdown(render_explain_panel(
+        render_html(render_explain_panel(
             q_vals_state,
             selected_action=sel_action,
             algorithm="Q-Learning",
             explanation=get_algorithm_explanation("q_learning"),
-        ), unsafe_allow_html=True)
+        ))
 
     # Replay controls
     if replay:
         from game.episode_replay import render_replay_bar
-        st.markdown(render_replay_bar(replay, replay_key="r3g"), unsafe_allow_html=True)
+        render_html(render_replay_bar(replay, replay_key="r3g"))
 
         rk = "r3g"
         cur = replay.current_index

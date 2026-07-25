@@ -1,6 +1,7 @@
 """Episode playback — builds replay data from rollout results."""
 
 from core.types import Action, RolloutResult
+from game.html_rendering import normalize_html
 from game.models import ReplayStep, ReplayState
 
 
@@ -53,7 +54,7 @@ def render_replay_bar(
     cur = replay.current_index
     pct = int(100 * cur / max(1, total - 1)) if total > 1 else 0
 
-    return f"""
+    return normalize_html(f"""
     <div class="replay-bar">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span class="replay-stage">{replay.stage_label}</span>
@@ -65,7 +66,7 @@ def render_replay_bar(
             </div>
         </div>
     </div>
-    """
+    """)
 
 
 def get_current_step(replay: ReplayState) -> ReplayStep | None:

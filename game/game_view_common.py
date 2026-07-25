@@ -7,6 +7,7 @@ from collections.abc import Sequence
 import streamlit as st
 import numpy as np
 
+from game.html_rendering import render_html
 from game.theme import get_theme
 from game.canvas_renderer import render_grid_canvas, render_vi_animation_frame
 from game.hud import render_hud
@@ -106,7 +107,7 @@ def render_replay_controls(replay: ReplayState, prefix: str, room_id: str = "roo
     if not replay:
         return None
     
-    st.markdown(render_replay_bar(replay, replay_key=prefix), unsafe_allow_html=True)
+    render_html(render_replay_bar(replay, replay_key=prefix))
 
     rk = prefix
     cur = replay.current_index
@@ -166,7 +167,7 @@ def render_replay_controls(replay: ReplayState, prefix: str, room_id: str = "roo
 def render_legend(room_id: str):
     """Render game legend with room-specific colors."""
     theme = get_theme(room_id)
-    st.markdown(f"""
+    render_html(f"""
     <div class="game-legend">
         <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_empty};"></span> Empty</span>
         <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_wall};"></span> Wall</span>
@@ -176,7 +177,7 @@ def render_legend(room_id: str):
         <span class="legend-item"><span class="legend-swatch" style="background:{theme.agent_color};"></span> Agent</span>
         <span class="legend-item">\u2191\u2192\u2193\u2190 Policy</span>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 
 def check_and_unlock_achievements(room_id: str, replay) -> list:
@@ -271,7 +272,7 @@ def render_room_transition(room_id: str, replay, achievements: list):
     )
     
     transition_html, _ = render_transition_content(transition, theme.primary)
-    st.markdown(f'<div class="transition-overlay">{transition_html}</div>', unsafe_allow_html=True)
+    render_html(f'<div class="transition-overlay">{transition_html}</div>')
     
     # Continue button
     if st.button("Continue to Room Selection", key=f"{room_id}_continue", type="primary"):
@@ -316,7 +317,7 @@ def render_vi_animation(anim_frames: list, anim_iter: int, anim_playing: bool, p
             np.zeros((10, 10), dtype=int), frame_values, anim_iter + 1, total,
             cell_size=48, room_id=room_id,
         )
-        st.markdown(f'<div style="overflow:hidden;">{svg}</div>', unsafe_allow_html=True)
+        render_html(f'<div style="overflow:hidden;">{svg}</div>')
 
     st.markdown("---")
     
@@ -343,12 +344,12 @@ def render_explain_panel(q_vals: dict | None, selected_action: str | None, algor
     """Render the 'Explain Action' panel with Q-value table."""
     st.markdown("### Explain Action")
     explanation = get_algorithm_explanation(algorithm.lower().replace(" ", "_"))
-    st.markdown(render_explain_panel_html(
+    render_html(render_explain_panel_html(
         q_vals,
         selected_action=selected_action,
         algorithm=algorithm,
         explanation=explanation,
-    ), unsafe_allow_html=True)
+    ))
 
 
 def render_game_grid(env, agent_pos, room_id: str, policy=None, values=None,
@@ -373,7 +374,7 @@ def render_game_grid(env, agent_pos, room_id: str, policy=None, values=None,
             trajectory=trajectory,
             has_key=has_key,
         )
-        st.markdown(f'<div class="grid-container" style="overflow:hidden;">{svg}</div>', unsafe_allow_html=True)
+        render_html(f'<div class="grid-container" style="overflow:hidden;">{svg}</div>')
     except Exception as e:
         st.error(f"SVG rendering failed: {e}")
         st.code(env.render_ansi(), language="text")
@@ -389,20 +390,19 @@ def render_step_info(current_step_data, replay, room_id: str):
         st.markdown(f"**Intended:** {intended}")
         if current_step_data.slipped:
             st.markdown(f"**Actual:** {effective}")
-            st.markdown('<span class="badge-slip">SLIPPED</span>', unsafe_allow_html=True)
+            render_html('<span class="badge-slip">SLIPPED</span>')
         st.markdown(f"**Reward:** {current_step_data.reward:+.1f}")
         st.markdown(f"**Cumulative:** {current_step_data.cumulative_reward:.1f}")
         if current_step_data.collision:
-            st.markdown(f'<span class="badge-collision">COLLISION: {current_step_data.collision}</span>',
-                        unsafe_allow_html=True)
+            render_html(f'<span class="badge-collision">COLLISION: {current_step_data.collision}</span>')
         if current_step_data.event:
             ev = current_step_data.event
             if ev == "exit":
-                st.markdown('<span class="badge-success">EXIT REACHED</span>', unsafe_allow_html=True)
+                render_html('<span class="badge-success">EXIT REACHED</span>')
             elif ev in ("key", "key_collected"):
-                st.markdown('<span class="badge-key">KEY COLLECTED</span>', unsafe_allow_html=True)
+                render_html('<span class="badge-key">KEY COLLECTED</span>')
             elif ev == "trap":
-                st.markdown('<span class="badge-trap">TRAP HIT</span>', unsafe_allow_html=True)
+                render_html('<span class="badge-trap">TRAP HIT</span>')
     else:
         st.markdown("No step data.")
 
@@ -415,7 +415,7 @@ def render_hud_panel(room_name: str, algorithm: str, env, current_step_data, rep
     elif replay and not replay.success:
         status_badges.append('<span class="badge-failure">FAILED</span>')
     
-    st.markdown(render_hud(
+    render_html(render_hud(
         room_name=room_name,
         algorithm=algorithm,
         state_str=str(env.agent_position) if current_step_data else None,
@@ -426,13 +426,13 @@ def render_hud_panel(room_name: str, algorithm: str, env, current_step_data, rep
         status_badges=status_badges,
         slip_info=slip_info,
         custom_items=extra_items,
-    ), unsafe_allow_html=True)
+    ))
 
 
 def render_game_legend(room_id: str):
     """Render the legend bar for a room."""
     theme = get_theme(room_id)
-    st.markdown(f"""
+    render_html(f"""
     <div class="game-legend">
         <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_empty};"></span> Empty</span>
         <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_wall};"></span> Wall</span>
@@ -442,4 +442,4 @@ def render_game_legend(room_id: str):
         <span class="legend-item"><span class="legend-swatch" style="background:{theme.agent_color};"></span> Agent</span>
         <span class="legend-item">\u2191\u2192\u2193\u2190 Policy</span>
     </div>
-    """, unsafe_allow_html=True)
+    """)

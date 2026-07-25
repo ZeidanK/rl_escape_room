@@ -5,6 +5,7 @@ from dataclasses import replace
 import streamlit as st
 import numpy as np
 
+from game.html_rendering import render_html
 from game.theme import get_theme
 from game.game_view_common import (
     render_back_button,
@@ -87,11 +88,10 @@ def render_room2_game():
     # builds a greedy rollout, and lets the user replay the learned policy.
     theme = get_theme("room2")
 
-    st.markdown(
+    render_html(
         f'<div class="narrative-box" style="border-left-color:{theme.primary};">'
         f'The map is unknown. The agent must learn from experience while deciding whether to risk '
-        f'a short path through laser traps or take a safer route.</div>',
-        unsafe_allow_html=True,
+        f'a short path through laser traps or take a safer route.</div>'
     )
 
     render_back_button("r2g_back")
@@ -199,7 +199,7 @@ def render_room2_game():
     elif replay and not replay.success:
         status_badges.append('<span class="badge-failure">FAILED</span>')
 
-    st.markdown(render_hud(
+    render_html(render_hud(
         room_name="\u26a1 Room 2: The Laser Corridor",
         algorithm=f"SARSA (On-Policy TD) | \u03b1={float(cfg.get('alpha', meta.get('alpha', 0.1))):.2f} \u03b3={float(cfg.get('gamma', meta.get('gamma', 0.95))):.2f}",
         state_str=str(env.agent_position) if current_step_data else None,
@@ -209,7 +209,7 @@ def render_room2_game():
         epsilon=current_step_data.epsilon_at_time if current_step_data else None,
         status_badges=status_badges,
         slip_info=slip_info,
-    ), unsafe_allow_html=True)
+    ))
 
     # Main grid area
     col_grid, col_info = st.columns([3, 1])
@@ -246,17 +246,17 @@ def render_room2_game():
             q_vals_state = {a.name: q_vals.get(current_step_data.state, (0,0,0,0))[i] 
                            for i, a in enumerate(Action)}
         sel_action = current_step_data.action if current_step_data else None
-        st.markdown(render_explain_panel(
+        render_html(render_explain_panel(
             q_vals_state,
             selected_action=sel_action,
             algorithm="SARSA",
             explanation=get_algorithm_explanation("sarsa"),
-        ), unsafe_allow_html=True)
+        ))
 
     # Replay controls
     if replay:
         from game.episode_replay import render_replay_bar
-        st.markdown(render_replay_bar(replay, replay_key="r2g"), unsafe_allow_html=True)
+        render_html(render_replay_bar(replay, replay_key="r2g"))
 
         rk = "r2g"
         cur = replay.current_index
@@ -318,7 +318,7 @@ def render_room2_game():
 def render_game_legend(room_id: str):
     """Render the legend bar for a room."""
     theme = get_theme(room_id)
-    st.markdown(f"""
+    render_html(f"""
     <div class="game-legend">
         <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_empty};"></span> Empty</span>
         <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_wall};"></span> Wall</span>
@@ -329,4 +329,4 @@ def render_game_legend(room_id: str):
         <span class="legend-item"><span class="legend-swatch" style="background:{theme.agent_color};"></span> Agent</span>
         <span class="legend-item">\u2191\u2192\u2193\u2190 Policy</span>
     </div>
-    """, unsafe_allow_html=True)
+    """)

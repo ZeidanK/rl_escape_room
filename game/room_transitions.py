@@ -2,6 +2,7 @@
 
 import html as html_mod
 
+from game.html_rendering import normalize_html
 from game.models import RoomTransition, Achievement
 
 
@@ -15,12 +16,12 @@ def render_transition_content(transition: RoomTransition, theme_color: str = "#4
             f'<div style="margin:4px 0;">{a.emoji} {html_mod.escape(a.name)} — {html_mod.escape(a.description)}</div>'
             for a in transition.achievements_unlocked
         )
-        achievements_html = f"""
+        achievements_html = normalize_html(f"""
         <div style="margin:16px 0;padding:10px;background:rgba(255,215,64,0.1);border:1px solid #ffd740;border-radius:8px;">
             <div style="font-weight:700;color:#ffd740;margin-bottom:8px;">Achievements Unlocked</div>
             {ach_items}
         </div>
-        """
+        """)
 
     new_best_html = ""
     if transition.new_best:
@@ -28,7 +29,7 @@ def render_transition_content(transition: RoomTransition, theme_color: str = "#4
 
     is_success = transition.success
     if is_success:
-        body = f"""
+        body = normalize_html(f"""
         <h2 style="color:#76ff03;">ROOM ESCAPED</h2>
         <div class="stats">
             <div class="stat-item">
@@ -42,28 +43,28 @@ def render_transition_content(transition: RoomTransition, theme_color: str = "#4
         </div>
         {new_best_html}
         <p style="color:#b0bec5;">{html_mod.escape(transition.message)}</p>
-        """
+        """)
     else:
-        body = f"""
+        body = normalize_html(f"""
         <h2 style="color:#ff5252;">ESCAPE FAILED</h2>
         <p style="color:#b0bec5;">{html_mod.escape(transition.message)}</p>
-        """
+        """)
 
-    html = f"""
+    html = normalize_html(f"""
     <div class="transition-card" style="border-color: {theme_color};">
         {body}
         {achievements_html}
     </div>
-    """
+    """)
     return html, is_success
 
 
 def render_achievement_toast(achievement: Achievement) -> str:
     # Small standalone HTML snippet for newly unlocked achievements.
-    return f"""
+    return normalize_html(f"""
     <div class="achievement-toast">
         <div style="font-size:1.5em;">{achievement.emoji}</div>
         <div style="font-weight:700;color:#ffd740;">{html_mod.escape(achievement.name)}</div>
         <div style="font-size:0.85em;color:#b0bec5;">{html_mod.escape(achievement.description)}</div>
     </div>
-    """
+    """)

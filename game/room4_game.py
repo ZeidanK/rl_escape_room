@@ -3,6 +3,7 @@
 import streamlit as st
 import numpy as np
 
+from game.html_rendering import render_html
 from game.theme import get_theme
 from game.game_view_common import (
     render_back_button,
@@ -131,11 +132,10 @@ def render_room4_game():
     # It loads weights, rebuilds the tile coder, then draws the trajectory.
     theme = get_theme("room4")
 
-    st.markdown(
+    render_html(
         f'<div class="narrative-box" style="border-left-color:{theme.primary};">'
         f'The discrete grid disappears. The agent must control velocity in continuous space '
-        f'and generalize from overlapping tile-coded features.</div>',
-        unsafe_allow_html=True,
+        f'and generalize from overlapping tile-coded features.</div>'
     )
 
     render_back_button("r4g_back")
@@ -249,7 +249,7 @@ def render_room4_game():
     final_distance = _final_distance_to_exit_m(rollout, motion_cfg)
 
     from game.hud import render_hud
-    st.markdown(render_hud(
+    render_html(render_hud(
         room_name="\U0001f300 Room 4: The Momentum Chamber",
         algorithm=f"Approximate SARSA (Tile Coding) | \u03b1={float(cfg.get('alpha', meta.get('alpha', 0.1))):.2f} \u03b3={float(cfg.get('gamma', meta.get('gamma', 0.99))):.2f} | Tilings={tc_cfg.num_tilings}",
         state_str=f"({rollout.start_state[0]:.2f}, {rollout.start_state[1]:.2f}, v={rollout.start_state[2]}, {rollout.start_state[3]})",
@@ -263,7 +263,7 @@ def render_room4_game():
             ("Distance", f"{rollout.distance_travelled_m:.2f}m"),
             ("Final Dist.", f"{final_distance:.2f}m"),
         ],
-    ), unsafe_allow_html=True)
+    ))
 
     # Continuous trajectory visualization
     st.markdown("### Continuous Trajectory")
@@ -344,7 +344,7 @@ def render_room4_game():
     render_room_transition("room4", rollout, achievements)
     
     # Legend
-    st.markdown(f"""
+    render_html(f"""
     <div class="game-legend">
         <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_empty};"></span> Empty</span>
         <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_exit};"></span> Exit</span>
@@ -353,7 +353,7 @@ def render_room4_game():
         <span class="legend-item">X Collision</span>
         <span class="legend-item">↑→↓← Velocity</span>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 
 def _velocity_arrow(vx: int, vy: int) -> str:

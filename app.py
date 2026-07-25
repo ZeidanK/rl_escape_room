@@ -596,6 +596,7 @@ from game.room4_game import render_room4_game
 from game.comparison_theater import render_comparison_theater
 from game.theme import render_global_styles
 from game.achievements import AchievementTracker
+from game.html_rendering import render_html
 
 MODE_LABELS = [
     "\U0001f3ae Escape Room Showcase",
@@ -647,9 +648,9 @@ _MODE_NAME_MAP = {
 }
 
 # Custom sidebar with categorized radio buttons
-st.sidebar.markdown(
+render_html(
     '<div style="font-size:0.75em;color:#616161;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Navigation</div>',
-    unsafe_allow_html=True,
+    target=st.sidebar.markdown,
 )
 
 # High contrast mode toggle
@@ -663,11 +664,17 @@ else:
 
 # Inject high contrast class
 if st.session_state.high_contrast:
-    st.markdown("""
-    <script>
-    document.body.classList.add('high-contrast');
-    </script>
-    """, unsafe_allow_html=True)
+    render_html("""
+    <style>
+    html body .stApp { background-color: #000 !important; color: #fff !important; }
+    html body .stSidebar { background-color: #000 !important; }
+    html body .stMarkdown,
+    html body .stCaption,
+    html body label,
+    html body p,
+    html body span { color: #fff !important; }
+    </style>
+    """)
 
 # Determine which radio index to show based on current mode
 mode = st.session_state.mode
@@ -703,7 +710,7 @@ AchievementTracker.from_session_state()
 if st.session_state.mode == GAME_LABEL:
     # Campaign-style showcase: route to a room-specific game view, or the home
     # selection screen when no room is active.
-    st.markdown(render_global_styles(), unsafe_allow_html=True)
+    render_html(render_global_styles())
     game_room = st.session_state.get("game_room")
     if game_room == "room1":
         render_room1_game()
@@ -724,7 +731,7 @@ if st.session_state.mode == GAME_LABEL:
 # MODE: About the Project
 # ============================================================
 elif st.session_state.mode == ABOUT_LABEL:
-    st.markdown(render_global_styles(), unsafe_allow_html=True)
+    render_html(render_global_styles())
     st.markdown("## About RL Escape Room")
     st.markdown("""
     This project applies reinforcement learning algorithms of increasing difficulty to
@@ -923,13 +930,13 @@ if st.session_state.mode == "Manual Environment":
                 show_values=False,
                 show_labels=True,
             )
-            st.markdown(f'<div style="overflow:hidden;">{svg}</div>', unsafe_allow_html=True)
+            render_html(f'<div style="overflow:hidden;">{svg}</div>')
         except Exception as e:
             st.error(f"Failed to render grid: {e}")
             st.code(env.render_ansi())
         
         # Legend
-        st.markdown(f"""
+        render_html(f"""
         <div class="game-legend">
             <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_empty};"></span> Empty</span>
             <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_wall};"></span> Wall</span>
@@ -938,7 +945,7 @@ if st.session_state.mode == "Manual Environment":
             <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_slippery};"></span> Slippery</span>
             <span class="legend-item"><span class="legend-swatch" style="background:{theme.agent_color};"></span> Agent</span>
         </div>
-        """, unsafe_allow_html=True)
+        """)
 
 # ============================================================
 # MODE: Room 1 — DP
@@ -1224,6 +1231,15 @@ elif st.session_state.mode == "Room 2 \u2014 SARSA":
                     n_episodes=auto_eval_ep,
                 )
                 st.session_state.sarsa_eval_key = ("auto", train_key, auto_eval_ep)
+        if st.session_state.sarsa_rollout is None:
+            with st.spinner("Preparing Room 2 greedy replay..."):
+                st.session_state.sarsa_rollout = rollout_sarsa_policy(
+                    make_env,
+                    sarsa_result.q_values,
+                    seed=int(train_seed),
+                    max_steps=int(max_steps),
+                )
+                st.session_state.sarsa_rollout_key = ("auto", train_key, int(train_seed), int(max_steps))
 
         # --- Greedy policy ---
         greedy_policy = extract_greedy_policy(sarsa_result.q_values)
@@ -1264,8 +1280,15 @@ elif st.session_state.mode == "Room 2 \u2014 SARSA":
                 st.subheader("Epsilon")
                 st.line_chart({"epsilon": np.array(df["epsilon"])})
             else:
-                c3.metric("Rolling Success", "N/A")
-                st.caption("Loaded model contains final Q-values only; per-episode progress appears after local training.")
+                ev = st.session_state.sarsa_eval_summary
+                rollout = st.session_state.sarsa_rollout
+                if ev is not None:
+                    c3.metric("Evaluation Success", f"{ev.success_rate:.1%}")
+                if rollout is not None:
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Greedy Replay Success", "Yes" if rollout.success else "No")
+                    c2.metric("Greedy Replay Steps", rollout.total_steps)
+                    c3.metric("Greedy Replay Return", f"{rollout.total_reward:.1f}")
 
         # Tab 2: Learned Policy
         with t2:
@@ -1305,7 +1328,16 @@ elif st.session_state.mode == "Room 2 \u2014 SARSA":
                     overlay = render_sarsa_trajectory_overlay(env_sample, traj)
                     st.dataframe(overlay, use_container_width=True)
             else:
-                st.caption("Training-stage snapshots appear after local training.")
+                rollout = st.session_state.sarsa_rollout
+                if rollout is not None:
+                    st.metric("Greedy Replay Success", "Yes" if rollout.success else "No")
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Steps", rollout.total_steps)
+                    c2.metric("Reward", f"{rollout.total_reward:.1f}")
+                    c3.metric("Collisions", rollout.collisions)
+                    traj = tuple(s.state for s in rollout.steps)
+                    overlay = render_sarsa_trajectory_overlay(env_sample, traj)
+                    st.dataframe(overlay, use_container_width=True)
 
         # Tab 5: Final Evaluation
         with t5:
@@ -1320,8 +1352,6 @@ elif st.session_state.mode == "Room 2 \u2014 SARSA":
                 c1.metric("Truncated", ev.truncated_episodes)
                 c2.metric("Collisions", ev.total_collisions)
                 c3.metric("Traps", ev.total_traps)
-            else:
-                st.caption("Evaluation summary is not available yet.")
 
 # ============================================================
 # MODE: Room 3 — Q-Learning
@@ -1495,6 +1525,15 @@ elif st.session_state.mode == "Room 3 \u2014 Q-Learning":
                     n_episodes=auto_eval_ep,
                 )
                 st.session_state.ql_eval_key = ("auto", train_key, auto_eval_ep)
+        if st.session_state.ql_rollout is None:
+            with st.spinner("Preparing Room 3 greedy replay..."):
+                st.session_state.ql_rollout = rollout_q_learning_policy(
+                    make_ql_env,
+                    ql_result.q_values,
+                    seed=int(train_seed),
+                    max_steps=int(max_steps),
+                )
+                st.session_state.ql_rollout_key = ("auto", train_key, int(train_seed), int(max_steps))
 
         from agents.tabular_utils import extract_deterministic_greedy_policy
         policy_no_key = extract_deterministic_greedy_policy(
@@ -1543,8 +1582,15 @@ elif st.session_state.mode == "Room 3 \u2014 Q-Learning":
                 st.subheader("Epsilon")
                 st.line_chart({"epsilon": np.array(df["epsilon"])})
             else:
-                c3.metric("Rolling Success", "N/A")
-                st.caption("Loaded model contains final Q-values only; per-episode progress appears after local training.")
+                ev = st.session_state.ql_eval_summary
+                rollout = st.session_state.ql_rollout
+                if ev is not None:
+                    c3.metric("Evaluation Success", f"{ev.success_rate:.1%}")
+                if rollout is not None:
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Greedy Replay Success", "Yes" if rollout.success else "No")
+                    c2.metric("Greedy Replay Steps", rollout.total_steps)
+                    c3.metric("Greedy Replay Return", f"{rollout.total_reward:.1f}")
 
         with t2:
             pol_sym = build_room3_policy_symbols(env_sample, policy_no_key, has_key=False)
@@ -1583,7 +1629,15 @@ elif st.session_state.mode == "Room 3 \u2014 Q-Learning":
                     overlay = render_q_learning_trajectory_overlay(env_sample, snap.rollout)
                     st.dataframe(overlay, use_container_width=True)
             else:
-                st.caption("Training-stage snapshots appear after local training.")
+                rollout = st.session_state.ql_rollout
+                if rollout is not None:
+                    st.metric("Greedy Replay Success", "Yes" if rollout.success else "No")
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Steps", rollout.total_steps)
+                    c2.metric("Reward", f"{rollout.total_reward:.1f}")
+                    c3.metric("Collisions", rollout.collisions)
+                    overlay = render_q_learning_trajectory_overlay(env_sample, rollout)
+                    st.dataframe(overlay, use_container_width=True)
 
         with t6:
             ev = st.session_state.ql_eval_summary
@@ -1601,8 +1655,6 @@ elif st.session_state.mode == "Room 3 \u2014 Q-Learning":
                 c1.metric("Truncated", ev.truncated_episodes)
                 c2.metric("Collisions", ev.total_collisions)
                 c3.metric("Traps", ev.total_traps)
-            else:
-                st.caption("Evaluation summary is not available yet.")
 
 # ============================================================
 # MODE: Room 4 — Function Approximation
@@ -1889,8 +1941,16 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
                 st.subheader("Epsilon")
                 st.line_chart({"epsilon": np.array(df["epsilon"])})
             else:
-                c3.metric("Rolling Success", "N/A")
-                st.caption("Loaded model contains final weights only; per-episode progress appears after local training.")
+                ev_fixed = st.session_state.approx_eval_fixed
+                ev_gen = st.session_state.approx_eval_gen
+                rollout = st.session_state.approx_rollout
+                if ev_fixed is not None:
+                    c3.metric("Fixed Eval Success", f"{ev_fixed.success_rate:.1%}")
+                if ev_gen is not None and rollout is not None:
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Generalization Success", f"{ev_gen.success_rate:.1%}")
+                    c2.metric("Greedy Replay Steps", rollout.steps)
+                    c3.metric("Greedy Replay Return", f"{rollout.total_reward:.1f}")
 
         # Tab 2: Final Trajectory
         with t2:
@@ -1911,8 +1971,6 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
                 c2.metric("Steps", last_rollout.steps)
                 c3.metric("Reward", f"{last_rollout.total_reward:.1f}")
                 c4.metric("Distance", f"{last_rollout.distance_travelled_m:.1f}m")
-            else:
-                st.caption("No greedy trajectory is available yet.")
 
         # Tab 3: Training-Stage Replay
         with t3:
@@ -1933,7 +1991,18 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
                     grid = traj_data["grid"]
                     st.code("\n".join([" ".join(r) for r in grid]), language="text")
             else:
-                st.caption("Training-stage snapshots appear after local training.")
+                rollout = st.session_state.approx_rollout
+                if rollout is not None:
+                    st.metric("Greedy Replay Success", "Yes" if rollout.success else "No")
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Steps", rollout.steps)
+                    c2.metric("Reward", f"{rollout.total_reward:.1f}")
+                    c3.metric("Collisions", rollout.collision_count)
+                    env_disp = make_approx_env(start_mode=StartMode.FIXED, max_steps=approx_result.config.max_steps)
+                    env_disp.reset(seed=rollout.seed)
+                    traj_data = render_approx_trajectory(env_disp, rollout, max_arrows=20)
+                    grid = traj_data["grid"]
+                    st.code("\n".join([" ".join(r) for r in grid]), language="text")
 
         # Tab 4: Greedy Action Field
         with t4:
@@ -1985,7 +2054,7 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
                 c3.metric("Collisions", ev_gen.total_collisions)
 
             if ev_fixed is None and ev_gen is None:
-                st.caption("Evaluation summaries are not available yet.")
+                pass
 
         # Tab 7: Experiments
         with t7:
@@ -2326,14 +2395,12 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
         c2.metric("Obstacle Width", f"{preview_env.obstacle_width_m:.1f}m")
         c3.metric("Obstacle Count", len(preview_env.obstacles))
         c4.metric("Layout Signature", preview_env.layout_signature())
-        st.markdown(_render_room5_svg(preview_env), unsafe_allow_html=True)
+        render_html(_render_room5_svg(preview_env))
 
         if dqn_result is None:
             autoload_error = st.session_state.get("dqn_autoload_error")
             if autoload_error:
-                st.caption(f"Room 5 model auto-load skipped: {autoload_error}")
-            else:
-                st.caption("No Room 5 DQN model is loaded.")
+                st.error(f"Room 5 model auto-load failed: {autoload_error}")
         elif dqn_result.metrics:
             rows = _room5_training_rows(dqn_result.metrics)
             rewards = np.array([row["total_reward"] for row in rows], dtype=float)
@@ -2356,7 +2423,21 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
             st.line_chart({"epsilon": epsilons, "mean_loss": losses})
             st.dataframe(rows[-min(20, len(rows)):], use_container_width=True)
         else:
-            st.caption("Loaded model contains final weights only; per-episode DQN metrics appear after local training.")
+            ev_fixed = st.session_state.dqn_eval_fixed
+            ev_random = st.session_state.dqn_eval_random
+            ev_unseen = st.session_state.dqn_eval_unseen
+            rollout = st.session_state.dqn_rollout
+            if ev_fixed is not None and ev_random is not None and ev_unseen is not None:
+                st.subheader("Loaded Showcase Summary")
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Fixed Layout", f"{ev_fixed.success_rate:.1%}")
+                c2.metric("Random Layouts", f"{ev_random.success_rate:.1%}")
+                c3.metric("Unseen Layouts", f"{ev_unseen.success_rate:.1%}")
+            if rollout is not None:
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Greedy Replay Success", "Yes" if rollout.success else "No")
+                c2.metric("Greedy Replay Steps", rollout.steps)
+                c3.metric("Greedy Replay Return", f"{rollout.total_reward:.1f}")
 
     with t2:
         summaries = [
@@ -2391,16 +2472,11 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
                 use_container_width=True,
             )
         if not shown:
-            if dqn_result is None:
-                st.caption("No Room 5 DQN model is loaded.")
-            else:
-                st.caption("Evaluation summaries are not available yet.")
+            pass
 
     with t3:
         rollout = st.session_state.dqn_rollout
-        if rollout is None:
-            st.caption("No greedy replay is available yet.")
-        else:
+        if rollout is not None:
             disp_env = make_room5_env(fixed_layout=dqn_fixed_layout, layout_seed=rollout.layout_seed)
             disp_env.reset(seed=rollout.seed, layout_seed=rollout.layout_seed)
             c1, c2, c3, c4 = st.columns(4)
@@ -2408,7 +2484,7 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
             c2.metric("Steps", rollout.steps)
             c3.metric("Return", f"{rollout.total_reward:.2f}")
             c4.metric("Obstacle Hits", rollout.obstacle_collisions)
-            st.markdown(_render_room5_svg(disp_env, rollout), unsafe_allow_html=True)
+            render_html(_render_room5_svg(disp_env, rollout))
             st.dataframe(
                 [
                     {
@@ -2426,9 +2502,7 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
             )
 
     with t4:
-        if dqn_network is None:
-            st.caption("No Room 5 DQN model is loaded.")
-        else:
+        if dqn_network is not None:
             value_env = make_room5_env()
             obs = value_env.reset(seed=int(dqn_train_seed), layout_seed=int(dqn_layout_seed))
             q_vals = extract_dqn_action_values(dqn_network, obs)

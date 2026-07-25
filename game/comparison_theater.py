@@ -6,17 +6,18 @@ import os
 import json
 import hashlib
 
+from game.html_rendering import render_html
+
 
 def render_comparison_theater():
     # Interactive Streamlit view for running or displaying the SARSA vs
     # Q-Learning comparison.
     st.markdown("## SARSA vs Q-Learning — Visual Race")
-    st.markdown(
+    render_html(
         '<div style="color:#90a4ae;font-size:0.9em;">'
         "Same map &middot; Same rewards &middot; Same slip probabilities &middot; "
         "Same seeds &middot; Same training budget"
-        "</div>",
-        unsafe_allow_html=True,
+        "</div>"
     )
 
     # Sidebar controls for standalone comparison
@@ -116,18 +117,16 @@ def _render_comparison_results(matched, tuned):
     c1, c2 = st.columns(2)
 
     with c1:
-        st.markdown(
+        render_html(
             '<div style="text-align:center;padding:10px;background:rgba(239,83,80,0.1);'
             'border:1px solid #ef5350;border-radius:10px;">'
-            "<h3 style='color:#ef5350;margin:0;'>SARSA</h3></div>",
-            unsafe_allow_html=True,
+            "<h3 style='color:#ef5350;margin:0;'>SARSA</h3></div>"
         )
     with c2:
-        st.markdown(
+        render_html(
             '<div style="text-align:center;padding:10px;background:rgba(66,165,245,0.1);'
             'border:1px solid #42a5f5;border-radius:10px;">'
-            "<h3 style='color:#42a5f5;margin:0;'>Q-Learning</h3></div>",
-            unsafe_allow_html=True,
+            "<h3 style='color:#42a5f5;margin:0;'>Q-Learning</h3></div>"
         )
 
     for i in range(n):
@@ -136,26 +135,24 @@ def _render_comparison_results(matched, tuned):
         with st.container():
             sc1, sc2 = st.columns(2)
             with sc1:
-                st.markdown(
+                render_html(
                     f'<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;margin:4px;">'
                     f"<strong>Seed {s['seed']}</strong><br>"
                     f"SR: {s.get('success_rate', 0):.1%}<br>"
                     f"Return: {s.get('mean_return', 0):.1f}<br>"
                     f"Steps: {s.get('mean_steps', 0):.1f}<br>"
                     f"Traps: {s.get('total_traps', 0)}"
-                    f"</div>",
-                    unsafe_allow_html=True,
+                    f"</div>"
                 )
             with sc2:
-                st.markdown(
+                render_html(
                     f'<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;margin:4px;">'
                     f"<strong>Seed {q['seed']}</strong><br>"
                     f"SR: {q.get('success_rate', 0):.1%}<br>"
                     f"Return: {q.get('mean_return', 0):.1f}<br>"
                     f"Steps: {q.get('mean_steps', 0):.1f}<br>"
                     f"Traps: {q.get('total_traps', 0)}"
-                    f"</div>",
-                    unsafe_allow_html=True,
+                    f"</div>"
                 )
 
     # Aggregate
