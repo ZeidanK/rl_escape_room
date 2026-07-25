@@ -9,12 +9,11 @@ from game.game_view_common import (
     render_back_button,
     check_and_unlock_achievements,
     render_room_transition,
-    render_game_legend,
 )
+from game.canvas_renderer import render_continuous_trajectory_canvas
 
 from core.types import (
-    SlipConfig, ContinuousRewardConfig, Room4MotionConfig, StartMode,
-    VELOCITY_BY_ACTION, VelocityAction,
+    ContinuousRewardConfig, Room4MotionConfig, StartMode, VelocityAction,
 )
 from environments.room4_continuous import Room4Continuous
 from agents.approximate_sarsa import (
@@ -25,8 +24,6 @@ from agents.approximate_sarsa import (
 )
 from features.tile_coding import TileCoder, TileCodingConfig
 from game.achievements import AchievementTracker
-from game.room_transitions import render_transition_content
-from game.home_page import ROOM_DEFS
 
 
 def _training_config(meta: dict) -> dict:
@@ -267,64 +264,16 @@ def render_room4_game():
 
     # Continuous trajectory visualization
     st.markdown("### Continuous Trajectory")
-    
-    # Create a 2D discretized view of the trajectory
-    room_w = motion_cfg.room_width_m
-    room_h = motion_cfg.room_height_m
-    grid_size = grid_res
-    cell_w = room_w / grid_size
-    cell_h = room_h / grid_size
-    
-    # Build discretized grid
-    grid = [["." for _ in range(grid_size)] for _ in range(grid_size)]
-    
-    # Mark exit
-    ex, ey = motion_cfg.exit_center
-    er = motion_cfg.exit_radius_m
-    for row in range(grid_size):
-        for col in range(grid_size):
-            cx = (col + 0.5) * cell_w
-            cy = (row + 0.5) * cell_h
-            if (cx - ex) ** 2 + (cy - ey) ** 2 <= er ** 2:
-                grid[row][col] = "E"
-    
-    # Mark start
-    sx, sy = rollout.start_state[0], rollout.start_state[1]
-    sr = int(sy / cell_h)
-    sc = int(sx / cell_w)
-    if 0 <= sr < grid_size and 0 <= sc < grid_size:
-        grid[sr][sc] = "S"
-    
-    # Mark trajectory
-    for step in rollout.trajectory:
-        x, y, _, _ = step.state
-        r = int(y / cell_h)
-        c = int(x / cell_w)
-        if 0 <= r < grid_size and 0 <= c < grid_size:
-            if grid[r][c] in (".", "S"):
-                grid[r][c] = "*"
-    
-    # Mark collisions
-    for step in rollout.trajectory:
-        if step.collision:
-            x, y, _, _ = step.state
-            r = int(y / cell_h)
-            c = int(x / cell_w)
-            if 0 <= r < grid_size and 0 <= c < grid_size:
-                grid[r][c] = "X"
-    
-    # Direction arrows at intervals
-    arrow_interval = max(1, len(rollout.trajectory) // 20)
-    for idx, step in enumerate(rollout.trajectory):
-        if idx % arrow_interval == 0:
-            x, y, vx, vy = step.state
-            r = int(y / cell_h)
-            c = int(x / cell_w)
-            if 0 <= r < grid_size and 0 <= c < grid_size:
-                grid[r][c] = _velocity_arrow(vx, vy)
-    
-    # Display as code block
-    st.code("\n".join(" ".join(row) for row in grid), language="text")
+    render_html(
+        render_continuous_trajectory_canvas(
+            env,
+            rollout,
+            max_arrows=20,
+            grid_subdivisions=grid_res,
+            show_path=show_trajectory,
+            show_arrows=show_velocity,
+        )
+    )
     
     # Stats
     col1, col2, col3, col4 = st.columns(4)
@@ -354,24 +303,3 @@ def render_room4_game():
         <span class="legend-item">↑→↓← Velocity</span>
     </div>
     """)
-
-
-def _velocity_arrow(vx: int, vy: int) -> str:
-    """Convert velocity to arrow symbol."""
-    if vx == 0 and vy == 1:
-        return "\u2191"  # UP
-    elif vx == 0 and vy == -1:
-        return "\u2193"  # DOWN
-    elif vx == 1 and vy == 0:
-        return "\u2192"  # RIGHT
-    elif vx == -1 and vy == 0:
-        return "\u2190"  # LEFT
-    elif vx == 1 and vy == 1:
-        return "\u2197"  # UP-RIGHT
-    elif vx == 1 and vy == -1:
-        return "\u2198"  # DOWN-RIGHT
-    elif vx == -1 and vy == 1:
-        return "\u2196"  # UP-LEFT
-    elif vx == -1 and vy == -1:
-        return "\u2199"  # DOWN-LEFT
-    return "*"

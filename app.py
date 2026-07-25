@@ -22,7 +22,6 @@ from core.types import (
     StartMode,
     StepResult,
     ValueIterationConfig,
-    VelocityAction,
 )
 from environments.room1_dp import Room1DP
 from environments.room2_sarsa import ROOM2_GRID, ROOM2_MAP, Room2SARSA
@@ -48,18 +47,15 @@ from agents.q_learning import (
     save_q_model,
 )
 from visualization.dp_visualization import (
-    build_policy_symbols,
     build_value_matrix,
 )
 from visualization.sarsa_visualization import (
-    build_greedy_policy_symbols,
     build_q_value_tables,
     build_training_dataframe,
     render_sarsa_trajectory_overlay,
 )
 from visualization.q_learning_visualization import (
     build_q_learning_training_dataframe,
-    build_room3_policy_symbols,
     build_room3_q_value_table,
     render_q_learning_trajectory_overlay,
 )
@@ -93,7 +89,6 @@ from visualization.approximate_sarsa_visualization import (
     build_action_field as build_approx_action_field,
     build_training_dataframe as build_approx_training_dataframe,
     build_value_surface as build_approx_value_surface,
-    render_continuous_trajectory as render_approx_trajectory,
 )
 from training.approximate_sarsa_experiments import (
     run_confirmation_experiments as run_approx_confirmation,
@@ -596,6 +591,11 @@ from game.room4_game import render_room4_game
 from game.comparison_theater import render_comparison_theater
 from game.theme import render_global_styles
 from game.achievements import AchievementTracker
+from game.canvas_renderer import (
+    render_action_field_canvas,
+    render_continuous_trajectory_canvas,
+    render_policy_grid_canvas,
+)
 from game.html_rendering import render_html
 from game.constants import MODE_SELECTOR_KEY, PENDING_MODE_SELECTOR_KEY
 
@@ -1051,8 +1051,8 @@ elif st.session_state.mode == "Room 1 \u2014 DP":
         with t2:
             st.dataframe(np.round(build_value_matrix(env, vi_result.values), 2), use_container_width=True)
         with t3:
-            lines = [" | ".join(r) for r in build_policy_symbols(env, vi_result.policy)]
-            st.code("\n".join(lines), language="text")
+            svg = render_policy_grid_canvas(env.grid, vi_result.policy, room_id="room1")
+            render_html(f'<div class="grid-container" style="overflow:hidden;">{svg}</div>')
         with t4:
             if roll_r:
                 st.metric("Success", "Yes" if roll_r.success else "No")
@@ -1300,9 +1300,8 @@ elif st.session_state.mode == "Room 2 \u2014 SARSA":
 
         # Tab 2: Learned Policy
         with t2:
-            pol_sym = build_greedy_policy_symbols(env_sample, sarsa_result.q_values, greedy_policy)
-            grid_lines = [" | ".join(r) for r in pol_sym]
-            st.code("\n".join(grid_lines), language="text")
+            svg = render_policy_grid_canvas(env_sample.grid, greedy_policy, room_id="room2")
+            render_html(f'<div class="grid-container" style="overflow:hidden;">{svg}</div>')
             st.caption(
                 "Legend: \u2191\u2192\u2193\u2190 = greedy action | "
                 "S = Start | E = Exit | # = Wall | "
@@ -1601,12 +1600,12 @@ elif st.session_state.mode == "Room 3 \u2014 Q-Learning":
                     c3.metric("Greedy Replay Return", f"{rollout.total_reward:.1f}")
 
         with t2:
-            pol_sym = build_room3_policy_symbols(env_sample, policy_no_key, has_key=False)
-            st.code("\n".join([" | ".join(r) for r in pol_sym]), language="text")
+            svg = render_policy_grid_canvas(env_sample.grid, policy_no_key, room_id="room3", has_key=False)
+            render_html(f'<div class="grid-container" style="overflow:hidden;">{svg}</div>')
 
         with t3:
-            pol_sym = build_room3_policy_symbols(env_sample, policy_with_key, has_key=True)
-            st.code("\n".join([" | ".join(r) for r in pol_sym]), language="text")
+            svg = render_policy_grid_canvas(env_sample.grid, policy_with_key, room_id="room3", has_key=True)
+            render_html(f'<div class="grid-container" style="overflow:hidden;">{svg}</div>')
 
         with t4:
             all_states = sorted(ql_result.q_values.keys())
@@ -1971,9 +1970,8 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
             if last_rollout:
                 env_disp = make_approx_env(start_mode=StartMode.FIXED, max_steps=approx_result.config.max_steps)
                 env_disp.reset(seed=last_rollout.seed)
-                traj_data = render_approx_trajectory(env_disp, last_rollout, max_arrows=20)
-                grid = traj_data["grid"]
-                st.code("\n".join([" ".join(r) for r in grid]), language="text")
+                svg = render_continuous_trajectory_canvas(env_disp, last_rollout, max_arrows=20)
+                render_html(svg)
                 c1, c2, c3, c4 = st.columns(4)
                 c1.metric("Success", "Yes" if last_rollout.success else "No")
                 c2.metric("Steps", last_rollout.steps)
@@ -1995,9 +1993,8 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
                     c3.metric("Epsilon", f"{snap.epsilon:.4f}")
                     env_disp = make_approx_env(start_mode=StartMode.FIXED)
                     env_disp.reset(seed=99)
-                    traj_data = render_approx_trajectory(env_disp, snap.rollout, max_arrows=20)
-                    grid = traj_data["grid"]
-                    st.code("\n".join([" ".join(r) for r in grid]), language="text")
+                    svg = render_continuous_trajectory_canvas(env_disp, snap.rollout, max_arrows=20)
+                    render_html(svg)
             else:
                 rollout = st.session_state.approx_rollout
                 if rollout is not None:
@@ -2008,9 +2005,8 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
                     c3.metric("Collisions", rollout.collision_count)
                     env_disp = make_approx_env(start_mode=StartMode.FIXED, max_steps=approx_result.config.max_steps)
                     env_disp.reset(seed=rollout.seed)
-                    traj_data = render_approx_trajectory(env_disp, rollout, max_arrows=20)
-                    grid = traj_data["grid"]
-                    st.code("\n".join([" ".join(r) for r in grid]), language="text")
+                    svg = render_continuous_trajectory_canvas(env_disp, rollout, max_arrows=20)
+                    render_html(svg)
 
         # Tab 4: Greedy Action Field
         with t4:
@@ -2020,9 +2016,8 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
             env_disp = make_approx_env(start_mode=StartMode.FIXED)
             field = build_approx_action_field(env_disp, approx_result.weights, effective_tc_cfg,
                                               fixed_vx=vx_choice, fixed_vy=vy_choice, grid_size=af_size)
-            action_names = [a.name for a in VelocityAction]
-            field_labels = np.vectorize(lambda x: action_names[x][:4])(field)
-            st.dataframe(field_labels, use_container_width=True)
+            svg = render_action_field_canvas(env_disp, field, fixed_velocity=(vx_choice, vy_choice))
+            render_html(svg)
 
         # Tab 5: Value Surface
         with t5:

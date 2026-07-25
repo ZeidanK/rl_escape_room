@@ -106,12 +106,32 @@ def _assert_no_raw_html_text(at: AppTest) -> None:
     assert not any(fragment in message for fragment in raw_fragments for message in messages)
 
 
+def _assert_no_code_blocks(at: AppTest) -> None:
+    assert len(at.code) == 0
+
+
+def _assert_markdown_contains(at: AppTest, fragment: str) -> None:
+    messages = [getattr(element, "value", "") for element in at.markdown]
+    assert any(fragment in message for message in messages)
+
+
 def test_home_page_with_unlocked_achievements_does_not_show_raw_html():
     at = AppTest.from_function(_render_home_with_unlocked_achievements, default_timeout=60)
     at.run()
 
     assert len(at.exception) == 0
     _assert_no_raw_html_text(at)
+
+
+def test_room1_analysis_policy_grid_uses_svg_not_code():
+    at = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    at.run()
+    room1_option = next(option for option in at.sidebar.radio[0].options if "Room 1" in option)
+    at.sidebar.radio[0].set_value(room1_option).run()
+
+    assert len(at.exception) == 0
+    _assert_no_code_blocks(at)
+    _assert_markdown_contains(at, "policy-grid-canvas")
 
 
 def test_home_learning_laboratory_button_opens_lab_view():
@@ -137,6 +157,8 @@ def test_room2_analysis_mode_auto_loads_showcase_outputs():
     assert at.session_state["sarsa_rollout"] is not None
     assert len(at.info) == 0
     _assert_no_placeholder_messages(at)
+    _assert_no_code_blocks(at)
+    _assert_markdown_contains(at, "policy-grid-canvas")
 
 
 def test_room3_analysis_mode_auto_loads_showcase_outputs():
@@ -151,6 +173,8 @@ def test_room3_analysis_mode_auto_loads_showcase_outputs():
     assert at.session_state["ql_rollout"] is not None
     assert len(at.info) == 0
     _assert_no_placeholder_messages(at)
+    _assert_no_code_blocks(at)
+    _assert_markdown_contains(at, "policy-grid-canvas")
 
 
 def test_room4_analysis_mode_auto_loads_showcase_outputs():
@@ -166,6 +190,9 @@ def test_room4_analysis_mode_auto_loads_showcase_outputs():
     assert at.session_state["approx_rollout"] is not None
     assert len(at.info) == 0
     _assert_no_placeholder_messages(at)
+    _assert_no_code_blocks(at)
+    _assert_markdown_contains(at, "continuous-trajectory-canvas")
+    _assert_markdown_contains(at, "action-field-canvas")
 
 
 def test_room5_analysis_mode_auto_loads_showcase_outputs():

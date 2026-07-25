@@ -2,10 +2,27 @@
 
 import numpy as np
 
-from core.types import SlipConfig, ValueIterationConfig, Action, CellType
+from core.types import (
+    SlipConfig,
+    ValueIterationConfig,
+    Action,
+    CellType,
+    ContinuousRolloutResult,
+    ContinuousTrajectoryStep,
+    VelocityAction,
+)
 from environments.room1_dp import Room1DP
+from environments.room2_sarsa import Room2SARSA
+from environments.room3_qlearning import Room3QLearning
+from environments.room4_continuous import Room4Continuous
 from agents.dynamic_programming import ValueIterationAgent, rollout_policy
-from game.canvas_renderer import render_grid_canvas, render_vi_animation_frame
+from game.canvas_renderer import (
+    render_action_field_canvas,
+    render_continuous_trajectory_canvas,
+    render_grid_canvas,
+    render_policy_grid_canvas,
+    render_vi_animation_frame,
+)
 from game.hud import render_hud
 from game.episode_replay import build_replay_from_rollout, render_replay_bar, get_current_step
 from game.explain_panel import render_explain_panel, get_algorithm_explanation
@@ -101,6 +118,115 @@ class TestCanvasRenderer:
             env = Room1DP(seed=42)
             svg = render_grid_canvas(env.grid, agent_pos=(1, 0), room_id=room_id)
             assert svg.startswith("<svg"), f"Failed for room_id={room_id}"
+
+    def test_policy_grid_canvas_room1_includes_arrows_and_markers(self):
+        agent = ValueIterationAgent(self.env)
+        result = agent.solve()
+        svg = render_policy_grid_canvas(self.env.grid, result.policy, room_id="room1")
+
+        assert svg.startswith("<svg")
+        assert 'class="policy-grid-canvas grid-canvas"' in svg
+        assert 'class="policy-arrow"' in svg
+        assert 'class="policy-marker">S</text>' in svg
+        assert 'class="policy-goal"' in svg
+
+    def test_policy_grid_canvas_room2_shows_traps_and_slippery_cells(self):
+        env = Room2SARSA(seed=42)
+        policy = {
+            (r, c): Action.RIGHT
+            for r in range(env.grid_shape[0])
+            for c in range(env.grid_shape[1])
+            if CellType(int(env.grid[r, c])) != CellType.WALL
+        }
+
+        svg = render_policy_grid_canvas(env.grid, policy, room_id="room2")
+
+        assert "policy-cell-trap" in svg
+        assert "policy-cell-slippery" in svg
+        assert 'class="policy-marker">I</text>' in svg
+        assert 'class="policy-marker">T</text>' in svg
+        assert 'class="policy-arrow"' in svg
+
+    def test_policy_grid_canvas_room3_distinguishes_key_state(self):
+        env = Room3QLearning(seed=42)
+        policy = {
+            (r, c, has_key): Action.RIGHT
+            for has_key in (False, True)
+            for r in range(env.grid_shape[0])
+            for c in range(env.grid_shape[1])
+            if CellType(int(env.grid[r, c])) != CellType.WALL
+        }
+
+        no_key_svg = render_policy_grid_canvas(env.grid, policy, room_id="room3", has_key=False)
+        with_key_svg = render_policy_grid_canvas(env.grid, policy, room_id="room3", has_key=True)
+
+        assert 'class="policy-marker">L</text>' in no_key_svg
+        assert "policy-cell-locked-exit" in no_key_svg
+        assert 'class="policy-marker">G</text>' in with_key_svg
+        assert 'class="policy-goal"' in with_key_svg
+
+    def test_continuous_trajectory_canvas_shows_path_exit_and_collisions(self):
+        env = Room4Continuous()
+        step0 = ContinuousTrajectoryStep(
+            index=0,
+            state=(0.5, 0.5, 0, 0),
+            requested_action=VelocityAction.NORTH_EAST,
+            reward=-0.01,
+            next_state=(0.7, 0.7, 1, 1),
+            collision=None,
+            event=None,
+            terminated=False,
+            truncated=False,
+            distance_to_exit_m=12.7,
+        )
+        step1 = ContinuousTrajectoryStep(
+            index=1,
+            state=(0.7, 0.7, 1, 1),
+            requested_action=VelocityAction.WEST,
+            reward=-1.01,
+            next_state=(0.0, 0.7, 0, 1),
+            collision="boundary",
+            event=None,
+            terminated=False,
+            truncated=False,
+            distance_to_exit_m=12.4,
+        )
+        rollout = ContinuousRolloutResult(
+            seed=7,
+            start_state=(0.5, 0.5, 0, 0),
+            final_state=(0.0, 0.7, 0, 1),
+            total_reward=-1.02,
+            steps=2,
+            simulated_time_s=0.04,
+            success=False,
+            terminated=False,
+            truncated=False,
+            collision_count=1,
+            distance_travelled_m=0.9,
+            trajectory=(step0, step1),
+        )
+
+        svg = render_continuous_trajectory_canvas(env, rollout, max_arrows=4)
+
+        assert 'class="continuous-trajectory-canvas grid-canvas"' in svg
+        assert 'class="trajectory-path"' in svg
+        assert 'class="exit-zone"' in svg
+        assert 'class="collision-marker"' in svg
+        assert 'class="trajectory-arrow"' in svg
+
+    def test_action_field_canvas_shows_arrows_and_stop_markers(self):
+        env = Room4Continuous()
+        field = np.array([
+            [VelocityAction.STOP, VelocityAction.NORTH],
+            [VelocityAction.EAST, VelocityAction.SOUTH],
+        ])
+
+        svg = render_action_field_canvas(env, field, fixed_velocity=(0, 0))
+
+        assert 'class="action-field-canvas grid-canvas"' in svg
+        assert 'class="action-arrow"' in svg
+        assert 'class="stationary-marker"' in svg
+        assert 'class="exit-zone"' in svg
 
 
 class TestVIAnimation:
