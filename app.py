@@ -131,6 +131,18 @@ def _epsilon_config_from_metadata(raw: dict, fallback: EpsilonScheduleConfig) ->
     )
 
 
+def _tile_coding_config_from_metadata(raw: dict, fallback: TileCodingConfig) -> TileCodingConfig:
+    # Loaded approximate-SARSA weights must be interpreted with the exact
+    # tile-coding shape used during training, independent of sidebar defaults.
+    tc = raw.get("tile_coding_config", {})
+    return TileCodingConfig(
+        num_tilings=int(tc.get("num_tilings", fallback.num_tilings)),
+        tiles_x=int(tc.get("tiles_x", fallback.tiles_x)),
+        tiles_y=int(tc.get("tiles_y", fallback.tiles_y)),
+        include_velocity=bool(tc.get("include_velocity", fallback.include_velocity)),
+    )
+
+
 def _loaded_sarsa_result(
     q_values,
     metadata: dict,
@@ -1539,8 +1551,9 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
         latest = _preferred_model_stem(model_dir, "showcase_approx")
         if latest:
             try:
-                weights, meta = load_approximate_model(latest, expected_tile_coding=tc_cfg)
-                st.session_state.approx_result = _loaded_approximate_result(weights, meta, approx_config, tc_cfg)
+                weights, meta = load_approximate_model(latest)
+                loaded_tc_cfg = _tile_coding_config_from_metadata(meta, tc_cfg)
+                st.session_state.approx_result = _loaded_approximate_result(weights, meta, approx_config, loaded_tc_cfg)
                 st.session_state.approx_train_key = train_key
                 st.session_state.approx_eval_fixed = None
                 st.session_state.approx_eval_gen = None
@@ -1554,12 +1567,14 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
     approx_result = st.session_state.approx_result
 
     if approx_result is not None:
+        effective_tc_cfg = approx_result.config.tile_coding
+
         # --- Eval fixed ---
         if eval_fixed_clicked:
             with st.spinner(f"Evaluating fixed start ({eval_ep} episodes)..."):
                 factory = lambda: make_approx_env(start_mode=StartMode.FIXED)
                 ev = evaluate_approximate_policy(
-                    factory, approx_result.weights, tc_cfg, Room4MotionConfig(),
+                    factory, approx_result.weights, effective_tc_cfg, Room4MotionConfig(),
                     n_episodes=eval_ep, start_mode=StartMode.FIXED,
                 )
                 st.session_state.approx_eval_fixed = ev
@@ -1571,7 +1586,7 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
             with st.spinner(f"Evaluating generalization ({eval_ep} episodes)..."):
                 factory = lambda: make_approx_env(start_mode=StartMode.RANDOM_LOWER_LEFT)
                 ev_gen = evaluate_approximate_policy(
-                    factory, approx_result.weights, tc_cfg, Room4MotionConfig(),
+                    factory, approx_result.weights, effective_tc_cfg, Room4MotionConfig(),
                     n_episodes=eval_ep, start_mode=StartMode.RANDOM_LOWER_LEFT,
                 )
                 st.session_state.approx_eval_gen = ev_gen
@@ -1678,7 +1693,7 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
             vy_choice = st.selectbox("Vy", [-1, 0, 1], index=1, key="af_vy")
             af_size = st.slider("Grid Resolution", 5, 30, 10, key="af_size")
             env_disp = make_approx_env(start_mode=StartMode.FIXED)
-            field = build_approx_action_field(env_disp, approx_result.weights, tc_cfg,
+            field = build_approx_action_field(env_disp, approx_result.weights, effective_tc_cfg,
                                               fixed_vx=vx_choice, fixed_vy=vy_choice, grid_size=af_size)
             action_names = [a.name for a in VelocityAction]
             field_labels = np.vectorize(lambda x: action_names[x][:4])(field)
@@ -1690,7 +1705,7 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
             vs_vy = st.selectbox("Vy", [-1, 0, 1], index=1, key="vs_vy")
             vs_size = st.slider("Grid Resolution", 5, 40, 20, key="vs_size")
             env_disp = make_approx_env(start_mode=StartMode.FIXED)
-            surface = build_approx_value_surface(env_disp, approx_result.weights, tc_cfg,
+            surface = build_approx_value_surface(env_disp, approx_result.weights, effective_tc_cfg,
                                                  fixed_vx=vs_vx, fixed_vy=vs_vy, grid_size=vs_size)
             st.dataframe(np.round(surface, 2), use_container_width=True)
 
@@ -1931,7 +1946,16 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
                 st.session_state.dqn_eval_fixed = None
                 st.session_state.dqn_eval_random = None
                 st.session_state.dqn_eval_unseen = None
-                st.session_state.dqn_rollout = None
+                st.session_state.dqn_rollout = rollout_dqn_policy(
+                    lambda: make_room5_env(fixed_layout=dqn_fixed_layout),
+                    network,
+                    seed=int(dqn_rollout_seed),
+                    layout_seed=int(dqn_rollout_layout_seed),
+                    max_steps=int(dqn_max_steps),
+                )
+                st.session_state.dqn_rollout_key = (
+                    int(dqn_rollout_seed), int(dqn_rollout_layout_seed), dqn_fixed_layout,
+                )
                 st.success(f"Loaded model from {stem}")
                 st.rerun()
             except ValueError as e:
