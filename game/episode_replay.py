@@ -54,19 +54,17 @@ def render_replay_bar(
     cur = replay.current_index
     pct = int(100 * cur / max(1, total - 1)) if total > 1 else 0
 
-    return normalize_html(f"""
-    <div class="replay-bar">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span class="replay-stage">{replay.stage_label}</span>
-            <span style="color:#90a4ae;font-size:0.85em;">
-                Step {cur + 1} / {total}
-            </span>
-            <div style="flex:1;min-width:80px;height:4px;background:#333;border-radius:2px;margin:0 8px;">
-                <div style="width:{pct}%;height:100%;background:#4fc3f7;border-radius:2px;transition:width 0.15s;"></div>
-            </div>
-        </div>
-    </div>
-    """)
+    return normalize_html(
+        f'<div class="replay-bar">'
+        f'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+        f'<span class="replay-stage">{replay.stage_label}</span>'
+        f'<span style="color:#90a4ae;font-size:0.85em;">Step {cur + 1} / {total}</span>'
+        f'<div style="flex:1;min-width:80px;height:4px;background:#333;border-radius:2px;margin:0 8px;">'
+        f'<div style="width:{pct}%;height:100%;background:#4fc3f7;border-radius:2px;transition:width 0.15s;"></div>'
+        f'</div>'
+        f'</div>'
+        f'</div>'
+    )
 
 
 def get_current_step(replay: ReplayState) -> ReplayStep | None:

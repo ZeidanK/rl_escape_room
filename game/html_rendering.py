@@ -7,7 +7,8 @@ import streamlit as st
 
 
 def normalize_html(markup: str) -> str:
-    return dedent(str(markup)).strip()
+    dedented = dedent(str(markup)).strip()
+    return "\n".join(line.strip() for line in dedented.splitlines() if line.strip())
 
 
 def render_html(markup: str, *, target: Callable[..., object] | None = None) -> None:

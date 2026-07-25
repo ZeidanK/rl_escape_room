@@ -143,6 +143,16 @@ class TestHUD:
         assert html.startswith('<div class="game-hud">')
         assert html == html.strip()
 
+    def test_render_hud_status_badges_stay_inside_html_block(self):
+        html = render_hud(
+            room_name="Room 2",
+            algorithm="SARSA",
+            state_str="(1, 1)",
+            status_badges=['<span class="badge-success">SUCCESS</span>'],
+        )
+        assert '<div class="hud-row" style="margin-top:6px;"><span class="badge-success">SUCCESS</span></div>' in html
+        assert "\n" not in html
+
     def test_render_hud_with_all_fields(self):
         html = render_hud(
             room_name="Room 1", algorithm="Value Iteration",
@@ -193,6 +203,7 @@ class TestEpisodeReplay:
         assert "replay-bar" in html
         assert html.startswith('<div class="replay-bar">')
         assert html == html.strip()
+        assert "\n" not in html
 
     def test_get_current_step(self):
         step = ReplayStep(
@@ -249,6 +260,7 @@ class TestTransitions:
         assert is_success is True
         assert html.startswith('<div class="transition-card"')
         assert html == html.strip()
+        assert "\n" not in html
 
 
 class TestGlobalStyles:

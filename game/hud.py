@@ -86,12 +86,12 @@ def render_hud(
             f'</div>'
         )
 
-    return normalize_html(f"""
-    <div class="game-hud">
-        <div class="game-hud-title">{room_name}</div>
-        <div class="game-hud-subtitle">{algorithm}</div>
-        <div class="hud-row">{rows_html}</div>
-        {slip_html}
-        {badges_html}
-    </div>
-    """)
+    return normalize_html(
+        f'<div class="game-hud">'
+        f'<div class="game-hud-title">{html_mod.escape(room_name)}</div>'
+        f'<div class="game-hud-subtitle">{html_mod.escape(algorithm)}</div>'
+        f'<div class="hud-row">{rows_html}</div>'
+        f'{slip_html}'
+        f'{badges_html}'
+        f'</div>'
+    )
