@@ -442,6 +442,7 @@ def _clear_room5_outputs() -> None:
 def _load_room5_model_into_state(filepath_stem: str, dqn_config: DQNConfig) -> None:
     network, meta = load_dqn_model(filepath_stem)
     st.session_state.dqn_network = network
+    st.session_state.dqn_meta = meta
     st.session_state.dqn_result = _loaded_dqn_result(network, meta, dqn_config)
     st.session_state.dqn_train_key = ("loaded", filepath_stem)
     st.session_state.dqn_model_stem = filepath_stem
@@ -535,6 +536,110 @@ def _render_room5_svg(env: Room5Obstacles, rollout=None) -> str:
     parts.append("</svg>")
     return "".join(parts)
 
+
+def _load_final_comparison_payload() -> dict | None:
+    matched = read_json("storage/experiments/final/sarsa_vs_q_learning_matched.json")
+    if not matched:
+        return None
+    tuned = read_json("storage/experiments/final/sarsa_vs_q_learning_tuned.json")
+    if tuned and tuned.get("tuned_comparison"):
+        matched["tuned_comparison"] = tuned["tuned_comparison"]
+    return matched
+
+
+def _row_dict(row) -> dict:
+    return row if isinstance(row, dict) else vars(row)
+
+
+def _matched_parts(comp_matched) -> tuple[list[dict], list[dict], list[dict]]:
+    if isinstance(comp_matched, dict):
+        return (
+            [_row_dict(r) for r in comp_matched.get("sarsa", [])],
+            [_row_dict(r) for r in comp_matched.get("q_learning", [])],
+            [_row_dict(r) for r in comp_matched.get("paired_differences", [])],
+        )
+
+    sarsa_rows, q_rows = comp_matched
+    paired = []
+    for s_row, q_row in zip(sarsa_rows, q_rows):
+        s = _row_dict(s_row)
+        q = _row_dict(q_row)
+        paired.append(
+            {
+                "seed": s.get("seed"),
+                "diff_success_rate": float(q.get("success_rate", 0.0)) - float(s.get("success_rate", 0.0)),
+                "diff_mean_return": float(q.get("mean_return", 0.0)) - float(s.get("mean_return", 0.0)),
+                "diff_mean_steps": float(q.get("mean_steps", 0.0)) - float(s.get("mean_steps", 0.0)),
+            }
+        )
+    return [_row_dict(r) for r in sarsa_rows], [_row_dict(r) for r in q_rows], paired
+
+
+def _saved_comparison_into_state() -> bool:
+    payload = _load_final_comparison_payload()
+    if not payload:
+        return False
+    st.session_state.comp_matched = payload.get("matched_comparison")
+    st.session_state.comp_tuned = payload.get("tuned_comparison")
+    st.session_state.comp_metadata = payload.get("_metadata", {})
+    st.session_state.comp_source = "Final saved comparison"
+    st.session_state.comp_key = ("saved", "storage/experiments/final")
+    return True
+
+
+def _metric_float(row: dict, key: str, default: float = 0.0) -> float:
+    try:
+        return float(row.get(key, default))
+    except (TypeError, ValueError):
+        return default
+
+
+def _manual_agent_comparison(room_name: str, seed: int, max_steps: int) -> dict:
+    try:
+        if "Room 1" in room_name:
+            env = Room1DP(max_steps=max_steps, seed=seed)
+            vi = ValueIterationAgent(env, ValueIterationConfig()).solve()
+            rollout = rollout_policy(env, vi.policy, seed=seed, max_steps=max_steps)
+            return {
+                "available": True,
+                "agent": "Value Iteration",
+                "steps": rollout.total_steps,
+                "return": rollout.total_reward,
+                "success": rollout.success,
+            }
+
+        if "Room 2" in room_name:
+            stem = _preferred_model_stem("storage/models/room2_sarsa", "showcase_sarsa")
+            if stem is None:
+                return {"available": False, "message": "agent comparison unavailable: no saved SARSA model"}
+            q_values, _ = load_model(stem, map_grid=ROOM2_GRID)
+            rollout = rollout_sarsa_policy(lambda: Room2SARSA(max_steps=max_steps), q_values, seed=seed, max_steps=max_steps)
+            return {
+                "available": True,
+                "agent": "SARSA saved model",
+                "steps": rollout.total_steps,
+                "return": rollout.total_reward,
+                "success": rollout.success,
+            }
+
+        if "Room 3" in room_name:
+            stem = _preferred_model_stem("storage/models/room3_q_learning", "showcase_ql")
+            if stem is None:
+                return {"available": False, "message": "agent comparison unavailable: no saved Q-Learning model"}
+            q_values, _ = load_q_model(stem, map_grid=ROOM3_GRID)
+            rollout = rollout_q_learning_policy(lambda: Room3QLearning(max_steps=max_steps), q_values, seed=seed, max_steps=max_steps)
+            return {
+                "available": True,
+                "agent": "Q-Learning saved model",
+                "steps": rollout.total_steps,
+                "return": rollout.total_reward,
+                "success": rollout.success,
+            }
+    except Exception as exc:
+        return {"available": False, "message": f"agent comparison unavailable: {exc}"}
+
+    return {"available": False, "message": "agent comparison unavailable for this room"}
+
 st.set_page_config(page_title="RL Escape Room", layout="wide", page_icon="🧊")
 st.title("RL Escape Room")
 
@@ -543,7 +648,7 @@ st.title("RL Escape Room")
 # trained models, selected rooms, replays, and cached evaluation summaries
 # between those reruns.
 for key in [
-    "env", "last_result", "room_key",
+    "env", "last_result", "room_key", "manual_total_reward", "manual_agent_comparison", "manual_compare_key",
     "vi_result", "vi_solve_key", "vi_rollout_result", "vi_rollout_key",
     "vi_eval_summary", "vi_eval_key", "dp_env",
     "sarsa_result", "sarsa_train_key", "sarsa_eval_summary", "sarsa_eval_key",
@@ -552,14 +657,14 @@ for key in [
     "ql_result", "ql_train_key", "ql_eval_summary", "ql_eval_key",
     "ql_rollout", "ql_rollout_key", "ql_env_factory",
     "ql_model_stem", "ql_autoload_error",
-    "comp_matched", "comp_tuned", "comp_key",
+    "comp_matched", "comp_tuned", "comp_key", "comp_source", "comp_metadata",
     "approx_result", "approx_train_key",
     "approx_eval_fixed", "approx_eval_fixed_key",
     "approx_eval_gen", "approx_eval_gen_key",
     "approx_rollout", "approx_rollout_key",
     "approx_env_factory",
     "approx_model_stem", "approx_autoload_error",
-    "dqn_result", "dqn_network", "dqn_train_key",
+    "dqn_result", "dqn_network", "dqn_meta", "dqn_train_key",
     "dqn_eval_fixed", "dqn_eval_random", "dqn_eval_unseen",
     "dqn_rollout", "dqn_rollout_key",
     "dqn_model_stem", "dqn_autoload_error",
@@ -576,7 +681,7 @@ if "sarsa_autoload_disabled" not in st.session_state:
 if "ql_autoload_disabled" not in st.session_state:
     st.session_state.ql_autoload_disabled = False
 if "mode" not in st.session_state:
-    st.session_state.mode = "\U0001f3ae Escape Room Showcase"
+    st.session_state.mode = "Escape Room Showcase"
 
 # ============================================================
 # Game mode imports
@@ -597,56 +702,83 @@ from game.canvas_renderer import (
     render_policy_grid_canvas,
 )
 from game.html_rendering import render_html
-from game.constants import MODE_SELECTOR_KEY, PENDING_MODE_SELECTOR_KEY
+from game.constants import (
+    ABOUT_MODE,
+    COMPARISON_MODE,
+    LAB_MODE,
+    LAB_ROOM_MODES,
+    LEGACY_HOME_MODE,
+    MANUAL_MODE_LABEL,
+    MODE_SELECTOR_KEY,
+    PENDING_MODE_SELECTOR_KEY,
+    PUBLIC_APP_URL,
+    ROOM1_LAB_MODE,
+    ROOM2_LAB_MODE,
+    ROOM3_LAB_MODE,
+    ROOM4_LAB_MODE,
+    ROOM5_BONUS_MODE,
+    SHOWCASE_MODE,
+)
+from game.presentation import (
+    apply_query_params_once,
+    final_summary_success,
+    go_to_lab,
+    go_to_mode,
+    render_assignment_proof,
+    render_campaign_results,
+    render_model_provenance,
+    render_public_project_links,
+    read_json,
+)
 
 MODE_LABELS = [
-    "\U0001f3ae Escape Room Showcase",
-    "Home",
-    "---",
-    "\U0001f579\ufe0f Manual Play",
-    "---",
-    "\U0001f52c Learning Laboratory",
-    "Room 1 \u2014 DP",
-    "Room 2 \u2014 SARSA",
-    "Room 3 \u2014 Q-Learning",
-    "Room 4 \u2014 Function Approximation",
-    "Room 5 \u2014 Dynamic Obstacles",
-    "Algorithm Comparison",
-    "---",
-    "\U0001f4d6 About the Project",
+    SHOWCASE_MODE,
+    LAB_MODE,
+    MANUAL_MODE_LABEL,
+    COMPARISON_MODE,
+    ABOUT_MODE,
 ]
 
 # --- Mode selector ---
-GAME_LABEL = "\U0001f3ae Escape Room Showcase"
-LAB_LABEL = "\U0001f52c Learning Laboratory"
-ABOUT_LABEL = "\U0001f4d6 About the Project"
+GAME_LABEL = SHOWCASE_MODE
+LAB_LABEL = LAB_MODE
+ABOUT_LABEL = ABOUT_MODE
 
 # Selectable = game showcase, analysis rooms, manual, about
 SELECTABLE_MODES = [
     GAME_LABEL,
-    "\U0001f579\ufe0f Manual Play",
+    LAB_LABEL,
+    MANUAL_MODE_LABEL,
+    COMPARISON_MODE,
     ABOUT_LABEL,
-    "Home",
-    "Room 1 \u2014 DP",
-    "Room 2 \u2014 SARSA",
-    "Room 3 \u2014 Q-Learning",
-    "Room 4 \u2014 Function Approximation",
-    "Room 5 \u2014 Dynamic Obstacles",
-    "Algorithm Comparison",
 ]
 
 _MODE_NAME_MAP = {
     GAME_LABEL: GAME_LABEL,
-    "\U0001f579\ufe0f Manual Play": "Manual Environment",
+    LAB_LABEL: LAB_LABEL,
+    MANUAL_MODE_LABEL: "Manual Environment",
     ABOUT_LABEL: ABOUT_LABEL,
-    "Home": "Home",
-    "Room 1 \u2014 DP": "Room 1 \u2014 DP",
-    "Room 2 \u2014 SARSA": "Room 2 \u2014 SARSA",
-    "Room 3 \u2014 Q-Learning": "Room 3 \u2014 Q-Learning",
-    "Room 4 \u2014 Function Approximation": "Room 4 \u2014 Function Approximation",
-    "Room 5 \u2014 Dynamic Obstacles": "Room 5 \u2014 Dynamic Obstacles",
-    "Algorithm Comparison": "Algorithm Comparison",
+    COMPARISON_MODE: COMPARISON_MODE,
+    LEGACY_HOME_MODE: LAB_LABEL,
+    ROOM1_LAB_MODE: ROOM1_LAB_MODE,
+    ROOM2_LAB_MODE: ROOM2_LAB_MODE,
+    ROOM3_LAB_MODE: ROOM3_LAB_MODE,
+    ROOM4_LAB_MODE: ROOM4_LAB_MODE,
+    ROOM5_BONUS_MODE: ROOM5_BONUS_MODE,
 }
+
+LAB_SECTION_MODES = {
+    LAB_LABEL,
+    ROOM1_LAB_MODE,
+    ROOM2_LAB_MODE,
+    ROOM3_LAB_MODE,
+    ROOM4_LAB_MODE,
+    ROOM5_BONUS_MODE,
+}
+
+apply_query_params_once()
+if st.session_state.mode == LEGACY_HOME_MODE:
+    st.session_state.mode = LAB_LABEL
 
 if PENDING_MODE_SELECTOR_KEY in st.session_state:
     pending_selector = st.session_state[PENDING_MODE_SELECTOR_KEY]
@@ -688,7 +820,7 @@ if st.session_state.high_contrast:
 # Determine which radio index to show based on current mode
 mode = st.session_state.mode
 _reverse_map = {v: k for k, v in _MODE_NAME_MAP.items()}
-_sidebar_to_show = _reverse_map.get(mode, GAME_LABEL)
+_sidebar_to_show = LAB_LABEL if mode in LAB_SECTION_MODES else _reverse_map.get(mode, GAME_LABEL)
 _default_idx = SELECTABLE_MODES.index(_sidebar_to_show) if _sidebar_to_show in SELECTABLE_MODES else 0
 
 sidebar_selection = st.sidebar.radio(
@@ -703,12 +835,46 @@ sidebar_effective = _MODE_NAME_MAP.get(sidebar_selection, sidebar_selection)
 # Sidebar always overrides; clear deep-linked game room on nav change
 # If a user navigates away from a room, discard the deep-linked room selection
 # so returning to the showcase starts at the room-selection screen.
-if sidebar_effective != mode:
+if sidebar_effective != mode and not (sidebar_effective == LAB_LABEL and mode in LAB_SECTION_MODES):
     st.session_state.game_room = None
     st.session_state.mode = sidebar_effective
     st.rerun()
 
 mode = st.session_state.mode
+
+if mode in LAB_SECTION_MODES:
+    lab_labels = [
+        "Overview",
+        "Room 1 - DP",
+        "Room 2 - SARSA",
+        "Room 3 - Q-Learning",
+        "Room 4 - Function Approximation",
+        "Bonus Room 5 - Dynamic Obstacles",
+    ]
+    lab_targets = {
+        "Overview": LAB_LABEL,
+        "Room 1 - DP": ROOM1_LAB_MODE,
+        "Room 2 - SARSA": ROOM2_LAB_MODE,
+        "Room 3 - Q-Learning": ROOM3_LAB_MODE,
+        "Room 4 - Function Approximation": ROOM4_LAB_MODE,
+        "Bonus Room 5 - Dynamic Obstacles": ROOM5_BONUS_MODE,
+    }
+    current_lab_label = next(
+        (label for label, target in lab_targets.items() if target == mode),
+        "Overview",
+    )
+    lab_selection = st.sidebar.selectbox(
+        "Learning Laboratory Room",
+        lab_labels,
+        index=lab_labels.index(current_lab_label),
+        key="lab_room_selector",
+    )
+    lab_target = lab_targets[lab_selection]
+    if lab_target != mode:
+        st.session_state.mode = lab_target
+        st.session_state.game_room = None
+        st.rerun()
+    mode = st.session_state.mode
 
 # Ensure achievement tracker exists
 AchievementTracker.from_session_state()
@@ -729,9 +895,11 @@ if st.session_state.mode == GAME_LABEL:
         render_room3_game()
     elif game_room == "room4":
         render_room4_game()
+    elif game_room == "campaign_results":
+        render_campaign_results()
     elif game_room == "room5":
         st.session_state.game_room = None
-        st.session_state.mode = "Room 5 \u2014 Dynamic Obstacles"
+        st.session_state.mode = ROOM5_BONUS_MODE
         st.rerun()
     else:
         render_home_page()
@@ -759,6 +927,9 @@ elif st.session_state.mode == ABOUT_LABEL:
     replay, while the **Learning Laboratory** provides full analysis tools including training
     curves, policy visualization, Q-value inspection, and algorithm comparison.
     """)
+
+    st.markdown("### Deployment")
+    render_public_project_links()
 
     # Screenshots
     st.markdown("### Screenshots")
@@ -792,9 +963,10 @@ elif st.session_state.mode == ABOUT_LABEL:
     st.markdown("[GitHub](https://github.com/ZeidanK/rl_escape_room)")
 
 # ============================================================
-# MODE: Home (original, kept for backward compat / lab entry)
+# MODE: Learning Laboratory overview
 # ============================================================
-elif st.session_state.mode == "Home":
+elif st.session_state.mode == LAB_LABEL:
+    st.header("Learning Laboratory")
     st.header("Project Objective")
     st.markdown("""
     Apply reinforcement learning algorithms of increasing difficulty to
@@ -855,6 +1027,7 @@ elif st.session_state.mode == "Home":
     """)
 
     st.header("Final Local Measured Results")
+    render_public_project_links()
     import csv, os
     csv_path = "storage/experiments/final/final_summary.csv"
     if os.path.exists(csv_path):
@@ -885,6 +1058,9 @@ if st.session_state.mode == "Manual Environment":
             st.session_state.env = cls(seed=seed)
             st.session_state.last_result = st.session_state.env.reset()
             st.session_state.room_key = room_name
+            st.session_state.manual_total_reward = 0.0
+            st.session_state.manual_agent_comparison = None
+            st.session_state.manual_compare_key = None
             st.rerun()
         env = st.session_state.env
         if env is not None:
@@ -897,10 +1073,14 @@ if st.session_state.mode == "Manual Environment":
                                   help=f"Move {label} in the grid."):
                     result: StepResult = env.step(action)
                     st.session_state.last_result = result
+                    st.session_state.manual_total_reward = float(st.session_state.manual_total_reward or 0.0) + result.reward
+                    st.session_state.manual_agent_comparison = None
+                    st.session_state.manual_compare_key = None
                     st.rerun()
             st.markdown("---")
             st.markdown("**Status**")
             st.metric("Step", env.step_count)
+            st.metric("Human Return", f"{float(st.session_state.manual_total_reward or 0.0):.1f}")
             if st.session_state.last_result is not None:
                 r = st.session_state.last_result
                 if isinstance(r, StepResult):
@@ -917,6 +1097,26 @@ if st.session_state.mode == "Manual Environment":
                     st.success("EXIT REACHED")
                 elif env._truncated:
                     st.error("TIMEOUT")
+                if st.button("Compare With Agent", key="manual_compare_agent"):
+                    st.session_state.manual_agent_comparison = _manual_agent_comparison(
+                        room_name,
+                        int(seed),
+                        int(env.max_steps),
+                    )
+                    st.session_state.manual_compare_key = (room_name, int(seed), int(env.max_steps))
+                    st.rerun()
+
+            comparison = st.session_state.manual_agent_comparison
+            if comparison is not None:
+                if comparison.get("available"):
+                    st.markdown("---")
+                    st.markdown("**Agent Comparison**")
+                    st.metric("Agent", comparison["agent"])
+                    st.metric("Agent Steps", comparison["steps"])
+                    st.metric("Agent Return", f"{comparison['return']:.1f}")
+                    st.metric("Agent Success", "Yes" if comparison["success"] else "No")
+                else:
+                    st.info(comparison.get("message", "agent comparison unavailable"))
     
     if env is not None:
         # Determine room_id for theme
@@ -959,7 +1159,7 @@ if st.session_state.mode == "Manual Environment":
 # ============================================================
 # MODE: Room 1 — DP
 # ============================================================
-elif st.session_state.mode == "Room 1 \u2014 DP":
+elif st.session_state.mode == ROOM1_LAB_MODE:
     with st.sidebar:
         st.header("DP Parameters")
         gamma = st.slider("Discount (\u03b3)", 0.50, 0.99, 0.95, step=0.01,
@@ -1072,7 +1272,7 @@ elif st.session_state.mode == "Room 1 \u2014 DP":
 # ============================================================
 # MODE: Room 2 — SARSA
 # ============================================================
-elif st.session_state.mode == "Room 2 \u2014 SARSA":
+elif st.session_state.mode == ROOM2_LAB_MODE:
     with st.sidebar:
         st.header("SARSA Parameters")
         episodes = st.number_input("Episodes", min_value=100, max_value=50000, value=5000, step=500,
@@ -1364,7 +1564,7 @@ elif st.session_state.mode == "Room 2 \u2014 SARSA":
 # ============================================================
 # MODE: Room 3 — Q-Learning
 # ============================================================
-elif st.session_state.mode == "Room 3 \u2014 Q-Learning":
+elif st.session_state.mode == ROOM3_LAB_MODE:
     with st.sidebar:
         st.header("Q-Learning Parameters")
         episodes = st.number_input("Episodes", min_value=100, max_value=50000, value=5000, step=500,
@@ -1667,7 +1867,7 @@ elif st.session_state.mode == "Room 3 \u2014 Q-Learning":
 # ============================================================
 # MODE: Room 4 — Function Approximation
 # ============================================================
-elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
+elif st.session_state.mode == ROOM4_LAB_MODE:
     with st.sidebar:
         st.header("Approximate SARSA Parameters")
         approx_episodes = st.number_input("Episodes", min_value=50, max_value=50000, value=3000, step=500,
@@ -2089,12 +2289,13 @@ elif st.session_state.mode == "Room 4 \u2014 Function Approximation":
 # ============================================================
 # MODE: Room 5 — Dynamic Obstacles
 # ============================================================
-elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
-    st.header("Room 5 - Dynamic Obstacles (Optional Bonus)")
+elif st.session_state.mode == ROOM5_BONUS_MODE:
+    st.header("Bonus Room - Dynamic Obstacles")
     st.caption(
         "Continuous 10x10m escape room with seeded 0.5m square obstacles, "
         "local observation records, replay buffer DQN updates, and separate fixed/random/unseen layout evaluation."
     )
+    render_assignment_proof("room5")
 
     with st.sidebar:
         st.header("DQN Parameters")
@@ -2174,10 +2375,10 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
         col1, col2 = st.columns(2)
         dqn_train_clicked = col1.button("Train DQN", type="primary", key="dqn_train_btn")
         if st.session_state.get("dqn_confirm_reset"):
-            st.warning("Click again to confirm reset - this will clear Room 5 results.")
+            st.warning("Click again to confirm reset - this will clear Bonus Room results.")
             if col2.button("Confirm Reset", key="dqn_confirm"):
                 for key in [
-                    "dqn_result", "dqn_network", "dqn_eval_fixed",
+                    "dqn_result", "dqn_network", "dqn_meta", "dqn_eval_fixed",
                     "dqn_eval_random", "dqn_eval_unseen", "dqn_rollout",
                     "dqn_model_stem", "dqn_autoload_error",
                 ]:
@@ -2243,6 +2444,7 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
             result = agent.train(progress_callback=_dqn_cb, progress_every=1)
             st.session_state.dqn_result = result
             st.session_state.dqn_network = DQNNetwork.from_weights(dict(result.weights))
+            st.session_state.dqn_meta = None
             st.session_state.dqn_train_key = (
                 dqn_episodes, dqn_lr, dqn_gamma, dqn_max_steps, dqn_train_seed,
                 dqn_min_obs, obstacle_max, dqn_obs_dist, dqn_layout_seed, dqn_fixed_layout,
@@ -2260,7 +2462,7 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
         model_dir = os.path.join("storage", "models", "room5_dqn")
         stem = _preferred_model_stem(model_dir, "showcase_dqn")
         if stem is None:
-            st.info("No Room 5 model found. Run training here or use tools/generate_local_models.py --showcase.")
+            st.info("No Bonus Room model found. Run training here or use tools/generate_local_models.py --showcase.")
         else:
             try:
                 _load_room5_model_into_state(stem, dqn_config)
@@ -2317,7 +2519,7 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
                 st.rerun()
 
         if dqn_rollout_clicked:
-            with st.spinner("Generating greedy Room 5 replay..."):
+            with st.spinner("Generating greedy Bonus Room replay..."):
                 st.session_state.dqn_rollout = rollout_dqn_policy(
                     lambda: make_room5_env(fixed_layout=dqn_fixed_layout),
                     dqn_network,
@@ -2346,7 +2548,7 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
             or st.session_state.dqn_rollout is None
         ):
             auto_eval_ep = min(int(dqn_eval_ep), 25)
-            with st.spinner("Preparing Room 5 baseline evaluations and replay..."):
+            with st.spinner("Preparing Bonus Room baseline evaluations and replay..."):
                 if st.session_state.dqn_eval_fixed is None:
                     st.session_state.dqn_eval_fixed = evaluate_dqn_policy(
                         lambda: make_room5_env(fixed_layout=True),
@@ -2389,6 +2591,49 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
                         int(dqn_rollout_seed), int(dqn_rollout_layout_seed), dqn_fixed_layout,
                     )
 
+    dqn_meta = st.session_state.get("dqn_meta")
+    if dqn_meta:
+        render_model_provenance(
+            title="Bonus Room - Dynamic Obstacles",
+            model_stem=st.session_state.dqn_model_stem,
+            metadata=dqn_meta,
+            evaluation_success=final_summary_success("Room 5"),
+        )
+
+    env_meta = dqn_meta.get("environment_config", {}) if isinstance(dqn_meta, dict) else {}
+    observation_size = (
+        dqn_meta.get("input_dim")
+        if isinstance(dqn_meta, dict) and dqn_meta.get("input_dim") is not None
+        else (dqn_network.input_dim if dqn_network is not None else 22)
+    )
+    with st.container(border=True):
+        st.markdown("#### Bonus Proof")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Observation Vector", f"{observation_size} features")
+        c2.metric("Obstacle Width", f"{float(env_meta.get('obstacle_width_m', 0.5)):.1f}m")
+        c3.metric("Observation Range", f"{float(env_meta.get('observation_distance_m', dqn_obs_dist)):.2f}m")
+        c4.metric("Layout Evaluations", "Fixed / Random / Unseen")
+
+        eval_rows = []
+        for label, summary in [
+            ("Fixed layout", st.session_state.dqn_eval_fixed),
+            ("Random layouts", st.session_state.dqn_eval_random),
+            ("Unseen layouts", st.session_state.dqn_eval_unseen),
+        ]:
+            if summary is None:
+                continue
+            eval_rows.append(
+                {
+                    "Evaluation": label,
+                    "Success Rate": f"{summary.success_rate:.1%}",
+                    "Mean Return": f"{summary.mean_return:.2f}",
+                    "Mean Steps": f"{summary.mean_steps:.1f}",
+                    "Source": "saved model evaluation",
+                }
+            )
+        if eval_rows:
+            st.dataframe(eval_rows, width="stretch", hide_index=True)
+
     t1, t2, t3, t4 = st.tabs(["Training Progress", "Evaluation", "Greedy Replay", "Action Values"])
 
     with t1:
@@ -2404,7 +2649,7 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
         if dqn_result is None:
             autoload_error = st.session_state.get("dqn_autoload_error")
             if autoload_error:
-                st.error(f"Room 5 model auto-load failed: {autoload_error}")
+                st.error(f"Bonus Room model auto-load failed: {autoload_error}")
         elif dqn_result.metrics:
             rows = _room5_training_rows(dqn_result.metrics)
             rewards = np.array([row["total_reward"] for row in rows], dtype=float)
@@ -2520,6 +2765,10 @@ elif st.session_state.mode == "Room 5 \u2014 Dynamic Obstacles":
 # ============================================================
 elif st.session_state.mode == "Algorithm Comparison":
     st.header("SARSA vs Q-Learning — Controlled Comparison")
+    st.caption(
+        "These results are for this benchmark map only. They compare update rules and tuned settings here; "
+        "they do not prove universal algorithm superiority."
+    )
 
     with st.sidebar:
         st.markdown("**Comparison Settings**")
@@ -2539,77 +2788,155 @@ elif st.session_state.mode == "Algorithm Comparison":
                                         key="comp_eval_ep",
                                         help="Evaluation episodes per trained model per seed.")
 
-        comp_key = (comp_episodes, comp_alpha, comp_gamma, comp_decay, comp_seeds, comp_eval_ep)
+        load_saved_clicked = st.button("Load Final Saved Comparison", type="primary", key="comp_load_saved")
+        short_clicked = st.button("Run Short Demonstration", key="comp_run_short")
+        full_clicked = st.button("Run Full Comparison", key="comp_run_full")
 
-        if st.button("Run Comparison", type="primary", key="comp_run"):
-            with st.spinner("Running matched comparison..."):
-                matched = run_matched_comparison(
-                    alpha=comp_alpha, gamma=comp_gamma,
-                    episodes=comp_episodes, epsilon_decay=comp_decay,
-                    training_seeds=list(range(comp_seeds)),
-                    eval_seeds=range(comp_eval_ep),
-                )
-                st.session_state.comp_matched = matched
+    if st.session_state.comp_matched is None and st.session_state.comp_tuned is None:
+        _saved_comparison_into_state()
 
-            with st.spinner("Running tuned comparison..."):
-                tuned = run_tuned_comparison(
-                    sarsa_configs=[
-                        {"alpha": comp_alpha, "gamma": comp_gamma, "epsilon_decay": comp_decay},
-                        {"alpha": 0.05, "gamma": 0.95, "epsilon_decay": 0.999},
-                    ],
-                    q_configs=[
-                        {"alpha": comp_alpha, "gamma": comp_gamma, "epsilon_decay": comp_decay},
-                        {"alpha": 0.05, "gamma": 0.95, "epsilon_decay": 0.999},
-                    ],
-                    training_seeds=list(range(min(3, comp_seeds))),
-                    eval_seeds=range(comp_eval_ep),
-                    episodes=comp_episodes,
-                )
-                st.session_state.comp_tuned = tuned
-
-            save_comparison(matched, tuned)
-            st.session_state.comp_key = comp_key
+    if load_saved_clicked:
+        if _saved_comparison_into_state():
+            st.success("Loaded final saved comparison from storage/experiments/final.")
             st.rerun()
+        st.error("Final saved comparison artifacts were not found.")
+
+    if short_clicked:
+        with st.spinner("Running short matched comparison..."):
+            matched = run_matched_comparison(
+                alpha=0.10,
+                gamma=0.95,
+                episodes=300,
+                epsilon_decay=0.995,
+                training_seeds=[0, 1],
+                eval_seeds=range(20),
+            )
+        with st.spinner("Running short tuned comparison..."):
+            tuned = run_tuned_comparison(
+                sarsa_configs=[{"alpha": 0.05, "gamma": 0.95, "epsilon_decay": 0.99}],
+                q_configs=[{"alpha": 0.50, "gamma": 0.99, "epsilon_decay": 0.999}],
+                training_seeds=[0],
+                eval_seeds=range(20),
+                episodes=300,
+            )
+        st.session_state.comp_matched = matched
+        st.session_state.comp_tuned = tuned
+        st.session_state.comp_metadata = {
+            "map_signature": "live demonstration",
+            "match_config": {
+                "episodes": 300,
+                "max_steps": 200,
+                "training_seeds": [0, 1],
+                "eval_seeds": list(range(20)),
+                "alpha": 0.10,
+                "gamma": 0.95,
+                "epsilon_decay": 0.995,
+            },
+        }
+        st.session_state.comp_source = "Short live demonstration"
+        st.session_state.comp_key = ("short", 300, 2, 20)
+        st.rerun()
+
+    if full_clicked:
+        comp_key = (comp_episodes, comp_alpha, comp_gamma, comp_decay, comp_seeds, comp_eval_ep)
+        with st.spinner("Running matched comparison..."):
+            matched = run_matched_comparison(
+                alpha=comp_alpha, gamma=comp_gamma,
+                episodes=comp_episodes, epsilon_decay=comp_decay,
+                training_seeds=list(range(comp_seeds)),
+                eval_seeds=range(comp_eval_ep),
+            )
+
+        with st.spinner("Running tuned comparison..."):
+            tuned = run_tuned_comparison(
+                sarsa_configs=[
+                    {"alpha": comp_alpha, "gamma": comp_gamma, "epsilon_decay": comp_decay},
+                    {"alpha": 0.05, "gamma": 0.95, "epsilon_decay": 0.999},
+                ],
+                q_configs=[
+                    {"alpha": comp_alpha, "gamma": comp_gamma, "epsilon_decay": comp_decay},
+                    {"alpha": 0.05, "gamma": 0.95, "epsilon_decay": 0.999},
+                ],
+                training_seeds=list(range(min(3, comp_seeds))),
+                eval_seeds=range(comp_eval_ep),
+                episodes=comp_episodes,
+            )
+
+        save_comparison(matched, tuned)
+        st.session_state.comp_matched = matched
+        st.session_state.comp_tuned = tuned
+        st.session_state.comp_metadata = {
+            "map_signature": "live full comparison",
+            "match_config": {
+                "episodes": int(comp_episodes),
+                "max_steps": 200,
+                "training_seeds": list(range(int(comp_seeds))),
+                "eval_seeds": list(range(int(comp_eval_ep))),
+                "alpha": float(comp_alpha),
+                "gamma": float(comp_gamma),
+                "epsilon_decay": float(comp_decay),
+            },
+        }
+        st.session_state.comp_source = "Full live comparison"
+        st.session_state.comp_key = comp_key
+        st.rerun()
 
     comp_matched = st.session_state.comp_matched
     comp_tuned = st.session_state.comp_tuned
+    comp_meta = st.session_state.comp_metadata or {}
 
     if comp_matched is not None and comp_tuned is not None:
+        match_config = comp_meta.get("match_config", {})
+        st.markdown(f"**Source:** {st.session_state.comp_source or 'Current session'}")
+        with st.container(border=True):
+            st.markdown("#### Fairness Proof")
+            st.dataframe(
+                [
+                    {"Check": "Same map", "Evidence": str(comp_meta.get("map_signature", "Room 2 benchmark map"))},
+                    {"Check": "Same rewards", "Evidence": "Both use the Room 2 default reward configuration."},
+                    {"Check": "Same slip configuration", "Evidence": "Both use intended=0.8, left=0.1, right=0.1."},
+                    {"Check": "Same training seeds", "Evidence": str(match_config.get("training_seeds", "same list per algorithm"))},
+                    {"Check": "Same evaluation seeds", "Evidence": str(match_config.get("eval_seeds", "same list per algorithm"))},
+                ],
+                width="stretch",
+                hide_index=True,
+            )
+
         # --- Matched comparison summary ---
-        st.subheader("Comparison A — Matched Parameters")
-        sarsa_m, q_m = comp_matched
+        st.subheader("Matched Comparison - Same Hyperparameters, Update Rule Comparison")
+        sarsa_m, q_m, paired = _matched_parts(comp_matched)
 
         data = []
-        for i in range(len(sarsa_m)):
-            s = sarsa_m[i]
-            q = q_m[i]
+        for s, q in zip(sarsa_m, q_m):
             data.append({
-                "Seed": s.seed,
-                "SARSA SR": f"{s.success_rate:.1%}",
-                "Q-Learn SR": f"{q.success_rate:.1%}",
-                "SARSA Return": f"{s.mean_return:.1f}",
-                "Q-Learn Return": f"{q.mean_return:.1f}",
-                "SARSA Steps": f"{s.mean_steps:.1f}",
-                "Q-Learn Steps": f"{q.mean_steps:.1f}",
-                "SARSA Traps": s.total_traps,
-                "Q-Learn Traps": q.total_traps,
+                "Seed": s.get("seed"),
+                "SARSA SR": f"{_metric_float(s, 'success_rate'):.1%}",
+                "Q-Learn SR": f"{_metric_float(q, 'success_rate'):.1%}",
+                "SARSA Return": f"{_metric_float(s, 'mean_return'):.1f}",
+                "Q-Learn Return": f"{_metric_float(q, 'mean_return'):.1f}",
+                "SARSA Steps": f"{_metric_float(s, 'mean_steps'):.1f}",
+                "Q-Learn Steps": f"{_metric_float(q, 'mean_steps'):.1f}",
+                "SARSA Traps": int(_metric_float(s, "total_traps")),
+                "Q-Learn Traps": int(_metric_float(q, "total_traps")),
             })
-        st.dataframe(data, width="stretch")
+        st.dataframe(data, width="stretch", hide_index=True)
 
-        s_sr = [r.success_rate for r in sarsa_m]
-        q_sr = [r.success_rate for r in q_m]
-        s_ret = [r.mean_return for r in sarsa_m]
-        q_ret = [r.mean_return for r in q_m]
+        s_sr = [_metric_float(r, "success_rate") for r in sarsa_m]
+        q_sr = [_metric_float(r, "success_rate") for r in q_m]
+        s_ret = [_metric_float(r, "mean_return") for r in sarsa_m]
+        q_ret = [_metric_float(r, "mean_return") for r in q_m]
+        paired_sr = [_metric_float(r, "diff_success_rate") for r in paired]
+        paired_ret = [_metric_float(r, "diff_mean_return") for r in paired]
 
         c1, c2, c3 = st.columns(3)
         c1.metric("SARSA Mean SR", f"{np.mean(s_sr):.1%}", delta=None)
         c2.metric("Q-Learn Mean SR", f"{np.mean(q_sr):.1%}", delta=None)
-        c3.metric("Mean Paired SR Diff", f"{np.mean(np.array(q_sr) - np.array(s_sr)):.1%}")
+        c3.metric("Mean Paired SR Diff", f"{np.mean(paired_sr):.1%}" if paired_sr else "N/A")
 
         c1, c2, c3 = st.columns(3)
         c1.metric("SARSA Mean Return", f"{np.mean(s_ret):.1f}")
         c2.metric("Q-Learn Mean Return", f"{np.mean(q_ret):.1f}")
-        c3.metric("Mean Paired Return Diff", f"{np.mean(np.array(q_ret) - np.array(s_ret)):.1f}")
+        c3.metric("Mean Paired Return Diff", f"{np.mean(paired_ret):.1f}" if paired_ret else "N/A")
 
         # Charts
         st.subheader("Per-Seed Success Rate")
@@ -2620,18 +2947,19 @@ elif st.session_state.mode == "Algorithm Comparison":
         st.bar_chart({"SARSA": s_ret, "Q-Learning": q_ret})
 
         # --- Tuned comparison ---
-        st.subheader("Comparison B — Tuned Models")
+        st.subheader("Tuned Comparison - Each Algorithm Uses Its Best Confirmed Parameters")
         tuned_data = []
-        for r in comp_tuned:
+        for row in comp_tuned:
+            r = _row_dict(row)
             tuned_data.append({
-                "Algorithm": r.algorithm,
-                "Config": str(r.config),
-                "Mean SR": f"{r.success_rate_mean:.1%}",
-                "SR Std": f"{r.success_rate_std:.2%}",
-                "Mean Return": f"{r.mean_return_mean:.1f}",
-                "Mean Steps": f"{r.mean_steps_mean:.1f}",
-                "Traps": r.total_traps,
+                "Algorithm": r.get("algorithm"),
+                "Config": str(r.get("config")),
+                "Mean SR": f"{_metric_float(r, 'success_rate_mean'):.1%}",
+                "SR Std": f"{_metric_float(r, 'success_rate_std'):.2%}",
+                "Mean Return": f"{_metric_float(r, 'mean_return_mean'):.1f}",
+                "Mean Steps": f"{_metric_float(r, 'mean_steps_mean'):.1f}",
+                "Traps": int(_metric_float(r, "total_traps")),
             })
-        st.dataframe(tuned_data, width="stretch")
+        st.dataframe(tuned_data, width="stretch", hide_index=True)
     else:
-        st.info("Press **Run Comparison** in the sidebar to start.")
+        st.info("Load final saved results or run a demonstration from the sidebar.")

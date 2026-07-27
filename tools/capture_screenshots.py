@@ -4,7 +4,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from urllib.parse import quote
 
 from playwright.sync_api import sync_playwright
 
@@ -14,14 +13,14 @@ SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
 APP_FILE = "app.py"
 BASE_URL = "http://localhost:8501"
 
-MODES = [
-    # These correspond to the screenshots referenced in README/docs.
-    ("Home", "home.png"),
-    ("Room 1 \u2014 DP", "room1_value_policy.png"),
-    ("Room 2 \u2014 SARSA", "room2_training.png"),
-    ("Room 3 \u2014 Q-Learning", "room3_policy_no_key.png"),
-    ("Room 4 \u2014 Function Approximation", "room4_trajectory.png"),
-    ("Algorithm Comparison", "comparison.png"),
+ROUTES = [
+    # These query-param routes match the public Streamlit presentation links.
+    ("?view=showcase", "home.png"),
+    ("?view=showcase&room=room1", "room1_value_policy.png"),
+    ("?view=lab&room=room2", "room2_training.png"),
+    ("?view=lab&room=room3", "room3_policy_no_key.png"),
+    ("?view=showcase&room=room4", "room4_trajectory.png"),
+    ("?view=comparison", "comparison.png"),
 ]
 
 
@@ -42,9 +41,9 @@ def main():
             browser = p.chromium.launch(headless=True)
             page = browser.new_page(viewport={"width": 1280, "height": 900})
 
-            for mode_label, filename in MODES:
+            for route, filename in ROUTES:
                 try:
-                    url = f"{BASE_URL}/?mode={quote(mode_label)}"
+                    url = f"{BASE_URL}/{route}"
                     page.goto(url, timeout=30000)
                     page.wait_for_load_state("networkidle")
                     time.sleep(4)

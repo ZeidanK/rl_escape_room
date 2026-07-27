@@ -3,7 +3,7 @@
 A Python-based reinforcement learning escape-room application with four required
 rooms plus one optional bonus room, each solved by a different RL algorithm.
 
-**Deployment: local-only for now**
+**Public Streamlit app:** https://rlescaperoom-etswi8z5v9b48mejvamdqw.streamlit.app/
 
 ## Project Objective
 
@@ -31,7 +31,7 @@ room solved with a lightweight NumPy DQN using replay and a target network.
 | 9 | Room 4 is a 10×10 metre room                                                 | Done   |
 | 10 | All agents run on the same platform (Streamlit)                              | Done   |
 | 11 | Reproducible experiments with seeded RNG streams                             | Done   |
-| 12 | Published as a public Streamlit app                                          | Deferred |
+| 12 | Published as a public Streamlit app                                          | Done   |
 | 13 | Defence presentation with oral questions                                     | Prepared |
 
 ## Room Overview
@@ -129,7 +129,7 @@ Room 3 has 46 non-wall physical positions, so its tabular state space is
 
 ```
 rl_escape_room/
-├── app.py                 # Streamlit web interface (7 modes: Home + 6 RL modes)
+├── app.py                 # Streamlit web interface (5 primary presentation modes)
 ├── requirements.txt       # Python dependencies
 ├── core/                  # Shared types, configs, enums
 ├── environments/          # Room environments (grid Room 1–3, continuous Room 4)
@@ -276,7 +276,7 @@ No single algorithm dominates across all metrics.
 
 ## Screenshots
 
-Screenshots from the local Streamlit application:
+Screenshots from the Streamlit application:
 
 | Mode                          | Screenshot                        |
 |-------------------------------|-----------------------------------|
@@ -304,8 +304,8 @@ Screenshots from the local Streamlit application:
 ## Future Work
 
 - Room 5 future work: broader hyperparameter search and longer DQN training budgets.
-- Deploy to Streamlit Community Cloud when public hosting is in scope.
-- Replace screenshots with public-site screenshots after deployment.
+- Keep the public Streamlit deployment synced with the latest saved artifacts.
+- Refresh screenshots from the deployed app after major UI changes.
 - Extended hyperparameter search for Room 4 (Bayesian optimisation, more
   tilings configurations).
 - Cross-validation across multiple room maps.
@@ -328,5 +328,6 @@ hyperparameters, reproducibility, and comparison methodology.
 ## Deployment
 
 ```text
-Deployment: local-only for now. Run with `streamlit run app.py`.
+Public app: https://rlescaperoom-etswi8z5v9b48mejvamdqw.streamlit.app/
+Local development: run with `streamlit run app.py`.
 ```

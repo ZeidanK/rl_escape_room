@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -21,13 +22,16 @@ from agents.q_learning import QLearningAgent, save_q_model
 from agents.sarsa import SarsaAgent, save_model
 from core.types import (
     ApproximateSarsaConfig,
+    ApproximateSarsaTrainingResult,
     DQNConfig,
     EpsilonDecayKind,
     EpsilonScheduleConfig,
+    QLearningTrainingResult,
     QLearningConfig,
     Room5ObstacleConfig,
     Room5RewardConfig,
     SarsaConfig,
+    SarsaTrainingResult,
     StartMode,
     TileCodingConfig,
 )
@@ -35,6 +39,15 @@ from environments.room2_sarsa import ROOM2_GRID, Room2SARSA
 from environments.room3_qlearning import ROOM3_GRID, Room3QLearning
 from environments.room4_continuous import ContinuousRewardConfig, Room4Continuous, Room4MotionConfig
 from environments.room5_obstacles import Room5Obstacles
+
+
+STAGE_TARGETS: tuple[tuple[str, float | None], ...] = (
+    ("beginning", 0.0),
+    ("25", 0.25),
+    ("50", 0.50),
+    ("75", 0.75),
+    ("final", None),
+)
 
 
 def _epsilon(decay: float, minimum: float = 0.05) -> EpsilonScheduleConfig:
@@ -54,6 +67,125 @@ def _stem(output_root: Path, subdir: str, showcase_name: str, local_prefix: str,
     return output_root / subdir / filename
 
 
+def _target_episode(total: int, fraction: float | None) -> int:
+    if fraction is None:
+        return total
+    if fraction <= 0:
+        return 1
+    return max(1, min(total, round(total * fraction)))
+
+
+def _nearest_snapshot_episode(result, target: int) -> int:
+    available = sorted(result.snapshots.keys())
+    if not available:
+        raise ValueError("training result has no snapshots to save")
+    if target in result.snapshots:
+        return target
+    before = [episode for episode in available if episode <= target]
+    return before[-1] if before else available[0]
+
+
+def _save_room2_stages(result: SarsaTrainingResult, stage_dir: Path) -> list[Path]:
+    paths: list[Path] = []
+    for slug, fraction in STAGE_TARGETS:
+        if fraction is None:
+            stage_result = SarsaTrainingResult(
+                config=result.config,
+                q_values=result.q_values,
+                metrics=result.metrics,
+                snapshots={},
+                final_epsilon=result.final_epsilon,
+                training_seed=result.training_seed,
+            )
+        else:
+            episode = _nearest_snapshot_episode(result, _target_episode(result.config.episodes, fraction))
+            snap = result.snapshots[episode]
+            stage_result = SarsaTrainingResult(
+                config=replace(result.config, episodes=episode),
+                q_values=snap.q_values,
+                metrics=result.metrics[:episode],
+                snapshots={},
+                final_epsilon=snap.epsilon,
+                training_seed=result.training_seed,
+            )
+        stem = stage_dir / slug
+        paths.append(Path(save_model(stage_result, str(stem), slip_config=Room2SARSA().slip_config, map_grid=ROOM2_GRID)))
+    return paths
+
+
+def _save_room3_stages(result: QLearningTrainingResult, stage_dir: Path) -> list[Path]:
+    paths: list[Path] = []
+    for slug, fraction in STAGE_TARGETS:
+        if fraction is None:
+            stage_result = QLearningTrainingResult(
+                config=result.config,
+                q_values=result.q_values,
+                metrics=result.metrics,
+                snapshots={},
+                final_epsilon=result.final_epsilon,
+                training_seed=result.training_seed,
+            )
+        else:
+            episode = _nearest_snapshot_episode(result, _target_episode(result.config.episodes, fraction))
+            snap = result.snapshots[episode]
+            stage_result = QLearningTrainingResult(
+                config=replace(result.config, episodes=episode),
+                q_values=snap.q_values,
+                metrics=result.metrics[:episode],
+                snapshots={},
+                final_epsilon=snap.epsilon,
+                training_seed=result.training_seed,
+            )
+        stem = stage_dir / slug
+        paths.append(Path(save_q_model(stage_result, str(stem), slip_config=Room3QLearning().slip_config, map_grid=ROOM3_GRID)))
+    return paths
+
+
+def _save_room4_stages(
+    result: ApproximateSarsaTrainingResult,
+    stage_dir: Path,
+    *,
+    tile_config: TileCodingConfig,
+    motion_config: Room4MotionConfig,
+    reward_config: ContinuousRewardConfig,
+) -> list[Path]:
+    paths: list[Path] = []
+    for slug, fraction in STAGE_TARGETS:
+        if fraction is None:
+            stage_result = ApproximateSarsaTrainingResult(
+                config=result.config,
+                weights=result.weights,
+                metrics=result.metrics,
+                snapshots={},
+                final_epsilon=result.final_epsilon,
+                training_seed=result.training_seed,
+            )
+        else:
+            episode = _nearest_snapshot_episode(result, _target_episode(result.config.episodes, fraction))
+            snap = result.snapshots[episode]
+            stage_result = ApproximateSarsaTrainingResult(
+                config=replace(result.config, episodes=episode),
+                weights=snap.weights,
+                metrics=result.metrics[:episode],
+                snapshots={},
+                final_epsilon=snap.epsilon,
+                training_seed=result.training_seed,
+            )
+        stem = stage_dir / slug
+        paths.append(
+            Path(
+                save_approximate_model(
+                    stage_result,
+                    str(stem),
+                    tile_coding_config=tile_config,
+                    motion_config=motion_config,
+                    reward_config=reward_config,
+                )
+            )
+        )
+    return paths
+
+
 def train_room2(output_root: Path, episodes: int, seed: int, *, showcase: bool = False) -> Path:
     # Train the SARSA model that the Room 2 showcase can load quickly.
     env_factory = lambda: Room2SARSA(max_steps=200)
@@ -68,6 +200,8 @@ def train_room2(output_root: Path, episodes: int, seed: int, *, showcase: bool =
     result = SarsaAgent(env_factory, config).train()
     stem = _stem(output_root, "room2_sarsa", "showcase_sarsa", "sarsa", showcase)
     save_model(result, str(stem), slip_config=Room2SARSA().slip_config, map_grid=ROOM2_GRID)
+    if showcase:
+        _save_room2_stages(result, output_root / "room2_sarsa" / "showcase_stages")
     return stem.with_suffix(".json")
 
 
@@ -85,6 +219,8 @@ def train_room3(output_root: Path, episodes: int, seed: int, *, showcase: bool =
     result = QLearningAgent(env_factory, config).train()
     stem = _stem(output_root, "room3_q_learning", "showcase_ql", "ql", showcase)
     save_q_model(result, str(stem), slip_config=Room3QLearning().slip_config, map_grid=ROOM3_GRID)
+    if showcase:
+        _save_room3_stages(result, output_root / "room3_q_learning" / "showcase_stages")
     return stem.with_suffix(".json")
 
 
@@ -118,6 +254,14 @@ def train_room4(output_root: Path, episodes: int, seed: int, *, showcase: bool =
         motion_config=motion,
         reward_config=reward,
     )
+    if showcase:
+        _save_room4_stages(
+            result,
+            output_root / "room4_approximate_sarsa" / "showcase_stages",
+            tile_config=tile_config,
+            motion_config=motion,
+            reward_config=reward,
+        )
     return stem.with_suffix(".json")
 
 
@@ -166,6 +310,13 @@ def main() -> None:
     parser.add_argument("--room4-episodes", default=500, type=int)
     parser.add_argument("--room5-episodes", default=300, type=int)
     parser.add_argument("--showcase", action="store_true", help="Write deterministic showcase_* artifact names.")
+    parser.add_argument(
+        "--rooms",
+        nargs="+",
+        choices=["room2", "room3", "room4", "room5"],
+        default=["room2", "room3", "room4", "room5"],
+        help="Subset of rooms to generate.",
+    )
     parser.add_argument("--smoke", action="store_true", help="Use tiny episode counts for wiring checks.")
     args = parser.parse_args()
 
@@ -176,12 +327,15 @@ def main() -> None:
         args.room5_episodes = 2
 
     args.output_root.mkdir(parents=True, exist_ok=True)
-    paths = [
-        train_room2(args.output_root, args.room2_episodes, args.seed, showcase=args.showcase),
-        train_room3(args.output_root, args.room3_episodes, args.seed, showcase=args.showcase),
-        train_room4(args.output_root, args.room4_episodes, args.seed, showcase=args.showcase),
-        train_room5(args.output_root, args.room5_episodes, args.seed, showcase=args.showcase),
-    ]
+    paths = []
+    if "room2" in args.rooms:
+        paths.append(train_room2(args.output_root, args.room2_episodes, args.seed, showcase=args.showcase))
+    if "room3" in args.rooms:
+        paths.append(train_room3(args.output_root, args.room3_episodes, args.seed, showcase=args.showcase))
+    if "room4" in args.rooms:
+        paths.append(train_room4(args.output_root, args.room4_episodes, args.seed, showcase=args.showcase))
+    if "room5" in args.rooms:
+        paths.append(train_room5(args.output_root, args.room5_episodes, args.seed, showcase=args.showcase))
     for path in paths:
         print(path)
 

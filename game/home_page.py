@@ -3,11 +3,12 @@
 import html as html_mod
 
 import streamlit as st
-from game.constants import PENDING_MODE_SELECTOR_KEY
+from game.constants import ROOM5_BONUS_MODE
 from game.html_rendering import normalize_html, render_html
 from game.theme import difficulty_badge
 from game.models import GameRoomState, RoomUnlockStatus, Achievement, AchievementId
 from game.achievements import AchievementTracker, ALL_ACHIEVEMENTS
+from game.presentation import go_to_lab, go_to_mode, go_to_showcase_room
 
 
 # Campaign-card metadata.  The rooms are currently all unlocked, but the status
@@ -166,21 +167,17 @@ def render_home_page():
         <span style="color:#444;">\u2192</span>
         <span style="background:#4a148c;color:#ea80fc;padding:2px 12px;border-radius:12px;font-size:0.75em;">Room 4</span>
         <span style="color:#444;">\u2192</span>
-        <span style="background:#0f766e;color:#5eead4;padding:2px 12px;border-radius:12px;font-size:0.75em;">Room 5</span>
+        <span style="background:#0f766e;color:#5eead4;padding:2px 12px;border-radius:12px;font-size:0.75em;">Bonus</span>
     </div>
     """)
 
     nav_col1, nav_col2 = st.columns([1, 1])
     with nav_col1:
-        if st.button("\U0001f3ae Enter the Escape Room", width="stretch", type="primary"):
-            st.session_state.mode = "\U0001f3ae Escape Room Showcase"
-            st.session_state.game_room = None
-            st.rerun()
+        if st.button("Start Campaign", width="stretch", type="primary"):
+            go_to_showcase_room("room1")
     with nav_col2:
-        if st.button("\U0001f52c View Learning Laboratory", width="stretch"):
-            st.session_state.mode = "Home"
-            st.session_state[PENDING_MODE_SELECTOR_KEY] = "Home"
-            st.rerun()
+        if st.button("Open Learning Laboratory", width="stretch"):
+            go_to_lab(None)
 
     render_html("<hr style='border-color:#333;margin:24px 0;'>")
 
@@ -189,8 +186,9 @@ def render_home_page():
     unlocked_list = tracker.get_unlocked()
     unlocked_ids = {a.id for a in unlocked_list}
 
+    st.markdown("### Required Campaign")
     cols = st.columns(2)
-    for i, room in enumerate(ROOM_DEFS):
+    for i, room in enumerate(ROOM_DEFS[:4]):
         with cols[i % 2]:
             locked = not room.status.unlocked
             card_class = "room-card" + (" room-card-locked" if locked else "")
@@ -208,9 +206,19 @@ def render_home_page():
             btn_label = "Enter Room" if not locked else "Locked"
             disabled = locked
             if st.button(btn_label, key=f"enter_{room.room_id}", disabled=disabled, width="stretch"):
-                st.session_state.mode = "\U0001f3ae Escape Room Showcase"
-                st.session_state.game_room = room.room_id
-                st.rerun()
+                go_to_showcase_room(room.room_id)
+
+    st.markdown("### Bonus Room - Dynamic Obstacles")
+    bonus_room = ROOM_DEFS[4]
+    render_html(_render_room_card_html(
+        bonus_room,
+        card_class="room-card",
+        emoji=_get_room_emoji(bonus_room.room_index),
+        diff_badge=difficulty_badge(bonus_room.difficulty),
+        unlocked_ids=unlocked_ids,
+    ))
+    if st.button("Open Bonus Room", key="enter_bonus_room5", width="stretch"):
+        go_to_mode(ROOM5_BONUS_MODE, view="bonus")
 
     render_html("<hr style='border-color:#333;margin:24px 0;'>")
     st.markdown("### Achievements")

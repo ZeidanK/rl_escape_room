@@ -32,6 +32,15 @@ from game.models import ReplayState
 from game.achievements import AchievementTracker
 from game.room_transitions import render_transition_content
 from game.home_page import ROOM_DEFS
+from game.canvas_renderer import render_policy_grid_canvas
+from game.presentation import (
+    final_summary_success,
+    render_assignment_proof,
+    render_grid_stage_summary,
+    render_model_provenance,
+    render_open_lab_button,
+    stage_options,
+)
 
 
 def _training_config(meta: dict) -> dict:
@@ -114,10 +123,15 @@ def render_room3_game():
         f'The exit is locked. The agent must remember whether it has collected the key because '
         f'the same location has different meaning before and after collection.</div>'
     )
+    render_assignment_proof("room3")
+    render_open_lab_button("room3", key="r3g_open_lab")
 
     render_back_button("r3g_back")
 
-    for key in ["r3g_q_vals", "r3g_meta", "r3g_replay", "r3g_loaded", "r3g_model_stem", "r3g_load_error"]:
+    for key in [
+        "r3g_q_vals", "r3g_meta", "r3g_replay", "r3g_loaded",
+        "r3g_model_stem", "r3g_load_error", "r3g_replay_key",
+    ]:
         if key not in st.session_state:
             st.session_state[key] = None
     if "r3g_autoload_disabled" not in st.session_state:
@@ -155,7 +169,7 @@ def render_room3_game():
             st.rerun()
         
         if reset_col.button("Reset", key="r3g_reset"):
-            for key in ["r3g_q_vals", "r3g_meta", "r3g_replay", "r3g_loaded", "r3g_model_stem", "r3g_load_error"]:
+            for key in ["r3g_q_vals", "r3g_meta", "r3g_replay", "r3g_loaded", "r3g_model_stem", "r3g_load_error", "r3g_replay_key"]:
                 st.session_state[key] = None
             st.session_state.r3g_autoload_disabled = True
             st.rerun()
@@ -180,6 +194,40 @@ def render_room3_game():
             st.caption("No Room 3 model is loaded.")
         return
 
+    options = stage_options("room3", st.session_state.r3g_model_stem)
+    stage_labels = [label for label, _ in options] or ["Final"]
+    default_index = stage_labels.index("Final") if "Final" in stage_labels else len(stage_labels) - 1
+    selected_stage = st.selectbox(
+        "Policy Stage",
+        stage_labels,
+        index=default_index,
+        key="r3g_policy_stage",
+    )
+    selected_stem = dict(options).get(selected_stage, st.session_state.r3g_model_stem)
+    if selected_stem and selected_stem != st.session_state.r3g_model_stem:
+        try:
+            q_vals, meta = load_q_model(selected_stem, map_grid=ROOM3_GRID)
+        except ValueError as e:
+            st.error(f"Stage load failed: {e}")
+            q_vals = st.session_state.r3g_q_vals
+            meta = st.session_state.r3g_meta
+            selected_stage = "Final"
+            selected_stem = st.session_state.r3g_model_stem
+
+    render_model_provenance(
+        title="Q-Learning",
+        model_stem=selected_stem,
+        metadata=meta,
+        evaluation_success=final_summary_success("Room 3"),
+    )
+
+    with st.container(border=True):
+        st.markdown("#### Markov State Lesson")
+        st.markdown(
+            "Position alone is not enough in this room. The same physical cell has different "
+            "meaning before and after the key, so the state must include `has_key`."
+        )
+
     # Current step data
     current_step_data = get_current_step(replay) if replay else None
     
@@ -200,15 +248,18 @@ def render_room3_game():
                          seed=_seed_from_meta(meta))
     
     # Build replay if needed and cache it across Streamlit reruns.
-    if replay is None:
+    replay_key = (selected_stem, _seed_from_meta(meta), _max_steps_from_meta(meta))
+    if replay is None or st.session_state.r3g_replay_key != replay_key:
         seed = _seed_from_meta(meta)
         slip_config = _slip_config_from_meta(meta)
         max_steps = _max_steps_from_meta(meta)
         make_env = lambda: Room3QLearning(max_steps=max_steps, slip_config=slip_config, seed=seed)
         roll = rollout_q_learning_policy(make_env, q_vals, seed=seed)
-        replay = build_replay_from_rollout(roll, "room3", stage_label="Final")
+        replay = build_replay_from_rollout(roll, "room3", stage_label=selected_stage)
         st.session_state.r3g_replay = replay
+        st.session_state.r3g_replay_key = replay_key
         st.rerun()
+    render_grid_stage_summary(selected_stage, replay)
 
     # HUD
     status_badges = []
@@ -263,6 +314,15 @@ def render_room3_game():
             has_key=has_key_before,
         )
 
+        st.markdown("### Policy Before And After Key")
+        c_before, c_after = st.columns(2)
+        with c_before:
+            st.caption("Policy before collecting key")
+            render_html(render_policy_grid_canvas(env.grid, greedy_policy, room_id="room3", has_key=False))
+        with c_after:
+            st.caption("Policy after collecting key")
+            render_html(render_policy_grid_canvas(env.grid, greedy_policy, room_id="room3", has_key=True))
+
     with col_info:
         render_step_info(current_step_data, replay, "room3")
         
@@ -281,6 +341,27 @@ def render_room3_game():
             algorithm="Q-Learning",
             explanation=get_algorithm_explanation("q_learning"),
         ))
+
+        st.markdown("---")
+        st.markdown("### Same Cell, Different State")
+        if current_step_data:
+            row, col = current_step_data.state[:2]
+        else:
+            row, col = env.agent_position
+        rows = []
+        for has_key_flag in (False, True):
+            state_key = (row, col, has_key_flag)
+            vals = q_vals.get(state_key, (0, 0, 0, 0))
+            best_idx = int(np.argmax(np.array(vals, dtype=float)))
+            rows.append({
+                "state": f"({row}, {col}, {has_key_flag})",
+                "greedy_action": Action(best_idx).name,
+                "UP": f"{vals[0]:.2f}",
+                "RIGHT": f"{vals[1]:.2f}",
+                "DOWN": f"{vals[2]:.2f}",
+                "LEFT": f"{vals[3]:.2f}",
+            })
+        st.dataframe(rows, width="stretch", hide_index=True)
 
     # Replay controls
     if replay:
@@ -336,6 +417,16 @@ def render_room3_game():
     achievements = check_and_unlock_achievements("room3", replay)
     for ach in achievements:
         st.toast(f"{ach.emoji} {ach.name}: {ach.description}")
+
+    if replay and replay.success and replay.current_index >= len(replay.steps) - 1:
+        key_steps = [s.step_index + 1 for s in replay.steps if s.event in ("key", "key_collected")]
+        exit_steps = [s.step_index + 1 for s in replay.steps if s.event == "exit"]
+        with st.container(border=True):
+            st.markdown("#### Key Vault Completion")
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Key Collected At", key_steps[0] if key_steps else "N/A")
+            c2.metric("Exit Reached At", exit_steps[-1] if exit_steps else replay.total_steps)
+            c3.metric("Total Return", f"{replay.total_reward:.1f}")
     
     render_room_transition("room3", replay, achievements)
 

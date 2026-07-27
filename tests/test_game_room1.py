@@ -235,13 +235,16 @@ class TestVIAnimation:
         agent = ValueIterationAgent(env)
         frames = _compute_vi_frames(agent, max_frames=5)
         assert len(frames) >= 1
-        assert all(f.shape == (10, 10) for f in frames)
+        assert all(f["values"].shape == (10, 10) for f in frames)
+        assert all("iteration" in f for f in frames)
+        assert all("delta" in f for f in frames)
+        assert all("converged" in f for f in frames)
 
     def test_vi_animation_frame_svg(self):
         env = Room1DP(seed=42)
         agent = ValueIterationAgent(env)
         frames = _compute_vi_frames(agent, max_frames=3)
-        svg = render_vi_animation_frame(env.grid, frames[0], 1, len(frames))
+        svg = render_vi_animation_frame(env.grid, frames[0]["values"], frames[0]["iteration"], len(frames))
         assert svg.startswith("<svg")
 
     def test_extract_q_from_values(self):

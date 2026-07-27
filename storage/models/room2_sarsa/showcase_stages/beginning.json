@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "map_signature": "570dd5ce4ac004ab",
+  "grid_shape": [
+    10,
+    10
+  ],
+  "n_states": 46,
+  "n_actions": 4,
+  "config": {
+    "episodes": 1,
+    "alpha": 0.05,
+    "gamma": 0.95,
+    "max_steps": 200,
+    "seed": 42,
+    "epsilon": {
+      "kind": "exponential",
+      "start": 1.0,
+      "minimum": 0.05,
+      "decay": 0.99,
+      "linear_decay_episodes": 4000
+    }
+  },
+  "rewards": {
+    "step_penalty": -1.0,
+    "exit_reward": 100.0,
+    "wall_penalty": -3.0,
+    "trap_penalty": -20.0,
+    "step_limit_penalty": -30.0
+  },
+  "slip_config": {
+    "intended_probability": 0.8,
+    "left_probability": 0.1,
+    "right_probability": 0.1
+  },
+  "training": {
+    "final_epsilon": 1.0,
+    "total_episodes": 1,
+    "final_mean_reward": -713.0,
+    "final_success_rate": 0.0,
+    "snapshot_episodes": []
+  }
+}

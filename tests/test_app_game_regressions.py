@@ -25,6 +25,14 @@ from environments.room4_continuous import ContinuousRewardConfig, Room4Continuou
 APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
 
 
+def _select_lab_room(at: AppTest, label: str) -> AppTest:
+    at.sidebar.radio[0].set_value("Learning Laboratory").run()
+    for selectbox in at.sidebar.selectbox:
+        if selectbox.label == "Learning Laboratory Room":
+            return selectbox.set_value(label).run()
+    raise AssertionError("Learning Laboratory Room selectbox not found")
+
+
 def _render_room2_game():
     from game.room2_game import render_room2_game
     render_room2_game()
@@ -115,6 +123,29 @@ def _assert_markdown_contains(at: AppTest, fragment: str) -> None:
     assert any(fragment in message for message in messages)
 
 
+def test_sidebar_shows_five_primary_modes_without_home():
+    at = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    at.run()
+
+    assert at.sidebar.radio[0].options == [
+        "Escape Room Showcase",
+        "Learning Laboratory",
+        "Manual Play",
+        "Algorithm Comparison",
+        "About the Project",
+    ]
+    assert "Home" not in at.sidebar.radio[0].options
+
+
+def test_legacy_home_mode_maps_to_learning_laboratory():
+    at = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    at.session_state["mode"] = "Home"
+    at.run()
+
+    assert len(at.exception) == 0
+    assert at.session_state["mode"] == "Learning Laboratory"
+
+
 def test_home_page_with_unlocked_achievements_does_not_show_raw_html():
     at = AppTest.from_function(_render_home_with_unlocked_achievements, default_timeout=60)
     at.run()
@@ -126,8 +157,7 @@ def test_home_page_with_unlocked_achievements_does_not_show_raw_html():
 def test_room1_analysis_policy_grid_uses_svg_not_code():
     at = AppTest.from_file(str(APP_PATH), default_timeout=60)
     at.run()
-    room1_option = next(option for option in at.sidebar.radio[0].options if "Room 1" in option)
-    at.sidebar.radio[0].set_value(room1_option).run()
+    at = _select_lab_room(at, "Room 1 - DP")
 
     assert len(at.exception) == 0
     _assert_no_code_blocks(at)
@@ -138,18 +168,32 @@ def test_home_learning_laboratory_button_opens_lab_view():
     at = AppTest.from_file(str(APP_PATH), default_timeout=60)
     at.run()
 
-    at = _click_button_by_label(at, "\U0001f52c View Learning Laboratory")
+    at = _click_button_by_label(at, "Open Learning Laboratory")
 
     assert len(at.exception) == 0
-    assert at.session_state["mode"] == "Home"
-    assert at.session_state["mode_selector"] == "Home"
+    assert at.session_state["mode"] == "Learning Laboratory"
+    assert at.session_state["mode_selector"] == "Learning Laboratory"
+
+
+def test_start_campaign_opens_room1_and_bonus_is_separate():
+    at = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    at.run()
+
+    _assert_markdown_contains(at, "Required Campaign")
+    _assert_markdown_contains(at, "Bonus Room - Dynamic Obstacles")
+    assert any(button.label == "Open Bonus Room" for button in at.button)
+
+    at = _click_button_by_label(at, "Start Campaign")
+
+    assert len(at.exception) == 0
+    assert at.session_state["mode"] == "Escape Room Showcase"
+    assert at.session_state["game_room"] == "room1"
 
 
 def test_room2_analysis_mode_auto_loads_showcase_outputs():
     at = AppTest.from_file(str(APP_PATH), default_timeout=60)
     at.run()
-    room2_option = next(option for option in at.sidebar.radio[0].options if "Room 2" in option)
-    at.sidebar.radio[0].set_value(room2_option).run()
+    at = _select_lab_room(at, "Room 2 - SARSA")
 
     assert len(at.exception) == 0
     assert at.session_state["sarsa_result"] is not None
@@ -161,11 +205,19 @@ def test_room2_analysis_mode_auto_loads_showcase_outputs():
     _assert_markdown_contains(at, "policy-grid-canvas")
 
 
+def test_room2_game_stage_selector_loads_stage_artifacts():
+    at = AppTest.from_function(_render_room2_game, default_timeout=60)
+    at.run()
+
+    assert len(at.exception) == 0
+    stage_select = next(select for select in at.selectbox if select.label == "Policy Stage")
+    assert list(stage_select.options) == ["Beginning", "25%", "50%", "75%", "Final"]
+
+
 def test_room3_analysis_mode_auto_loads_showcase_outputs():
     at = AppTest.from_file(str(APP_PATH), default_timeout=60)
     at.run()
-    room3_option = next(option for option in at.sidebar.radio[0].options if "Room 3" in option)
-    at.sidebar.radio[0].set_value(room3_option).run()
+    at = _select_lab_room(at, "Room 3 - Q-Learning")
 
     assert len(at.exception) == 0
     assert at.session_state["ql_result"] is not None
@@ -177,11 +229,19 @@ def test_room3_analysis_mode_auto_loads_showcase_outputs():
     _assert_markdown_contains(at, "policy-grid-canvas")
 
 
+def test_room3_game_stage_selector_loads_stage_artifacts():
+    at = AppTest.from_function(_render_room3_game, default_timeout=60)
+    at.run()
+
+    assert len(at.exception) == 0
+    stage_select = next(select for select in at.selectbox if select.label == "Policy Stage")
+    assert list(stage_select.options) == ["Beginning", "25%", "50%", "75%", "Final"]
+
+
 def test_room4_analysis_mode_auto_loads_showcase_outputs():
     at = AppTest.from_file(str(APP_PATH), default_timeout=90)
     at.run()
-    room4_option = next(option for option in at.sidebar.radio[0].options if "Room 4" in option)
-    at.sidebar.radio[0].set_value(room4_option).run()
+    at = _select_lab_room(at, "Room 4 - Function Approximation")
 
     assert len(at.exception) == 0
     assert at.session_state["approx_result"] is not None
@@ -195,11 +255,23 @@ def test_room4_analysis_mode_auto_loads_showcase_outputs():
     _assert_markdown_contains(at, "action-field-canvas")
 
 
+def test_room4_game_stage_selector_and_continuous_state_labels():
+    at = AppTest.from_function(_render_room4_game, default_timeout=90)
+    at.run()
+
+    assert len(at.exception) == 0
+    stage_select = next(select for select in at.selectbox if select.label == "Policy Stage")
+    assert list(stage_select.options) == ["Beginning", "25%", "50%", "75%", "Final"]
+    metric_labels = [metric.label for metric in at.metric]
+    for label in ["X", "Y", "Vx", "Vy", "Decision Interval"]:
+        assert label in metric_labels
+    assert any(metric.value == "0.02 seconds" for metric in at.metric)
+
+
 def test_room5_analysis_mode_auto_loads_showcase_outputs():
     at = AppTest.from_file(str(APP_PATH), default_timeout=60)
     at.run()
-    room5_option = next(option for option in at.sidebar.radio[0].options if "Room 5" in option)
-    at.sidebar.radio[0].set_value(room5_option).run()
+    at = _select_lab_room(at, "Bonus Room 5 - Dynamic Obstacles")
 
     assert len(at.exception) == 0
     assert at.session_state["dqn_result"] is not None
@@ -212,11 +284,33 @@ def test_room5_analysis_mode_auto_loads_showcase_outputs():
     _assert_no_placeholder_messages(at)
 
 
+def test_comparison_page_loads_saved_results_by_default():
+    at = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    at.run()
+    at.sidebar.radio[0].set_value("Algorithm Comparison").run()
+
+    assert len(at.exception) == 0
+    assert at.session_state["comp_matched"] is not None
+    assert at.session_state["comp_tuned"] is not None
+    assert at.session_state["comp_source"] == "Final saved comparison"
+    assert any(button.label == "Load Final Saved Comparison" for button in at.button)
+
+
+def test_about_page_and_readme_show_public_deployment_url():
+    public_url = "https://rlescaperoom-etswi8z5v9b48mejvamdqw.streamlit.app/"
+    at = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    at.run()
+    at.sidebar.radio[0].set_value("About the Project").run()
+
+    assert len(at.exception) == 0
+    _assert_markdown_contains(at, public_url)
+    assert public_url in (APP_PATH.parent / "README.md").read_text(encoding="utf-8")
+
+
 def test_room5_tiny_training_evaluation_and_replay():
     at = AppTest.from_file(str(APP_PATH), default_timeout=90)
     at.run()
-    room5_option = next(option for option in at.sidebar.radio[0].options if "Room 5" in option)
-    at.sidebar.radio[0].set_value(room5_option).run()
+    at = _select_lab_room(at, "Bonus Room 5 - Dynamic Obstacles")
 
     for label, value in [
         ("Episodes", 10),

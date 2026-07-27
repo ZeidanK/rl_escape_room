@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "algorithm": "Semi-gradient SARSA with tile coding",
+  "room": "Room4Continuous",
+  "state_schema": [
+    "X",
+    "Y",
+    "Vx",
+    "Vy"
+  ],
+  "action_schema": [
+    "STOP",
+    "NORTH",
+    "NORTH_EAST",
+    "EAST",
+    "SOUTH_EAST",
+    "SOUTH",
+    "SOUTH_WEST",
+    "WEST",
+    "NORTH_WEST"
+  ],
+  "motion_config": {
+    "room_width_m": 10.0,
+    "room_height_m": 10.0,
+    "time_step_s": 0.02,
+    "exit_center": [
+      9.5,
+      9.5
+    ],
+    "exit_radius_m": 0.35
+  },
+  "reward_config": {
+    "step": -0.01,
+    "exit": 100.0,
+    "boundary_collision": -1.0,
+    "timeout": -25.0,
+    "distance_progress_scale": 1.0
+  },
+  "tile_coding_config": {
+    "num_tilings": 16,
+    "tiles_x": 16,
+    "tiles_y": 16,
+    "include_velocity": true
+  },
+  "training_config": {
+    "episodes": 125,
+    "alpha": 0.05,
+    "gamma": 0.99,
+    "max_steps": 750,
+    "seed": 42,
+    "epsilon": {
+      "kind": "exponential",
+      "start": 1.0,
+      "minimum": 0.02,
+      "decay": 0.995,
+      "linear_decay_episodes": 4000
+    },
+    "start_mode": "random_lower_left"
+  },
+  "feature_count": 36864,
+  "action_count": 9,
+  "training_seed": 42,
+  "weights_sha256": "82c695f8ec81acf61000032a52802ee96b41a0658627f732200dc6b87f802fd3"
+}

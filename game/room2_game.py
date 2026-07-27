@@ -31,6 +31,14 @@ from game.models import ReplayState
 from game.achievements import AchievementTracker
 from game.room_transitions import render_transition_content
 from game.home_page import ROOM_DEFS
+from game.presentation import (
+    final_summary_success,
+    render_assignment_proof,
+    render_grid_stage_summary,
+    render_model_provenance,
+    render_open_lab_button,
+    stage_options,
+)
 
 
 def _training_config(meta: dict) -> dict:
@@ -93,10 +101,15 @@ def render_room2_game():
         f'The map is unknown. The agent must learn from experience while deciding whether to risk '
         f'a short path through laser traps or take a safer route.</div>'
     )
+    render_assignment_proof("room2")
+    render_open_lab_button("room2", key="r2g_open_lab")
 
     render_back_button("r2g_back")
 
-    for key in ["r2g_q_vals", "r2g_meta", "r2g_replay", "r2g_loaded", "r2g_model_stem", "r2g_load_error"]:
+    for key in [
+        "r2g_q_vals", "r2g_meta", "r2g_replay", "r2g_loaded",
+        "r2g_model_stem", "r2g_load_error", "r2g_replay_key",
+    ]:
         if key not in st.session_state:
             st.session_state[key] = None
     if "r2g_autoload_disabled" not in st.session_state:
@@ -134,7 +147,7 @@ def render_room2_game():
             st.rerun()
         
         if reset_col.button("Reset", key="r2g_reset"):
-            for key in ["r2g_q_vals", "r2g_meta", "r2g_replay", "r2g_loaded", "r2g_model_stem", "r2g_load_error"]:
+            for key in ["r2g_q_vals", "r2g_meta", "r2g_replay", "r2g_loaded", "r2g_model_stem", "r2g_load_error", "r2g_replay_key"]:
                 st.session_state[key] = None
             st.session_state.r2g_autoload_disabled = True
             st.rerun()
@@ -159,20 +172,58 @@ def render_room2_game():
             st.caption("No Room 2 model is loaded.")
         return
 
+    options = stage_options("room2", st.session_state.r2g_model_stem)
+    stage_labels = [label for label, _ in options] or ["Final"]
+    default_index = stage_labels.index("Final") if "Final" in stage_labels else len(stage_labels) - 1
+    selected_stage = st.selectbox(
+        "Policy Stage",
+        stage_labels,
+        index=default_index,
+        key="r2g_policy_stage",
+    )
+    selected_stem = dict(options).get(selected_stage, st.session_state.r2g_model_stem)
+    if selected_stem and selected_stem != st.session_state.r2g_model_stem:
+        try:
+            q_vals, meta = load_model(selected_stem, map_grid=ROOM2_GRID)
+        except ValueError as e:
+            st.error(f"Stage load failed: {e}")
+            q_vals = st.session_state.r2g_q_vals
+            meta = st.session_state.r2g_meta
+            selected_stage = "Final"
+            selected_stem = st.session_state.r2g_model_stem
+
+    render_model_provenance(
+        title="SARSA",
+        model_stem=selected_stem,
+        metadata=meta,
+        evaluation_success=final_summary_success("Room 2"),
+    )
+
+    with st.container(border=True):
+        st.markdown("#### SARSA Lesson")
+        st.markdown(
+            "SARSA is on-policy: its update uses the next action actually selected by the "
+            "epsilon-greedy behavior policy. In a trap corridor, this makes exploration risk "
+            "part of what the learned policy evaluates."
+        )
+
     # Extract the greedy policy from loaded Q-values for arrows on the grid.
     greedy_policy = extract_greedy_policy(q_vals)
     
     # Build replay if not already built.  The replay is cached in session state
     # so moving the slider/buttons does not rerun the rollout from scratch.
-    if replay is None:
+    replay_key = (selected_stem, _seed_from_meta(meta), _max_steps_from_meta(meta))
+    if replay is None or st.session_state.r2g_replay_key != replay_key:
         seed = _seed_from_meta(meta)
         slip_config = _slip_config_from_meta(meta)
         max_steps = _max_steps_from_meta(meta)
         make_env = lambda: Room2SARSA(max_steps=max_steps, slip_config=slip_config, seed=seed)
         roll = rollout_sarsa_policy(make_env, q_vals, seed=seed)
-        replay = build_replay_from_rollout(roll, "room2", stage_label="Final")
+        replay = build_replay_from_rollout(roll, "room2", stage_label=selected_stage)
         st.session_state.r2g_replay = replay
+        st.session_state.r2g_replay_key = replay_key
         st.rerun()
+    render_grid_stage_summary(selected_stage, replay)
 
     # Current step data
     current_step_data = get_current_step(replay) if replay else None

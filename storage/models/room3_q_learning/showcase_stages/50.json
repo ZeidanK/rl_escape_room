@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "algorithm": "Q-Learning",
+  "room": "Room3QLearning",
+  "state_schema": [
+    "row",
+    "column",
+    "has_key"
+  ],
+  "map_signature": "310e580706b75178",
+  "grid_shape": [
+    10,
+    10
+  ],
+  "n_states": 92,
+  "n_actions": 4,
+  "training_config": {
+    "episodes": 250,
+    "alpha": 0.5,
+    "gamma": 0.99,
+    "max_steps": 300,
+    "seed": 42,
+    "epsilon": {
+      "kind": "exponential",
+      "start": 1.0,
+      "minimum": 0.05,
+      "decay": 0.999,
+      "linear_decay_episodes": 4000
+    },
+    "snapshot_episodes": []
+  },
+  "reward_config": {
+    "step_penalty": -1.0,
+    "exit_reward": 100.0,
+    "wall_penalty": -3.0,
+    "trap_penalty": -20.0,
+    "key_reward": 10.0,
+    "locked_exit_penalty": -5.0,
+    "step_limit_penalty": -30.0
+  },
+  "slip_config": {
+    "intended_probability": 0.8,
+    "left_probability": 0.1,
+    "right_probability": 0.1
+  },
+  "training_seed": 42,
+  "final_epsilon": 0.7794828569739639,
+  "total_episodes": 250,
+  "final_mean_reward": -164.69,
+  "final_success_rate": 0.97,
+  "snapshot_episodes": []
+}

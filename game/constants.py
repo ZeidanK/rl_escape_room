@@ -1,5 +1,27 @@
 """Centralized constants for the RL Escape Room game."""
 
+PUBLIC_APP_URL = "https://rlescaperoom-etswi8z5v9b48mejvamdqw.streamlit.app/"
+
+SHOWCASE_MODE = "Escape Room Showcase"
+LAB_MODE = "Learning Laboratory"
+MANUAL_MODE_LABEL = "Manual Play"
+COMPARISON_MODE = "Algorithm Comparison"
+ABOUT_MODE = "About the Project"
+LEGACY_HOME_MODE = "Home"
+
+ROOM1_LAB_MODE = "Room 1 \u2014 DP"
+ROOM2_LAB_MODE = "Room 2 \u2014 SARSA"
+ROOM3_LAB_MODE = "Room 3 \u2014 Q-Learning"
+ROOM4_LAB_MODE = "Room 4 \u2014 Function Approximation"
+ROOM5_BONUS_MODE = "Room 5 \u2014 Dynamic Obstacles"
+
+LAB_ROOM_MODES = {
+    "room1": ROOM1_LAB_MODE,
+    "room2": ROOM2_LAB_MODE,
+    "room3": ROOM3_LAB_MODE,
+    "room4": ROOM4_LAB_MODE,
+}
+
 # Grid constants
 DEFAULT_CELL_SIZE = 48
 DEFAULT_GRID_ROWS = 10

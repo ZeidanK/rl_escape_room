@@ -23,9 +23,11 @@ from game.models import ReplayState, RoomTransition
 from game.home_page import render_home_page, ROOM_DEFS
 from game.achievements import AchievementTracker, AchievementId
 from game.room_transitions import render_transition_content
+from game.constants import SHOWCASE_MODE
+from game.presentation import go_to_showcase_room, render_assignment_proof, render_open_lab_button
 
 
-def _compute_vi_frames(agent: ValueIterationAgent, max_frames: int = 20) -> list[np.ndarray]:
+def _compute_vi_frames(agent: ValueIterationAgent, max_frames: int = 20) -> list[dict[str, object]]:
     # Re-runs the same Bellman sweeps used by Value Iteration, but records a
     # small number of value matrices for the convergence animation.
     env = agent.env
@@ -36,7 +38,7 @@ def _compute_vi_frames(agent: ValueIterationAgent, max_frames: int = 20) -> list
     rows, cols = env.grid_shape
 
     values: dict[Position, float] = {s: 0.0 for s in states}
-    frames: list[np.ndarray] = []
+    frames: list[dict[str, object]] = []
     record_every = max(1, config.max_iterations // max_frames)
 
     for iteration in range(config.max_iterations):
@@ -64,7 +66,12 @@ def _compute_vi_frames(agent: ValueIterationAgent, max_frames: int = 20) -> list
                     pos = (r, c)
                     if CellType(int(env.grid[r, c])) != CellType.WALL:
                         mat[r, c] = values.get(pos, 0.0)
-            frames.append(mat.copy())
+            frames.append({
+                "values": mat.copy(),
+                "iteration": iteration + 1,
+                "delta": max_delta,
+                "converged": max_delta < config.tolerance,
+            })
 
         if max_delta < config.tolerance:
             break
@@ -98,6 +105,8 @@ def render_room1_game():
         f'may cause sideways slips. Because the full model is known, it calculates the optimal '
         f'escape policy before moving.</div>'
     )
+    render_assignment_proof("room1")
+    render_open_lab_button("room1", key="r1g_open_lab")
 
     with st.sidebar:
         if st.button("\u2190 Back to Room Selection", key="r1g_back", width="stretch"):
@@ -118,13 +127,17 @@ def render_room1_game():
                            help="Probability the agent slips left (counter-clockwise) from intended direction.")
         p_right = st.slider("Right", 0.0, 1.0, 0.10, step=0.05, key="r1g_pright",
                             help="Probability the agent slips right (clockwise) from intended direction.")
-        slip_cfg = SlipConfig(p_int, p_left, p_right)
+        slip_sum = p_int + p_left + p_right
+        slip_valid = abs(slip_sum - 1.0) <= 1e-7
+        if not slip_valid:
+            st.error(f"Slip probabilities must sum to 1.0 (currently {slip_sum:.2f})")
+        slip_cfg = SlipConfig(p_int, p_left, p_right) if slip_valid else SlipConfig()
         seed = st.number_input("Seed", 0, 2**31 - 1, 42, key="r1g_seed",
                                help="Random seed for environment stochasticity (slip outcomes).")
 
         st.markdown("---")
         col1, col2 = st.columns(2)
-        solve_btn = col1.button("Solve Maze", type="primary", key="r1g_solve")
+        solve_btn = col1.button("Solve Maze", type="primary", key="r1g_solve", disabled=not slip_valid)
         reset_btn = col2.button("Reset", key="r1g_reset")
 
         st.markdown("**Display Toggles**")
@@ -241,7 +254,17 @@ def render_room1_game():
                     st.rerun()
             st.caption(f"Frame {anim_iter + 1} / {total}")
 
-            frame_values = frames[anim_iter]
+            frame = frames[anim_iter]
+            if isinstance(frame, dict):
+                frame_values = frame["values"]
+                st.metric("Bellman Iteration", frame["iteration"])
+                c_delta, c_conv = st.columns(2)
+                c_delta.metric("Maximum Value Change", f"{float(frame['delta']):.2e}")
+                c_conv.metric("Converged", "Yes" if frame["converged"] else "No")
+                if frame["converged"] or anim_iter >= total - 1:
+                    st.success(f"Policy converged after {vi_result.iterations} iterations.")
+            else:
+                frame_values = frame
             try:
                 svg = render_vi_animation_frame(
                     env.grid, frame_values, anim_iter + 1, total,
@@ -328,6 +351,11 @@ def render_room1_game():
             st.markdown(f"**Intended:** {intended}")
             if current_step_data.slipped:
                 st.markdown(f"**Actual:** {effective}")
+                st.markdown("**Reason:** slippery tile")
+                st.markdown(
+                    f"**Transition probabilities:** {slip_cfg.intended_probability:.0%} intended, "
+                    f"{slip_cfg.left_probability:.0%} left, {slip_cfg.right_probability:.0%} right"
+                )
                 render_html('<span class="badge-slip">SLIPPED</span>')
             st.markdown(f"**Reward:** {current_step_data.reward:+.1f}")
             st.markdown(f"**Cumulative:** {current_step_data.cumulative_reward:.1f}")
@@ -351,6 +379,11 @@ def render_room1_game():
             algorithm="Value Iteration",
             explanation=explanation,
         ))
+
+    with st.container(border=True):
+        st.markdown("#### Faster Escape Reward")
+        st.markdown("Step cost: `-1`; exit reward: `+100`; total return is the sum of rewards over the replay.")
+        st.markdown("Because every extra move adds another step cost, fewer steps produce a higher total return.")
 
     # Replay controls — real st.button widgets (not JS onclick)
     if replay:
@@ -450,11 +483,13 @@ def render_room1_game():
         transition_html, _ = render_transition_content(transition, theme.primary)
         render_html(f'<div class="transition-overlay">{transition_html}</div>')
         
-        # Continue button to return to room selection
-        if st.button("Continue to Room Selection", key="r1g_continue", type="primary"):
-            st.session_state.game_room = None
-            st.session_state.mode = "\U0001f3ae Escape Room Showcase"
-            st.rerun()
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Continue to Laser Corridor", key="r1g_continue", type="primary"):
+                go_to_showcase_room("room2")
+        with col2:
+            if st.button("Return to Room Selection", key="r1g_return"):
+                go_to_showcase_room(None)
 
     render_html("""
     <div class="game-legend">
