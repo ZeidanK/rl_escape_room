@@ -81,6 +81,13 @@ def _set_number_by_label(at: AppTest, label: str, value) -> AppTest:
     raise AssertionError(f"number input not found: {label}")
 
 
+def _set_sidebar_slider_by_label(at: AppTest, label: str, value) -> AppTest:
+    for widget in at.sidebar.slider:
+        if widget.label == label:
+            return widget.set_value(value).run()
+    raise AssertionError(f"slider not found: {label}")
+
+
 def _prepare_storage(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     (tmp_path / "storage" / "models").mkdir(parents=True)
@@ -123,6 +130,11 @@ def _assert_markdown_contains(at: AppTest, fragment: str) -> None:
     assert any(fragment in message for message in messages)
 
 
+def _assert_error_contains(at: AppTest, fragment: str) -> None:
+    messages = [getattr(element, "value", "") for element in at.error]
+    assert any(fragment in message for message in messages)
+
+
 def test_sidebar_shows_five_primary_modes_without_home():
     at = AppTest.from_file(str(APP_PATH), default_timeout=60)
     at.run()
@@ -162,6 +174,17 @@ def test_room1_analysis_policy_grid_uses_svg_not_code():
     assert len(at.exception) == 0
     _assert_no_code_blocks(at)
     _assert_markdown_contains(at, "policy-grid-canvas")
+
+
+def test_lab_slip_probability_validation_survives_restored_slider_state():
+    for room_label in ["Room 1 - DP", "Room 2 - SARSA", "Room 3 - Q-Learning"]:
+        at = AppTest.from_file(str(APP_PATH), default_timeout=60)
+        at.run()
+        at = _select_lab_room(at, room_label)
+        at = _set_sidebar_slider_by_label(at, "Intended", 0.75)
+
+        assert len(at.exception) == 0
+        _assert_error_contains(at, "Slip probabilities must sum to 1.0")
 
 
 def test_home_learning_laboratory_button_opens_lab_view():

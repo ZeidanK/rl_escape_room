@@ -63,16 +63,15 @@ def render_parameter_sliders(room_id: str, prefix: str):
                        help="Probability the agent slips left (counter-clockwise) from intended direction.")
     p_right = st.slider("Right", 0.0, 1.0, 0.10, step=0.05, key=f"{prefix}_pright",
                         help="Probability the agent slips right (clockwise) from intended direction.")
-    from core.types import SlipConfig
-    slip_cfg = SlipConfig(p_int, p_left, p_right)
-    
-    seed = st.number_input("Seed", 0, 2**31 - 1, 42, key=f"{prefix}_seed",
-                           help="Random seed for environment stochasticity (slip outcomes).")
-    
     slip_sum = p_int + p_left + p_right
     slip_valid = abs(slip_sum - 1.0) <= 1e-7
     if not slip_valid:
         st.error(f"Slip probabilities must sum to 1.0 (currently {slip_sum:.2f})")
+    from core.types import SlipConfig
+    slip_cfg = SlipConfig(p_int, p_left, p_right) if slip_valid else SlipConfig()
+
+    seed = st.number_input("Seed", 0, 2**31 - 1, 42, key=f"{prefix}_seed",
+                           help="Random seed for environment stochasticity (slip outcomes).")
     
     return gamma, tolerance, max_it, slip_cfg, seed, slip_valid
 

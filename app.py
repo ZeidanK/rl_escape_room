@@ -1179,7 +1179,7 @@ elif st.session_state.mode == ROOM1_LAB_MODE:
         slip_valid = abs(slip_sum - 1.0) <= 1e-7
         if not slip_valid:
             st.error(f"Slip probabilities must sum to 1.0 (currently {slip_sum:.2f})")
-        slip_cfg = SlipConfig(p_int, p_left, p_right)
+        slip_cfg = SlipConfig(p_int, p_left, p_right) if slip_valid else SlipConfig()
         st.markdown("---")
         rollout_seed = st.number_input("Rollout Seed", min_value=0, max_value=2**31 - 1, value=0, step=1,
                                        help="Random seed for the policy rollout (trajectory simulation).")
@@ -1204,10 +1204,15 @@ elif st.session_state.mode == ROOM1_LAB_MODE:
         elif col2.button("Reset Results"):
             st.session_state.vi_confirm_reset = True
             st.rerun()
-        rollout_clicked = st.button("Run Rollout", disabled=st.session_state.vi_result is None)
-        eval_clicked = st.button("Evaluate Policy", disabled=st.session_state.vi_result is None)
+        rollout_clicked = st.button("Run Rollout", disabled=st.session_state.vi_result is None or not slip_valid)
+        eval_clicked = st.button("Evaluate Policy", disabled=st.session_state.vi_result is None or not slip_valid)
 
-    if solve_clicked or (st.session_state.vi_solve_key != solve_params and st.session_state.vi_result is None):
+    auto_solve = (
+        slip_valid
+        and st.session_state.vi_solve_key != solve_params
+        and st.session_state.vi_result is None
+    )
+    if solve_clicked or auto_solve:
         with st.spinner("Running Value Iteration..."):
             env = Room1DP(slip_config=slip_cfg, max_steps=200, seed=42)
             st.session_state.dp_env = env
@@ -1307,7 +1312,7 @@ elif st.session_state.mode == ROOM2_LAB_MODE:
         slip_valid = abs(slip_sum - 1.0) <= 1e-7
         if not slip_valid:
             st.error(f"Slip probabilities must sum to 1.0 (currently {slip_sum:.2f})")
-        slip_cfg = SlipConfig(p_int, p_left, p_right)
+        slip_cfg = SlipConfig(p_int, p_left, p_right) if slip_valid else SlipConfig()
 
         train_seed = st.number_input("Training Seed", min_value=0, max_value=2**31 - 1, value=42, step=1,
                                      help="Random seed for training reproducibility.")
@@ -1359,7 +1364,7 @@ elif st.session_state.mode == ROOM2_LAB_MODE:
         elif col2.button("Reset Results"):
             st.session_state.sarsa_confirm_reset = True
             st.rerun()
-        eval_clicked = st.button("Evaluate Policy", disabled=st.session_state.sarsa_result is None)
+        eval_clicked = st.button("Evaluate Policy", disabled=st.session_state.sarsa_result is None or not slip_valid)
         save_clicked = st.button("Save Model", disabled=st.session_state.sarsa_result is None)
         load_clicked = st.button("Load Model")
 
@@ -1603,7 +1608,7 @@ elif st.session_state.mode == ROOM3_LAB_MODE:
         slip_valid = abs(slip_sum - 1.0) <= 1e-7
         if not slip_valid:
             st.error(f"Slip probabilities must sum to 1.0 (currently {slip_sum:.2f})")
-        slip_cfg = SlipConfig(p_int, p_left, p_right)
+        slip_cfg = SlipConfig(p_int, p_left, p_right) if slip_valid else SlipConfig()
 
         train_seed = st.number_input("Training Seed", min_value=0, max_value=2**31 - 1, value=42, step=1,
                                       key="ql_seed")
@@ -1655,7 +1660,7 @@ elif st.session_state.mode == ROOM3_LAB_MODE:
             st.session_state.ql_confirm_reset = True
             st.rerun()
         eval_clicked = st.button("Evaluate Policy", key="ql_eval_btn",
-                                  disabled=st.session_state.ql_result is None)
+                                  disabled=st.session_state.ql_result is None or not slip_valid)
         save_clicked = st.button("Save Model", key="ql_save_btn",
                                   disabled=st.session_state.ql_result is None)
         load_clicked = st.button("Load Model", key="ql_load_btn")
