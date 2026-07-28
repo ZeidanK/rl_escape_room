@@ -1,6 +1,10 @@
+from pathlib import Path
+
 import streamlit as st
 
 import numpy as np
+
+APP_DIR = Path(__file__).resolve().parent
 
 # Main Streamlit entry point.  This file wires together the environments,
 # agents, visualizations, saved models, and high-level navigation modes.
@@ -935,19 +939,20 @@ elif st.session_state.mode == ABOUT_LABEL:
     st.markdown("### Screenshots")
     screenshots = [
         ("docs/screenshots/home.png", "Home / Campaign Selection"),
-        ("docs/screenshots/room1_value_policy.png", "Room 1 — Value Iteration Convergence & Policy"),
-        ("docs/screenshots/room2_training.png", "Room 2 — SARSA Training Progress"),
-        ("docs/screenshots/room3_policy_no_key.png", "Room 3 — Q-Learning Policy (No Key)"),
-        ("docs/screenshots/room4_trajectory.png", "Room 4 — Approximate SARSA Continuous Trajectory"),
-        ("docs/screenshots/comparison.png", "Algorithm Comparison — SARSA vs Q-Learning"),
+        ("docs/screenshots/room1_value_policy.png", "Room 1 - Value Iteration Convergence & Policy"),
+        ("docs/screenshots/room2_training.png", "Room 2 - SARSA Training Progress"),
+        ("docs/screenshots/room3_policy_no_key.png", "Room 3 - Q-Learning Policy (No Key)"),
+        ("docs/screenshots/room4_trajectory.png", "Room 4 - Approximate SARSA Continuous Trajectory"),
+        ("docs/screenshots/comparison.png", "Algorithm Comparison - SARSA vs Q-Learning"),
     ]
     for i, (path, caption) in enumerate(screenshots):
         if i % 2 == 0:
             cols = st.columns(2)
-        try:
-            cols[i % 2].image(path, caption=caption, width="stretch")
-        except Exception:
-            cols[i % 2].markdown(f"*Screenshot not found: {path}*")
+        image_path = APP_DIR / path
+        if image_path.exists():
+            cols[i % 2].image(str(image_path), caption=caption, width="stretch")
+        else:
+            cols[i % 2].warning(f"Screenshot not found: {path}")
 
     st.markdown("### Technical Stack")
     st.markdown("""

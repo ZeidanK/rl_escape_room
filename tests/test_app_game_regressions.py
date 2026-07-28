@@ -330,6 +330,19 @@ def test_about_page_and_readme_show_public_deployment_url():
     assert public_url in (APP_PATH.parent / "README.md").read_text(encoding="utf-8")
 
 
+def test_about_page_resolves_screenshots_from_app_directory(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    at = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    at.run()
+    at.sidebar.radio[0].set_value("About the Project").run()
+
+    assert len(at.exception) == 0
+    assert len(at.image) == 6
+    warning_messages = [getattr(element, "value", "") for element in at.warning]
+    assert not any("Screenshot not found" in message for message in warning_messages)
+
+
 def test_room5_tiny_training_evaluation_and_replay():
     at = AppTest.from_file(str(APP_PATH), default_timeout=90)
     at.run()
