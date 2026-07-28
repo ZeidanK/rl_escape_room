@@ -78,11 +78,17 @@ def room4_map_signature() -> str:
 
 
 def _room4_cfg_id(cfg: dict) -> str:
+    start_mode = cfg.get("start_mode")
+    start_suffix = ""
+    if start_mode:
+        start_mode_value = getattr(start_mode, "value", str(start_mode))
+        if start_mode_value != "fixed":
+            start_suffix = f"_sm={start_mode_value}"
     return (
         f"nt={cfg['num_tilings']}_tx={cfg['tiles_xy']}"
         f"_a={cfg['alpha']}_ps={cfg['progress_scale']}"
         f"_ed={cfg['epsilon_decay']}_ep={cfg['episodes']}"
-        f"_s={cfg['seed']}"
+        f"_s={cfg['seed']}{start_suffix}"
     )
 
 
@@ -204,6 +210,7 @@ def rank_q_learning(results: list[dict]) -> list[dict]:
 def rank_room4(results: list[dict]) -> list[dict]:
     return sorted(results, key=lambda r: (
         r.get("fixed_training_start_success_rate", 0.0),
+        -(r.get("fixed_training_start_success_rate_std", 0.0) or 0.0),
         r.get("fixed_unseen_starts_success_rate", 0.0),
         r.get("random_lower_left_success_rate", 0.0),
         r.get("random_room_success_rate", 0.0),

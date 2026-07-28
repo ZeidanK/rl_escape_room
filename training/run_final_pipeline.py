@@ -537,7 +537,113 @@ def run_room3():
 ROOM4_FINAL_DIR = os.path.join(FINAL_DIR, "room4_approximate_sarsa")
 
 
-def _room4_factory(dp_scale=1.0):
+def _completed_trial_by_id(completed: dict, trial_id: str) -> dict | None:
+    for filename, trial in completed.items():
+        if trial.get("trial_id") == trial_id or trial_id in filename:
+            return trial
+    return None
+
+
+def _population_std(values) -> float | str:
+    numeric = [float(v) for v in values if v not in (None, "N/A")]
+    return float(np.std(numeric)) if numeric else "N/A"
+
+
+def _population_mean(values) -> float | None:
+    numeric = [float(v) for v in values if v is not None]
+    return float(np.mean(numeric)) if numeric else None
+
+
+def _room4_category_success_values(result: dict, category: str) -> list[float]:
+    values = []
+    for seed_result in result.get("per_seed", []):
+        summary = seed_result.get("categories", {}).get(category, {})
+        if "success_rate" in summary:
+            values.append(float(summary["success_rate"]))
+    return values
+
+
+def _room4_category_success_std(result: dict, category: str) -> float | str:
+    return _population_std(_room4_category_success_values(result, category))
+
+
+def _room4_config_tuple(cfg: dict) -> tuple:
+    base = (
+        cfg["num_tilings"],
+        cfg["tiles_xy"],
+        cfg["alpha"],
+        cfg["progress_scale"],
+        cfg["epsilon_decay"],
+    )
+    start_mode = cfg.get("start_mode", "fixed")
+    return base if start_mode == "fixed" else (*base, start_mode)
+
+
+def _room4_values(seed_results: list[dict], category: str, metric: str) -> list:
+    values = []
+    for seed_result in seed_results:
+        summary = seed_result.get("categories", {}).get(category, {})
+        if metric in summary:
+            values.append(summary[metric])
+    return values
+
+
+def _room4_aggregate_seed_results(cfg: dict, seed_results: list[dict]) -> dict:
+    fixed_srs = _room4_values(seed_results, "fixed_training_start", "success_rate")
+    unseen_srs = _room4_values(seed_results, "fixed_unseen_starts", "success_rate")
+    lower_left_srs = _room4_values(seed_results, "random_lower_left", "success_rate")
+    random_room_srs = _room4_values(seed_results, "random_room", "success_rate")
+    fixed_returns = _room4_values(seed_results, "fixed_training_start", "mean_return")
+    fixed_return_stds = _room4_values(seed_results, "fixed_training_start", "std_return")
+    fixed_successful_steps = _room4_values(seed_results, "fixed_training_start", "mean_successful_steps")
+    fixed_truncations = _room4_values(seed_results, "fixed_training_start", "truncated_count")
+    fixed_truncation_mean = _population_mean(fixed_truncations)
+    fixed_return_mean = _population_mean(fixed_returns)
+    fixed_return_std_mean = _population_mean(fixed_return_stds)
+
+    return {
+        "config_tuple": _room4_config_tuple(cfg),
+        "config": cfg,
+        "n_seeds": len(seed_results),
+        "fixed_training_start_success_rate": float(np.mean(fixed_srs)) if fixed_srs else 0.0,
+        "fixed_training_start_success_rate_std": _population_std(fixed_srs),
+        "fixed_unseen_starts_success_rate": float(np.mean(unseen_srs)) if unseen_srs else 0.0,
+        "fixed_unseen_starts_success_rate_std": _population_std(unseen_srs),
+        "random_lower_left_success_rate": float(np.mean(lower_left_srs)) if lower_left_srs else 0.0,
+        "random_lower_left_success_rate_std": _population_std(lower_left_srs),
+        "random_room_success_rate": float(np.mean(random_room_srs)) if random_room_srs else 0.0,
+        "random_room_success_rate_std": _population_std(random_room_srs),
+        "truncation_count": fixed_truncation_mean if fixed_truncation_mean is not None else 0.0,
+        "mean_successful_steps": _population_mean(fixed_successful_steps),
+        "mean_return": fixed_return_mean if fixed_return_mean is not None else -9999.0,
+        "std_return": fixed_return_std_mean if fixed_return_std_mean is not None else 9999.0,
+        "per_seed": seed_results,
+    }
+
+
+def _room5_eval_success_values(r5: dict, evaluation_key: str) -> list[float]:
+    values = []
+    for seed_result in r5.get("confirmation", {}).get("seed_results", []):
+        evaluation = seed_result.get(evaluation_key, {})
+        if "success_rate" in evaluation:
+            values.append(float(evaluation["success_rate"]))
+    return values
+
+
+def _room5_eval_success_std(r5: dict, evaluation_key: str) -> float | str:
+    return _population_std(_room5_eval_success_values(r5, evaluation_key))
+
+
+def _room5_evaluation_count_label(r5: dict) -> str:
+    seed_results = r5.get("confirmation", {}).get("seed_results", [])
+    seed_count = len(r5.get("confirmation_seeds", [])) or len(seed_results)
+    episodes = "N/A"
+    if seed_results:
+        episodes = seed_results[0].get("random_layout_evaluation", {}).get("episodes", "N/A")
+    return f"{seed_count}x{episodes}" if seed_count and episodes != "N/A" else "N/A"
+
+
+def _room4_factory(dp_scale=1.0, start_mode=None):
     # Factory wrapper so each Room 4 training/evaluation run gets a fresh
     # environment with identical reward shaping.
     from core.types import StartMode
@@ -546,9 +652,10 @@ def _room4_factory(dp_scale=1.0):
     )
     motion = Room4MotionConfig()
     rewards = ContinuousRewardConfig(distance_progress_scale=dp_scale)
+    mode = start_mode or StartMode.FIXED
     return lambda: Room4Continuous(
         motion_config=motion, reward_config=rewards,
-        max_steps=750, start_mode=StartMode.FIXED,
+        max_steps=750, start_mode=mode,
     )
 
 
@@ -562,6 +669,7 @@ def run_room4():
     from core.types import (
         ApproximateSarsaConfig,
         EpsilonScheduleConfig,
+        StartMode,
         TileCodingConfig,
     )
     from environments.room4_continuous import ContinuousRewardConfig, Room4MotionConfig
@@ -598,8 +706,10 @@ def run_room4():
                 "episodes": 250, "seed": 42,
             }
             tid = trial_id_for_room4(cfg, cfg["seed"])
-            if any(tid in fn for fn in completed):
+            completed_trial = _completed_trial_by_id(completed, tid)
+            if completed_trial is not None:
                 print(f"  [SKIP] {tid}")
+                stage_a_results.append(completed_trial)
                 continue
             t0 = time.time()
             config = ApproximateSarsaConfig(
@@ -610,8 +720,9 @@ def run_room4():
                     num_tilings=cfg["num_tilings"], tiles_x=cfg["tiles_xy"],
                     tiles_y=cfg["tiles_xy"], include_velocity=True,
                 ),
+                start_mode=StartMode.FIXED,
             )
-            factory = _room4_factory(cfg["progress_scale"])
+            factory = _room4_factory(cfg["progress_scale"], StartMode.FIXED)
             agent = ApproximateSarsaAgent(factory, config)
             result = agent.train()
             duration = time.time() - t0
@@ -663,8 +774,10 @@ def run_room4():
             "episodes": 500, "seed": 42,
         }
         tid = trial_id_for_room4(cfg, cfg["seed"])
-        if any(tid in fn for fn in completed):
+        completed_trial = _completed_trial_by_id(completed, tid)
+        if completed_trial is not None:
             print(f"  [SKIP] {tid}")
+            stage_b_results.append(completed_trial)
             continue
         t0 = time.time()
         config = ApproximateSarsaConfig(
@@ -674,8 +787,9 @@ def run_room4():
             tile_coding=TileCodingConfig(
                 num_tilings=nt, tiles_x=tx, tiles_y=tx, include_velocity=True,
             ),
+            start_mode=StartMode.FIXED,
         )
-        factory = _room4_factory(ps)
+        factory = _room4_factory(ps, StartMode.FIXED)
         agent = ApproximateSarsaAgent(factory, config)
         result = agent.train()
         duration = time.time() - t0
@@ -722,12 +836,23 @@ def run_room4():
     TRAINING_SEEDS = [0, 1, 2, 3, 4]
     confirmation_results = []
     for cfg_dict in [c["config"] for c in top5]:
+        aggregate_cfg = {
+            "num_tilings": cfg_dict["num_tilings"],
+            "tiles_xy": cfg_dict["tiles_xy"],
+            "alpha": cfg_dict["alpha"],
+            "progress_scale": cfg_dict["progress_scale"],
+            "epsilon_decay": cfg_dict["epsilon_decay"],
+            "episodes": 1500,
+            "start_mode": StartMode.FIXED.value,
+        }
         seed_results = []
         for seed in TRAINING_SEEDS:
-            trial_cfg = {**cfg_dict, "episodes": 1500, "seed": seed}
+            trial_cfg = {**aggregate_cfg, "seed": seed}
             tid = trial_id_for_room4(trial_cfg, seed) + "_conf"
-            if any(tid in fn for fn in completed):
+            completed_trial = _completed_trial_by_id(completed, tid)
+            if completed_trial is not None:
                 print(f"  [SKIP] {tid}")
+                seed_results.append(completed_trial)
                 continue
             t0 = time.time()
             config = ApproximateSarsaConfig(
@@ -738,8 +863,9 @@ def run_room4():
                     num_tilings=trial_cfg["num_tilings"], tiles_x=trial_cfg["tiles_xy"],
                     tiles_y=trial_cfg["tiles_xy"], include_velocity=True,
                 ),
+                start_mode=StartMode.FIXED,
             )
-            factory = _room4_factory(trial_cfg["progress_scale"])
+            factory = _room4_factory(trial_cfg["progress_scale"], StartMode.FIXED)
             agent = ApproximateSarsaAgent(factory, config)
             result = agent.train()
             duration = time.time() - t0
@@ -759,24 +885,69 @@ def run_room4():
             print(f"  [OK]   {tid} {duration:.1f}s")
 
         if seed_results:
-            ft_srs = [r["categories"]["fixed_training_start"]["success_rate"] for r in seed_results]
-            fu_srs = [r["categories"]["fixed_unseen_starts"]["success_rate"] for r in seed_results]
-            rl_srs = [r["categories"]["random_lower_left"]["success_rate"] for r in seed_results]
-            rr_srs = [r["categories"]["random_room"]["success_rate"] for r in seed_results]
-            confirmation_results.append({
-                "config_tuple": (cfg_dict["num_tilings"], cfg_dict["tiles_xy"],
-                                 cfg_dict["alpha"], cfg_dict["progress_scale"],
-                                 cfg_dict["epsilon_decay"]),
-                "config": cfg_dict,
-                "n_seeds": len(TRAINING_SEEDS),
-                "fixed_training_start_success_rate": float(np.mean(ft_srs)),
-                "fixed_unseen_starts_success_rate": float(np.mean(fu_srs)),
-                "random_lower_left_success_rate": float(np.mean(rl_srs)),
-                "random_room_success_rate": float(np.mean(rr_srs)),
-                "per_seed": seed_results,
-            })
+            confirmation_results.append(_room4_aggregate_seed_results(aggregate_cfg, seed_results))
 
     confirmation_results = rank_room4(confirmation_results)
+    extended_confirmation_results = []
+    if confirmation_results:
+        best_cfg = confirmation_results[0]["config"]
+        extended_base = {
+            "num_tilings": best_cfg["num_tilings"],
+            "tiles_xy": best_cfg["tiles_xy"],
+            "alpha": best_cfg["alpha"],
+            "progress_scale": best_cfg["progress_scale"],
+            "epsilon_decay": best_cfg["epsilon_decay"],
+            "episodes": 3000,
+        }
+        extended_candidates = [
+            {**extended_base, "start_mode": StartMode.FIXED.value},
+            {**extended_base, "start_mode": StartMode.MIXED.value},
+        ]
+        print("  --- Extended Confirmation ---")
+        for ext_cfg in extended_candidates:
+            seed_results = []
+            start_mode = StartMode(ext_cfg["start_mode"])
+            for seed in TRAINING_SEEDS:
+                trial_cfg = {**ext_cfg, "seed": seed}
+                tid = trial_id_for_room4(trial_cfg, seed) + "_extended"
+                completed_trial = _completed_trial_by_id(completed, tid)
+                if completed_trial is not None:
+                    print(f"  [SKIP] {tid}")
+                    seed_results.append(completed_trial)
+                    continue
+                t0 = time.time()
+                config = ApproximateSarsaConfig(
+                    episodes=3000, alpha=trial_cfg["alpha"], gamma=0.99,
+                    max_steps=750, seed=seed,
+                    epsilon=EpsilonScheduleConfig(start=1.0, minimum=0.02, decay=trial_cfg["epsilon_decay"]),
+                    tile_coding=TileCodingConfig(
+                        num_tilings=trial_cfg["num_tilings"], tiles_x=trial_cfg["tiles_xy"],
+                        tiles_y=trial_cfg["tiles_xy"], include_velocity=True,
+                    ),
+                    start_mode=start_mode,
+                )
+                factory = _room4_factory(trial_cfg["progress_scale"], start_mode)
+                agent = ApproximateSarsaAgent(factory, config)
+                result = agent.train()
+                duration = time.time() - t0
+                cats = evaluate_approximate_policy_all_categories(
+                    factory, result.weights, config.tile_coding, R4Config(),
+                    n_episodes=25,
+                )
+                trial = {
+                    "trial_id": tid, "stage": "extended_confirmation",
+                    "algorithm": "Approximate SARSA", "room": "Room4Continuous",
+                    "config": trial_cfg,
+                    "categories": {k: _cat_to_dict(v) for k, v in cats.items()},
+                    "runtime_seconds": duration,
+                }
+                save_trial(os.path.join(ROOM4_FINAL_DIR, f"{tid}.json"), trial)
+                seed_results.append(trial)
+                print(f"  [OK]   {tid} {duration:.1f}s")
+            if seed_results:
+                extended_confirmation_results.append(_room4_aggregate_seed_results(ext_cfg, seed_results))
+
+    accepted_confirmation_results = rank_room4([*confirmation_results, *extended_confirmation_results])
     meta = make_base_metadata(
         algorithm="Approximate SARSA", room="Room4Continuous",
         map_sig=room4_map_signature(),
@@ -785,11 +956,14 @@ def run_room4():
             "defaults": defaults,
             "stage_a_episodes": 250, "stage_b_episodes": 500,
             "confirmation_episodes": 1500,
+            "extended_confirmation_episodes": 3000,
+            "extended_start_modes": [StartMode.FIXED.value, StartMode.MIXED.value],
         },
         training_seeds=TRAINING_SEEDS,
         evaluation_seeds=list(range(1, 26)),
         ranking_criteria=[
             "fixed_training_start_success_rate",
+            "-fixed_training_start_success_rate_std",
             "fixed_unseen_starts_success_rate",
             "random_lower_left_success_rate",
             "random_room_success_rate",
@@ -804,13 +978,16 @@ def run_room4():
         **meta,
         "stage_a_results": all_stage_a,
         "stage_b_results": all_stage_b,
-        "confirmation_results": confirmation_results,
+        "initial_confirmation_results": confirmation_results,
+        "extended_confirmation_results": rank_room4(extended_confirmation_results),
+        "confirmation_results": accepted_confirmation_results,
     }
     save_trial(os.path.join(FINAL_DIR, "room4_approximate_sarsa_confirmation.json"), aggregate)
-    if confirmation_results:
-        best = confirmation_results[0]
+    if accepted_confirmation_results:
+        best = accepted_confirmation_results[0]
         print(f"  Best config: {best['config_tuple']}")
         print(f"    Fixed SR: {best['fixed_training_start_success_rate']:.2%}")
+        print(f"    Fixed SR std: {best['fixed_training_start_success_rate_std']:.2%}")
         print(f"    Unseen SR: {best['fixed_unseen_starts_success_rate']:.2%}")
     print()
 
@@ -998,19 +1175,24 @@ def generate_summary_csv():
                 if r4.get("confirmation_results"):
                     best = r4["confirmation_results"][0]
                     config_meta = r4.get("config", {})
+                    start_mode = best["config"].get("start_mode", "fixed")
+                    start_suffix = "" if start_mode == "fixed" else f",sm={start_mode}"
+                    confirmation_episodes = config_meta.get("confirmation_episodes", 1500)
+                    best_episodes = best["config"].get("episodes", confirmation_episodes)
                     rows.append({
                         "room": "Room 4", "algorithm": "Approximate SARSA",
-                        "best_config_id": f"nt={best['config']['num_tilings']},tx={best['config']['tiles_xy']},alpha={best['config']['alpha']},ps={best['config']['progress_scale']},ed={best['config']['epsilon_decay']}",
-                        "training_episodes": config_meta.get("confirmation_episodes", best["config"].get("episodes", 1500)),
+                        "best_config_id": f"nt={best['config']['num_tilings']},tx={best['config']['tiles_xy']},alpha={best['config']['alpha']},ps={best['config']['progress_scale']},ed={best['config']['epsilon_decay']}{start_suffix}",
+                        "training_episodes": max(best_episodes, confirmation_episodes),
                         "training_seed_count": len(r4.get("training_seeds", [])) or best["n_seeds"],
                         "evaluation_count": len(r4.get("evaluation_seeds", [])) or "N/A",
                         "success_rate_mean": best["fixed_training_start_success_rate"],
-                        "success_rate_std": 0.0,
+                        "success_rate_std": _room4_category_success_std(best, "fixed_training_start"),
                         "mean_return": "N/A",
                         "mean_successful_steps": "N/A",
                         "key_collection_rate": "N/A",
                         "fixed_unseen_success_rate": best["fixed_unseen_starts_success_rate"],
                         "random_room_success_rate": best["random_room_success_rate"],
+                        "evaluation_protocol": "fixed_training_start primary; 25 eval episodes/category for each training seed",
                         "runtime_seconds": "N/A",
                         "result_file": "room4_approximate_sarsa_confirmation.json",
                         "git_commit": r4.get("git_commit", commit),
@@ -1026,6 +1208,9 @@ def generate_summary_csv():
                 r5 = json.load(f)
                 best = r5.get("best_config", {})
                 aggregate = r5.get("confirmation", {}).get("aggregate", {})
+                fixed_mean = aggregate.get("fixed_success_rate_mean", "N/A")
+                random_mean = aggregate.get("random_success_rate_mean", "N/A")
+                unseen_mean = aggregate.get("unseen_success_rate_mean", "N/A")
                 rows.append({
                     "room": "Room 5", "algorithm": "NumPy DQN",
                     "best_config_id": (
@@ -1034,14 +1219,24 @@ def generate_summary_csv():
                     ),
                     "training_episodes": r5.get("confirmation_episodes", 180),
                     "training_seed_count": len(r5.get("confirmation_seeds", [])) or "N/A",
-                    "evaluation_count": 12,
-                    "success_rate_mean": aggregate.get("random_success_rate_mean", "N/A"),
-                    "success_rate_std": "N/A",
+                    "evaluation_count": _room5_evaluation_count_label(r5),
+                    "success_rate_mean": random_mean,
+                    "success_rate_std": aggregate.get(
+                        "random_success_rate_std",
+                        _room5_eval_success_std(r5, "random_layout_evaluation"),
+                    ),
                     "mean_return": "N/A",
                     "mean_successful_steps": "N/A",
                     "key_collection_rate": "N/A",
-                    "fixed_unseen_success_rate": aggregate.get("fixed_success_rate_mean", "N/A"),
-                    "random_room_success_rate": aggregate.get("unseen_success_rate_mean", "N/A"),
+                    "fixed_unseen_success_rate": "N/A",
+                    "random_room_success_rate": "N/A",
+                    "fixed_validation_success_rate": fixed_mean,
+                    "seeded_random_success_rate": random_mean,
+                    "unseen_random_success_rate": unseen_mean,
+                    "evaluation_protocol": (
+                        "fixed_validation_layout, seeded_random_layouts, unseen_random_layouts; "
+                        f"{_room5_evaluation_count_label(r5)} eval episodes per category"
+                    ),
                     "runtime_seconds": r5.get("runtime_seconds", "N/A"),
                     "result_file": "room5_dqn_confirmation.json",
                     "git_commit": r5.get("git_commit", commit),
@@ -1056,7 +1251,9 @@ def generate_summary_csv():
         "training_seed_count", "evaluation_count", "success_rate_mean",
         "success_rate_std", "mean_return", "mean_successful_steps",
         "key_collection_rate", "fixed_unseen_success_rate",
-        "random_room_success_rate", "runtime_seconds", "result_file", "git_commit",
+        "random_room_success_rate", "fixed_validation_success_rate",
+        "seeded_random_success_rate", "unseen_random_success_rate",
+        "evaluation_protocol", "runtime_seconds", "result_file", "git_commit",
     ]
     with open(csv_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)

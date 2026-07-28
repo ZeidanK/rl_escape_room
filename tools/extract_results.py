@@ -45,10 +45,35 @@ best = r4["confirmation_results"][0] if r4.get("confirmation_results") else None
 if best:
     print(f"Room 4 Best: {best['config_tuple']}")
     print(f"  Fixed training SR: {best['fixed_training_start_success_rate']:.2%}")
+    fixed_std = best.get("fixed_training_start_success_rate_std")
+    if fixed_std is None and best.get("per_seed"):
+        fixed_srs = [
+            seed_result["categories"]["fixed_training_start"]["success_rate"]
+            for seed_result in best["per_seed"]
+        ]
+        fixed_mean = sum(fixed_srs) / len(fixed_srs)
+        fixed_std = (sum((value - fixed_mean) ** 2 for value in fixed_srs) / len(fixed_srs)) ** 0.5
+    if fixed_std is not None:
+        print(f"  Fixed training SR std: {fixed_std:.2%}")
     print(f"  Fixed unseen SR: {best['fixed_unseen_starts_success_rate']:.2%}")
     print(f"  Random lower-left SR: {best['random_lower_left_success_rate']:.2%}")
     print(f"  Random room SR: {best['random_room_success_rate']:.2%}")
 print()
+
+# Room 5 optional DQN categories
+try:
+    with open("storage/experiments/final/room5_dqn_confirmation.json") as f:
+        r5 = json.load(f)
+    aggregate = r5.get("confirmation", {}).get("aggregate", {})
+    print("Room 5 Optional DQN:")
+    print(f"  fixed_validation_layout SR: {aggregate.get('fixed_success_rate_mean', 0.0):.2%}")
+    print(f"  seeded_random_layouts SR: {aggregate.get('random_success_rate_mean', 0.0):.2%}")
+    print(f"  unseen_random_layouts SR: {aggregate.get('unseen_success_rate_mean', 0.0):.2%}")
+    if "random_success_rate_std" in aggregate:
+        print(f"  seeded_random_layouts SR std: {aggregate['random_success_rate_std']:.2%}")
+    print()
+except FileNotFoundError:
+    pass
 
 # Summary CSV
 print("=== FINAL SUMMARY ===")

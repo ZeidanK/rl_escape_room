@@ -79,6 +79,7 @@
 | Key hyperparameters | num_tilings=4–16, tiles_xy=8–16, alpha=0.05–0.20, progress_scale=0.0–1.0, epsilon_decay=0.995–0.999. |
 | Implementation      | `agents/approximate_sarsa.py::ApproximateSarsaAgent.train` |
 | Representative test | `tests/test_approximate_sarsa.py::TestSemiGradientSARSA::test_exact_non_terminal_update` |
+| Reporting note      | Fixed-start variance is computed from the five per-seed confirmation success rates, not hard-coded in the summary CSV. |
 | Measured result     | Best: tilings=16, tiles=16, α=0.05, ps=1.0, ed=0.995 → fixed SR=60%, unseen SR=8%, random LL SR=32.8%, random room SR=14.4%. |
 | Likely oral question | "Why does the semi-gradient update use the same weights for both the current estimate and the target?" |
 | Answer              | The semi-gradient treats the target `r + γQ(s',a')` as fixed (no gradient through the target). This is biased but stable in the on-policy linear case. Full gradient methods (residual gradients) are unbiased but can have higher variance and slower convergence. With tile coding and on-policy SARSA, the semi-gradient is guaranteed to converge (to a bounded region around the optimum). |
@@ -95,6 +96,7 @@
 | Rewards             | step=-0.01, exit=+120, obstacle=-60, boundary=-1, timeout=-25, plus distance-progress shaping. |
 | Terminal/Truncated  | Exit terminates as success. Obstacle collision terminates as failure. Timeout truncates. |
 | Algorithm           | NumPy DQN with replay buffer, target network, epsilon-greedy behavior, mini-batch TD updates, snapshots, and JSON/NPZ persistence. |
+| Evaluation labels   | Report fixed_validation_layout, seeded_random_layouts, and unseen_random_layouts separately. |
 | On/off policy       | Off-policy control: behavior is epsilon-greedy, target uses max next-state Q-value from the target network. |
 | Likely oral question | "Why use a target network and replay buffer?" |
 | Answer              | Replay reduces correlation between consecutive samples; the target network slows changes in the bootstrap target, making DQN updates less unstable than using the online network for both sides. |

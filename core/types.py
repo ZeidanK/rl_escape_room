@@ -477,6 +477,7 @@ class StartMode(str, Enum):
     FIXED = "fixed"
     RANDOM_LOWER_LEFT = "random_lower_left"
     RANDOM_ROOM = "random_room"
+    MIXED = "mixed"
 
 
 @dataclass(frozen=True)

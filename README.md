@@ -192,7 +192,7 @@ python tools/generate_local_models.py --showcase
 | 2    | SARSA              | alpha=0.05, gamma=0.95, epsilon_decay=0.99, episodes=5000                    |
 | 3    | Q-Learning         | alpha=0.50, gamma=0.99, epsilon_decay=0.999, episodes=5000                   |
 | 4    | Approximate SARSA  | tilings=16, tiles_xy=16, alpha=0.05, progress_scale=1.0, epsilon_decay=0.995 |
-| 5    | NumPy DQN          | hidden=64, lr=0.001, gamma=0.99, replay=20000, target_update=100             |
+| 5    | NumPy DQN          | hidden=48, lr=0.001, gamma=0.98, epsilon_decay=0.96, obs=3.5                 |
 
 ## Final Local Measured Results
 
@@ -202,14 +202,16 @@ python tools/generate_local_models.py --showcase
 | 2    | SARSA              | 100.00%      | 84.8        | 15.1       | 5 seeds, 100 eval episodes |
 | 3    | Q-Learning         | 100.00%      | 91.0        | 19.0       | 5 seeds, 100 eval episodes |
 | 4    | Approximate SARSA  | 60.00%       | —           | —          | Fixed training start       |
-| 5    | NumPy DQN          | 66.67%       | N/A         | N/A        | Optional; random layouts, 5 seeds |
+| 5    | NumPy DQN          | 96.67%       | N/A         | N/A        | Optional; seeded_random_layouts, 5 seeds x 12 evals |
 
 Room 4 generalisation: fixed unseen=8.00%, random lower-left=32.80%,
-random room=14.40%.
+random room=14.40%. Fixed-start success is 60.00% with visible seed variance
+across the five confirmation seeds.
 
-Room 5 optional generalisation: fixed validation layout=0.00%, seeded random
-layouts=66.67%, unseen random layouts=73.33%. This result is reported
-separately and is not part of the SARSA-vs-Q-Learning comparison.
+Room 5 optional evaluation is reported with named categories:
+fixed_validation_layout=40.00%, seeded_random_layouts=96.67%, and
+unseen_random_layouts=86.67%. This result is reported separately and is not
+part of the SARSA-vs-Q-Learning comparison.
 
 ## Matched SARSA vs Q-Learning Comparison
 
@@ -252,6 +254,9 @@ No single algorithm dominates across all metrics.
   evaluation on 100 seeds.
 - **Room 4**: Staged search. Stage A: 15 one-factor-at-a-time configs at 250
   episodes. Stage B: combine best 2 per factor (32 combos) at 500 episodes.
+  After the normal confirmation pass, the pipeline runs a targeted
+  3000-episode follow-up for the best fixed-start config and a mixed-start
+  variant when refreshing final artifacts.
   Top 5 advance to confirmation: 5 seeds × 1500 episodes, 4 start categories.
 - **Comparison**: Matched (identical parameters) and tuned (best per-algorithm)
   on Room 2.
@@ -289,8 +294,9 @@ Screenshots from the Streamlit application:
 
 ## Known Limitations
 
-- Room 4 success rate (60%) is lower than tabular rooms. The continuous
-  control task is inherently harder; generalisation to unseen starts is poor
+- Room 4 success rate (60%) is lower than tabular rooms and varies across
+  seeds. The continuous control task is inherently harder; generalisation to
+  unseen starts is poor
   (8–33%).
 - Tile coding parameters were tuned only via a staged-search on a limited
   budget. More exhaustive tuning or alternative representations (RBFs, deep
@@ -303,7 +309,9 @@ Screenshots from the Streamlit application:
 
 ## Future Work
 
-- Room 5 future work: broader hyperparameter search and longer DQN training budgets.
+- Room 5 future work: broader hyperparameter search and longer DQN training
+  budgets, with fixed_validation_layout tracked separately from random-layout
+  evaluation.
 - Keep the public Streamlit deployment synced with the latest saved artifacts.
 - Refresh screenshots from the deployed app after major UI changes.
 - Extended hyperparameter search for Room 4 (Bayesian optimisation, more

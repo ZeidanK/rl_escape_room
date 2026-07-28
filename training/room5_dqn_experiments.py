@@ -39,34 +39,28 @@ def _git_commit() -> str:
 
 
 def _candidate_configs() -> list[dict[str, Any]]:
-    # Small candidate set keeps optional DQN experiments practical on a student
-    # laptop while still comparing meaningful design choices.
-    return [
-        {
-            "name": "baseline_progress",
-            "learning_rate": 0.003,
-            "epsilon_decay": 0.955,
-            "hidden_units": 32,
-            "progress_scale": 6.0,
-            "observation_distance_m": 3.5,
-        },
-        {
-            "name": "slower_decay",
-            "learning_rate": 0.003,
-            "epsilon_decay": 0.970,
-            "hidden_units": 32,
-            "progress_scale": 6.0,
-            "observation_distance_m": 3.5,
-        },
-        {
-            "name": "larger_network",
-            "learning_rate": 0.003,
-            "epsilon_decay": 0.960,
-            "hidden_units": 48,
-            "progress_scale": 6.0,
-            "observation_distance_m": 3.5,
-        },
-    ]
+    # Bounded grid around the best local result.  It is still small enough for
+    # a student laptop, but it checks whether capacity, learning rate,
+    # exploration decay, or obstacle visibility caused the fixed-layout miss.
+    configs: list[dict[str, Any]] = []
+    for hidden_units in (48, 64):
+        for learning_rate in (0.001, 0.003):
+            for epsilon_decay in (0.960, 0.970, 0.980):
+                for observation_distance_m in (3.5, 4.5):
+                    configs.append(
+                        {
+                            "name": (
+                                f"h{hidden_units}_lr{learning_rate:g}"
+                                f"_ed{epsilon_decay:g}_obs{observation_distance_m:g}"
+                            ),
+                            "learning_rate": learning_rate,
+                            "epsilon_decay": epsilon_decay,
+                            "hidden_units": hidden_units,
+                            "progress_scale": 6.0,
+                            "observation_distance_m": observation_distance_m,
+                        }
+                    )
+    return configs
 
 
 def _make_components(params: dict[str, Any], *, episodes: int, seed: int):
@@ -210,15 +204,20 @@ def _rollout_dict(rollout) -> dict[str, Any]:
     }
 
 
-def _rank_key(entry: dict[str, Any]) -> tuple[float, float, float, float]:
-    # Prefer policies that succeed, then return more reward, hit fewer
-    # obstacles, and finish in fewer steps.
-    ev = entry["random_layout_evaluation"]
+def _rank_key(entry: dict[str, Any]) -> tuple[float, float, float, float, float, float]:
+    # Screening now judges the fixed validation layout as well as seeded random
+    # layouts so a policy cannot win by being good only on one distribution.
+    fixed = entry["fixed_layout_evaluation"]
+    random = entry["random_layout_evaluation"]
+    boundary_collisions = fixed["boundary_collision_count"] + random["boundary_collision_count"]
+    obstacle_collisions = fixed["obstacle_collision_count"] + random["obstacle_collision_count"]
     return (
-        float(ev["success_rate"]),
-        float(ev["mean_return"]),
-        -float(ev["obstacle_collision_count"]),
-        -float(ev["mean_steps"]),
+        float(fixed["success_rate"]),
+        float(random["success_rate"]),
+        float(random["mean_return"]),
+        -float(boundary_collisions),
+        -float(obstacle_collisions),
+        -float(random["mean_steps"]),
     )
 
 
@@ -227,6 +226,10 @@ def run_room5_experiments(
     output_path: Path = FINAL_ROOM5_PATH,
     confirmation_seeds: tuple[int, ...] = (0, 1, 2, 3, 4),
     save_showcase_stem: Path | None = None,
+    screening_episodes: int = 60,
+    confirmation_episodes: int = 300,
+    screening_eval_episodes: int = 8,
+    confirmation_eval_episodes: int = 12,
 ) -> dict[str, Any]:
     # Two-stage optional pipeline: screen a few DQN settings, then confirm the
     # best one across multiple seeds and save a showcase model if requested.
@@ -234,16 +237,25 @@ def run_room5_experiments(
     screening_entries: list[dict[str, Any]] = []
 
     for idx, params in enumerate(_candidate_configs()):
-        _, _, _, env_factory, config = _make_components(params, episodes=60, seed=100 + idx)
+        _, _, _, env_factory, config = _make_components(params, episodes=screening_episodes, seed=100 + idx)
         train_start = time.perf_counter()
         result = DQNAgent(env_factory, config).train()
         runtime_s = time.perf_counter() - train_start
+        fixed_eval = evaluate_dqn_policy(
+            lambda params=params: _fixed_factory(params),
+            result,
+            n_episodes=screening_eval_episodes,
+            seeds=range(screening_eval_episodes),
+            layout_seeds=[42],
+            max_steps=config.max_steps,
+            category="screening_fixed_validation_layout",
+        )
         random_eval = evaluate_dqn_policy(
             env_factory,
             result,
-            n_episodes=8,
-            seeds=range(8),
-            layout_seeds=range(20_000, 20_008),
+            n_episodes=screening_eval_episodes,
+            seeds=range(screening_eval_episodes),
+            layout_seeds=range(20_000, 20_000 + screening_eval_episodes),
             max_steps=config.max_steps,
             category="screening_random_layouts",
         )
@@ -251,6 +263,7 @@ def run_room5_experiments(
             {
                 "config": params,
                 "training": _training_summary(result, runtime_s),
+                "fixed_layout_evaluation": _summary_dict(fixed_eval),
                 "random_layout_evaluation": _summary_dict(random_eval),
             }
         )
@@ -263,15 +276,15 @@ def run_room5_experiments(
     best_env_factory = None
 
     for seed in confirmation_seeds:
-        _, _, _, env_factory, config = _make_components(best_params, episodes=180, seed=seed)
+        _, _, _, env_factory, config = _make_components(best_params, episodes=confirmation_episodes, seed=seed)
         train_start = time.perf_counter()
         result = DQNAgent(env_factory, config).train()
         runtime_s = time.perf_counter() - train_start
         fixed_eval = evaluate_dqn_policy(
             lambda: _fixed_factory(best_params),
             result,
-            n_episodes=12,
-            seeds=range(12),
+            n_episodes=confirmation_eval_episodes,
+            seeds=range(confirmation_eval_episodes),
             layout_seeds=[42],
             max_steps=config.max_steps,
             category="fixed_validation_layout",
@@ -279,18 +292,18 @@ def run_room5_experiments(
         random_eval = evaluate_dqn_policy(
             env_factory,
             result,
-            n_episodes=12,
-            seeds=range(12),
-            layout_seeds=range(30_000, 30_012),
+            n_episodes=confirmation_eval_episodes,
+            seeds=range(confirmation_eval_episodes),
+            layout_seeds=range(30_000, 30_000 + confirmation_eval_episodes),
             max_steps=config.max_steps,
             category="seeded_random_layouts",
         )
         unseen_eval = evaluate_dqn_policy(
             env_factory,
             result,
-            n_episodes=12,
-            seeds=range(10_000, 10_012),
-            layout_seeds=range(50_000, 50_012),
+            n_episodes=confirmation_eval_episodes,
+            seeds=range(10_000, 10_000 + confirmation_eval_episodes),
+            layout_seeds=range(50_000, 50_000 + confirmation_eval_episodes),
             max_steps=config.max_steps,
             category="unseen_random_layouts",
         )
@@ -326,6 +339,9 @@ def run_room5_experiments(
     def _mean(path: str) -> float:
         return float(np.mean([entry[path]["success_rate"] for entry in confirmation]))
 
+    def _std(path: str) -> float:
+        return float(np.std([entry[path]["success_rate"] for entry in confirmation]))
+
     artifact = {
         "schema_version": 1,
         "room": "Room 5 - Dynamic Obstacles",
@@ -334,9 +350,14 @@ def run_room5_experiments(
         "git_commit": _git_commit(),
         "generated_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "runtime_seconds": round(float(time.perf_counter() - started), 6),
-        "ranking_rule": "success_rate, then mean_return, then fewer obstacle collisions, then fewer steps",
-        "screening_episodes": 60,
-        "confirmation_episodes": 180,
+        "ranking_rule": (
+            "fixed-layout success, seeded-random success, mean return, "
+            "fewer boundary collisions, fewer obstacle collisions, fewer steps"
+        ),
+        "screening_episodes": screening_episodes,
+        "confirmation_episodes": confirmation_episodes,
+        "screening_eval_episodes": screening_eval_episodes,
+        "confirmation_eval_episodes": confirmation_eval_episodes,
         "confirmation_seeds": list(confirmation_seeds),
         "screening_configs": screening_entries,
         "best_config": best_params,
@@ -344,8 +365,11 @@ def run_room5_experiments(
             "seed_results": confirmation,
             "aggregate": {
                 "fixed_success_rate_mean": _mean("fixed_layout_evaluation"),
+                "fixed_success_rate_std": _std("fixed_layout_evaluation"),
                 "random_success_rate_mean": _mean("random_layout_evaluation"),
+                "random_success_rate_std": _std("random_layout_evaluation"),
                 "unseen_success_rate_mean": _mean("unseen_layout_evaluation"),
+                "unseen_success_rate_std": _std("unseen_layout_evaluation"),
                 "training_runtime_seconds_sum": float(sum(e["training"]["runtime_seconds"] for e in confirmation)),
             },
         },

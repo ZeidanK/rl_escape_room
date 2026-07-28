@@ -265,7 +265,9 @@ Backward-compatible aliases remain in `agents/sarsa.py`. All SARSA tests remain 
 1. **Fixed start**: Always (0.5, 0.5, 0, 0).
 2. **Unseen starts** (optional): Fixed grid of positions outside the lower-left training region.
 3. **Random starts**: Configurable via `StartMode` with explicit seed sets for reproducibility.
-4. **Start validation**: Custom and random starts are validated to be outside the exit radius.
+4. **Mixed-start follow-up**: `StartMode.MIXED` samples fixed, fixed-unseen,
+   random-lower-left, and random-room starts for targeted robustness training.
+5. **Start validation**: Custom and random starts are validated to be outside the exit radius.
 
 ## Room 5 — Optional Dynamic Obstacles
 
@@ -291,3 +293,6 @@ Backward-compatible aliases remain in `agents/sarsa.py`. All SARSA tests remain 
 7. **Persistence**: Room 5 models are JSON metadata plus `.npz` weights with
    observation schema, environment config, seeds, finite-value validation, and
    a SHA-256 checksum.
+8. **Evaluation labels**: Final Room 5 reporting keeps `fixed_validation_layout`,
+   `seeded_random_layouts`, and `unseen_random_layouts` separate so optional
+   DQN generalisation is not confused with Room 4 start-category metrics.

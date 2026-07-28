@@ -6,6 +6,7 @@ from core.types import (
     ContinuousRenderState,
     ContinuousRewardConfig,
     ContinuousState,
+    FIXED_UNSEEN_STARTS,
     Room4MotionConfig,
     StartMode,
     StepResult,
@@ -91,6 +92,27 @@ class Room4Continuous(BaseEnvironment):
                 if (dx * dx + dy * dy) > er * er:
                     return (x, y)
             return (0.5, 0.5)
+        elif self._start_mode == StartMode.MIXED:
+            bucket = int(rng.integers(0, 4))
+            if bucket == 0:
+                return self.motion.start_position
+            if bucket == 1:
+                start = FIXED_UNSEEN_STARTS[int(rng.integers(0, len(FIXED_UNSEEN_STARTS)))]
+                return (float(start[0]), float(start[1]))
+            if bucket == 2:
+                x = rng.uniform(0.25, 3.0)
+                y = rng.uniform(0.25, 3.0)
+                return (x, y)
+            ex, ey = self.motion.exit_center
+            er = self.motion.exit_radius_m
+            for _ in range(100):
+                x = rng.uniform(0.0, self.motion.room_width_m)
+                y = rng.uniform(0.0, self.motion.room_height_m)
+                dx, dy = x - ex, y - ey
+                if (dx * dx + dy * dy) > er * er:
+                    return (x, y)
+            return self.motion.start_position
+        raise ValueError(f"Unsupported start mode: {self._start_mode}")
 
     def reset(self, seed: int | None = None, *, start_state: ContinuousState | None = None) -> ContinuousState:
         # Explicit start_state is used during evaluation on fixed unseen starts;

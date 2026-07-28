@@ -226,6 +226,20 @@ class TestRoom4Environment:
         er = env.motion.exit_radius_m
         assert (x - ex) ** 2 + (y - ey) ** 2 > er * er
 
+    def test_mixed_start_mode_is_reproducible_and_valid(self):
+        states_a = [_make_env(start_mode=StartMode.MIXED).reset(seed=i) for i in range(20)]
+        states_b = [_make_env(start_mode=StartMode.MIXED).reset(seed=i) for i in range(20)]
+
+        assert states_a == states_b
+        assert len(set((round(s[0], 3), round(s[1], 3)) for s in states_a)) > 3
+        for x, y, vx, vy in states_a:
+            ex, ey = _DEFAULT_MOTION.exit_center
+            er = _DEFAULT_MOTION.exit_radius_m
+            assert 0.0 <= x <= _DEFAULT_MOTION.room_width_m
+            assert 0.0 <= y <= _DEFAULT_MOTION.room_height_m
+            assert (x - ex) ** 2 + (y - ey) ** 2 > er * er
+            assert (vx, vy) == _DEFAULT_MOTION.start_velocity
+
     def test_step_after_done_raises(self):
         env = _make_env(max_steps=1)
         env.reset(seed=42)

@@ -409,6 +409,12 @@ buffer, epsilon-greedy behavior policy, mini-batch TD target, target network
 copy, deterministic seeded RNG streams, snapshots, evaluation, save/load, and
 finite-value validation.
 
+The final experiment runner screens a bounded grid over hidden units (48/64),
+learning rate (0.001/0.003), epsilon decay (0.96/0.97/0.98), and observation
+distance (3.5/4.5). Screening ranks fixed_validation_layout success before
+seeded_random_layouts success, then return, boundary collisions, obstacle
+collisions, and steps.
+
 ### Persistence
 
 Room 5 models use a JSON metadata file plus `.npz` weights. Metadata records
