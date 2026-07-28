@@ -1,3 +1,5 @@
+"""Room 1 fixed known-model grid used by the Value Iteration agent."""
+
 import numpy as np
 
 from core.types import RewardConfig, SlipConfig

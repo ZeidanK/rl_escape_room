@@ -1,3 +1,5 @@
+"""Streamlit visualization helpers for Value Iteration outputs."""
+
 from collections.abc import Mapping
 
 import numpy as np

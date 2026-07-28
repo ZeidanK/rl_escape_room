@@ -1,3 +1,5 @@
+"""Tabular Q-Learning agent, evaluation, and model persistence helpers."""
+
 from collections.abc import Callable, Mapping
 from types import MappingProxyType
 from typing import Any

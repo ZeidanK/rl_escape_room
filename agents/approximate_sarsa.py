@@ -1,3 +1,5 @@
+"""Approximate SARSA implementation for the continuous Room 4 task."""
+
 import hashlib
 import hmac
 import json

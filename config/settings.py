@@ -1,3 +1,5 @@
+"""Legacy experiment configuration records kept for simple scripts."""
+
 from dataclasses import dataclass, field
 
 

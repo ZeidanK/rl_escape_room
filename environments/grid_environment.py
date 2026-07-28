@@ -1,3 +1,5 @@
+"""Grid-world environment mechanics for the tabular escape-room tasks."""
+
 from collections import deque
 from typing import Any
 

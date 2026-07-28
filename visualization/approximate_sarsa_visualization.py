@@ -1,3 +1,5 @@
+"""Streamlit visualization helpers for Room 4 continuous policies."""
+
 import math
 
 import numpy as np
@@ -184,5 +186,4 @@ def build_value_surface(
             av = q_func.action_values(state)
             surface[row, col] = float(np.max(av))
     return surface
-
 

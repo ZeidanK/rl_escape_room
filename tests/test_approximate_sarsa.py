@@ -1,3 +1,5 @@
+"""Tests for Room 4 approximate SARSA, tile coding, and persistence."""
+
 import hashlib
 import hmac
 import math

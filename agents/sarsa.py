@@ -1,3 +1,5 @@
+"""Tabular SARSA agent, evaluation, and model persistence helpers."""
+
 from collections.abc import Mapping
 from types import MappingProxyType
 

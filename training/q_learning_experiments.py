@@ -1,3 +1,5 @@
+"""Experiment runners for Room 3 Q-Learning sweeps and confirmations."""
+
 import json
 import os
 import time

@@ -1,3 +1,5 @@
+"""Room 4 continuous momentum environment for approximate SARSA."""
+
 import math
 
 import numpy as np

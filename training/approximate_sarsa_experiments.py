@@ -1,3 +1,5 @@
+"""Experiment runners for Room 4 approximate SARSA sweeps and confirmations."""
+
 import json
 import os
 from collections.abc import Sequence

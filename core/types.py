@@ -1,3 +1,5 @@
+"""Shared dataclasses, enums, and result types used throughout the project."""
+
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum

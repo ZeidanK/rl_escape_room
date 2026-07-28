@@ -1,3 +1,5 @@
+"""Human-readable room metadata used by documentation and UI screens."""
+
 from core.types import RoomSpec, RoomKind, RewardConfig
 
 # Human-readable room metadata for docs/UI.  The actual environment rules live

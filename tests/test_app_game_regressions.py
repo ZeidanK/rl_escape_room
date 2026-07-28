@@ -1,3 +1,5 @@
+"""Regression tests for Streamlit app wiring and game-view behavior."""
+
 from pathlib import Path
 
 import numpy as np

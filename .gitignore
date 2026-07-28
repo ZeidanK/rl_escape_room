@@ -1,3 +1,4 @@
+# Ignore local runtime artifacts while keeping presentation-ready outputs.
 __pycache__/
 *.pyc
 .venv/

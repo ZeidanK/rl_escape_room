@@ -1,3 +1,5 @@
+"""Streamlit entry point for the reinforcement-learning escape room app."""
+
 from pathlib import Path
 
 import streamlit as st

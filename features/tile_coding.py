@@ -1,3 +1,5 @@
+"""Tile-coding feature encoder for the continuous Room 4 state space."""
+
 import numpy as np
 
 from core.types import ContinuousState, TileCodingConfig

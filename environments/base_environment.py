@@ -1,3 +1,5 @@
+"""Abstract environment interface shared by grid and continuous rooms."""
+
 from abc import ABC, abstractmethod
 from typing import Any
 

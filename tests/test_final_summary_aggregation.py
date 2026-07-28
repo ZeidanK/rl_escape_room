@@ -1,3 +1,5 @@
+"""Tests for final-pipeline summary aggregation helpers."""
+
 import pytest
 
 from training.run_final_pipeline import (

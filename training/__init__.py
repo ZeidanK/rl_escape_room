@@ -1,3 +1,5 @@
+"""Expose training entry points for experiments, scripts, and notebooks."""
+
 # Public training entry points for scripts and notebooks.
 from training.dp_experiments import run_room1_experiments
 from training.sarsa_experiments import (

@@ -1,3 +1,5 @@
+"""Streamlit visualization helpers for Room 3 Q-Learning outputs."""
+
 from collections.abc import Mapping
 
 import numpy as np

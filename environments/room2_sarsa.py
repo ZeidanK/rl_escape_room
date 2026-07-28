@@ -1,3 +1,5 @@
+"""Room 2 sampled grid environment used for on-policy SARSA learning."""
+
 import numpy as np
 
 from core.types import RewardConfig, SlipConfig

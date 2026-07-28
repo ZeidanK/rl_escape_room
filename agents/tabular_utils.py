@@ -1,3 +1,5 @@
+"""Shared epsilon schedules, action selection, and Q-table utilities."""
+
 from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 from typing import Any

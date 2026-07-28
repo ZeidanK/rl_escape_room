@@ -1,3 +1,5 @@
+"""Expose the room environment classes used by agents, tests, and the UI."""
+
 # Public environment classes used by agents, experiments, and the Streamlit UI.
 from environments.base_environment import BaseEnvironment
 from environments.grid_environment import GridEnvironment, KnownModelGridEnvironment, parse_grid_map

@@ -1,3 +1,5 @@
+"""Room 3 key-collection grid environment for tabular Q-Learning."""
+
 from typing import Any
 
 import numpy as np

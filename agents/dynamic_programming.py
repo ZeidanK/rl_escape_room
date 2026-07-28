@@ -1,3 +1,5 @@
+"""Value Iteration agent and policy evaluation helpers for known grid rooms."""
+
 from types import MappingProxyType
 
 import numpy as np

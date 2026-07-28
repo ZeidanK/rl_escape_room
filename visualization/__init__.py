@@ -1,3 +1,5 @@
+"""Expose visualization helpers used by Streamlit analysis views."""
+
 # Convenience exports for visualization helpers used by app.py and game views.
 from visualization.dp_visualization import (
     build_policy_symbols,

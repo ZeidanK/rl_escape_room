@@ -1,3 +1,5 @@
+"""Tests that UI helpers render HTML through safe/raw rendering paths."""
+
 import ast
 import re
 from pathlib import Path
