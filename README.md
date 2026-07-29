@@ -129,19 +129,25 @@ Room 3 has 46 non-wall physical positions, so its tabular state space is
 
 ```
 rl_escape_room/
-├── app.py                 # Streamlit web interface (5 primary presentation modes)
+├── app.py                 # Streamlit entry point and Learning Laboratory controls
 ├── requirements.txt       # Python dependencies
-├── core/                  # Shared types, configs, enums
-├── environments/          # Room environments (grid Room 1–3, continuous Room 4)
-├── agents/                # RL algorithms (DP, SARSA, Q-Learning, Approx SARSA)
+├── core/                  # Shared types, configs, results, and enums
+├── environments/          # Room 1–5 environment implementations
+├── agents/                # DP, SARSA, Q-Learning, Approx SARSA, and NumPy DQN
 ├── features/              # Tile coding for function approximation
+├── game/                  # Showcase UI, themed rendering, HUD, replay, achievements
 ├── training/              # Experiment pipelines, comparisons, utilities
 ├── visualization/         # Policy arrows, Q-tables, training curves, action fields
-├── storage/               # Saved models, experiment results, metrics
-├── tests/                 # 336 tests across all components
+├── storage/               # Showcase models, final experiment artifacts, achievements
+├── tests/                 # 338 tests across all components
 ├── docs/                  # Design docs, defence prep, screenshots
 └── tools/                 # Screenshot capture, result extraction
 ```
+
+Current committed storage outputs are limited to `storage/models/`,
+`storage/experiments/final/`, `storage/comparisons/`, and
+`storage/achievements.json`. Local generated model and experiment outputs are
+ignored unless they are explicitly whitelisted in `.gitignore`.
 
 ## Installation
 
@@ -161,7 +167,7 @@ streamlit run app.py
 pytest -v
 ```
 
-**Exact test count: 336 tests (current local result).**
+**Exact test count: 338 tests collected locally.**
 
 ## Generating Local Showcase Models
 

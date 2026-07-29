@@ -186,7 +186,7 @@ def test_home_page_with_unlocked_achievements_does_not_show_raw_html():
 def test_room1_analysis_policy_grid_uses_svg_not_code():
     at = AppTest.from_file(str(APP_PATH), default_timeout=60)
     at.run()
-    at = _select_lab_room(at, "Room 1 - DP")
+    at = _select_lab_room(at, "Room 1 — Frozen Maze")
 
     assert len(at.exception) == 0
     _assert_no_code_blocks(at)
@@ -194,7 +194,7 @@ def test_room1_analysis_policy_grid_uses_svg_not_code():
 
 
 def test_lab_slip_probability_validation_survives_restored_slider_state():
-    for room_label in ["Room 1 - DP", "Room 2 - SARSA", "Room 3 - Q-Learning"]:
+    for room_label in ["Room 1 — Frozen Maze", "Room 2 — Laser Corridor", "Room 3 — Key Vault"]:
         at = AppTest.from_file(str(APP_PATH), default_timeout=60)
         at.run()
         at = _select_lab_room(at, room_label)
@@ -234,11 +234,11 @@ def test_home_page_uses_uniform_room_selection_without_start_campaign():
 def test_showcase_sidebar_selects_each_room_without_lab_redirect():
     room_cases = [
         ("Overview", None),
-        ("Room 1 - DP", "room1"),
-        ("Room 2 - SARSA", "room2"),
-        ("Room 3 - Q-Learning", "room3"),
-        ("Room 4 - Function Approximation", "room4"),
-        ("Room 5 - Dynamic Obstacles", "room5"),
+        ("Room 1 — Frozen Maze", "room1"),
+        ("Room 2 — Laser Corridor", "room2"),
+        ("Room 3 — Key Vault", "room3"),
+        ("Room 4 — Momentum Chamber", "room4"),
+        ("Room 5 — Obstacle Lab", "room5"),
     ]
     for label, room_id in room_cases:
         at = AppTest.from_file(str(APP_PATH), default_timeout=90)
@@ -268,7 +268,7 @@ def test_room1_back_button_returns_to_showcase_overview():
 def test_room2_analysis_mode_auto_loads_showcase_outputs():
     at = AppTest.from_file(str(APP_PATH), default_timeout=60)
     at.run()
-    at = _select_lab_room(at, "Room 2 - SARSA")
+    at = _select_lab_room(at, "Room 2 — Laser Corridor")
 
     assert len(at.exception) == 0
     assert at.session_state["sarsa_result"] is not None
@@ -292,7 +292,7 @@ def test_room2_game_stage_selector_loads_stage_artifacts():
 def test_room3_analysis_mode_auto_loads_showcase_outputs():
     at = AppTest.from_file(str(APP_PATH), default_timeout=60)
     at.run()
-    at = _select_lab_room(at, "Room 3 - Q-Learning")
+    at = _select_lab_room(at, "Room 3 — Key Vault")
 
     assert len(at.exception) == 0
     assert at.session_state["ql_result"] is not None
@@ -316,7 +316,7 @@ def test_room3_game_stage_selector_loads_stage_artifacts():
 def test_room4_analysis_mode_auto_loads_showcase_outputs():
     at = AppTest.from_file(str(APP_PATH), default_timeout=90)
     at.run()
-    at = _select_lab_room(at, "Room 4 - Function Approximation")
+    at = _select_lab_room(at, "Room 4 — Momentum Chamber")
 
     assert len(at.exception) == 0
     assert at.session_state["approx_result"] is not None
@@ -346,7 +346,7 @@ def test_room4_game_stage_selector_and_continuous_state_labels():
 def test_room5_analysis_mode_auto_loads_showcase_outputs():
     at = AppTest.from_file(str(APP_PATH), default_timeout=60)
     at.run()
-    at = _select_lab_room(at, "Room 5 - Dynamic Obstacles")
+    at = _select_lab_room(at, "Room 5 — Obstacle Lab")
 
     assert len(at.exception) == 0
     assert at.session_state["dqn_result"] is not None
@@ -398,7 +398,7 @@ def test_about_page_resolves_screenshots_from_app_directory(tmp_path, monkeypatc
 def test_room5_tiny_training_evaluation_and_replay():
     at = AppTest.from_file(str(APP_PATH), default_timeout=90)
     at.run()
-    at = _select_lab_room(at, "Room 5 - Dynamic Obstacles")
+    at = _select_lab_room(at, "Room 5 — Obstacle Lab")
 
     for label, value in [
         ("Episodes", 10),

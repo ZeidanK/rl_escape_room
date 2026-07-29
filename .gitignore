@@ -21,10 +21,6 @@ storage/models/*
 !storage/models/room5_dqn/
 !storage/models/room5_dqn/showcase_dqn.json
 !storage/models/room5_dqn/showcase_dqn.npz
-storage/episodes/*
-!storage/episodes/.gitkeep
-storage/metrics/*
-!storage/metrics/.gitkeep
 storage/experiments/*
 !storage/experiments/.gitkeep
 !storage/experiments/final/
