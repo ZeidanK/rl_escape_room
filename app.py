@@ -102,7 +102,7 @@ from training.approximate_sarsa_experiments import (
 
 ROOM_CLASSES = {
     # Manual-play mode lets the user choose one of the grid rooms directly.
-    "Room 1 — Ice Maze (DP)": Room1DP,
+    "Room 1 — Frozen Maze (DP)": Room1DP,
     "Room 2 — Laser Corridor (SARSA)": Room2SARSA,
     "Room 3 — Key Vault (Q-Learning)": Room3QLearning,
 }
@@ -852,19 +852,19 @@ mode = st.session_state.mode
 if mode == GAME_LABEL:
     showcase_labels = [
         "Overview",
-        "Room 1 - DP",
-        "Room 2 - SARSA",
-        "Room 3 - Q-Learning",
-        "Room 4 - Function Approximation",
-        "Room 5 - Dynamic Obstacles",
+        "Room 1 — Frozen Maze",
+        "Room 2 — Laser Corridor",
+        "Room 3 — Key Vault",
+        "Room 4 — Momentum Chamber",
+        "Room 5 — Obstacle Lab",
     ]
     showcase_targets = {
         "Overview": None,
-        "Room 1 - DP": "room1",
-        "Room 2 - SARSA": "room2",
-        "Room 3 - Q-Learning": "room3",
-        "Room 4 - Function Approximation": "room4",
-        "Room 5 - Dynamic Obstacles": "room5",
+        "Room 1 — Frozen Maze": "room1",
+        "Room 2 — Laser Corridor": "room2",
+        "Room 3 — Key Vault": "room3",
+        "Room 4 — Momentum Chamber": "room4",
+        "Room 5 — Obstacle Lab": "room5",
     }
     valid_showcase_rooms = {room for room in showcase_targets.values() if room is not None}
     current_game_room = st.session_state.get("game_room")
@@ -889,19 +889,19 @@ if mode == GAME_LABEL:
 if mode in LAB_SECTION_MODES:
     lab_labels = [
         "Overview",
-        "Room 1 - DP",
-        "Room 2 - SARSA",
-        "Room 3 - Q-Learning",
-        "Room 4 - Function Approximation",
-        "Room 5 - Dynamic Obstacles",
+        "Room 1 — Frozen Maze",
+        "Room 2 — Laser Corridor",
+        "Room 3 — Key Vault",
+        "Room 4 — Momentum Chamber",
+        "Room 5 — Obstacle Lab",
     ]
     lab_targets = {
         "Overview": LAB_LABEL,
-        "Room 1 - DP": ROOM1_LAB_MODE,
-        "Room 2 - SARSA": ROOM2_LAB_MODE,
-        "Room 3 - Q-Learning": ROOM3_LAB_MODE,
-        "Room 4 - Function Approximation": ROOM4_LAB_MODE,
-        "Room 5 - Dynamic Obstacles": ROOM5_BONUS_MODE,
+        "Room 1 — Frozen Maze": ROOM1_LAB_MODE,
+        "Room 2 — Laser Corridor": ROOM2_LAB_MODE,
+        "Room 3 — Key Vault": ROOM3_LAB_MODE,
+        "Room 4 — Momentum Chamber": ROOM4_LAB_MODE,
+        "Room 5 — Obstacle Lab": ROOM5_BONUS_MODE,
     }
     current_lab_label = next(
         (label for label, target in lab_targets.items() if target == mode),
@@ -1017,7 +1017,7 @@ elif st.session_state.mode == LAB_LABEL:
 
     st.header("Rooms")
     cols = st.columns(5)
-    cols[0].markdown("**Room 1 — Ice Maze**")
+    cols[0].markdown("**Room 1 — Frozen Maze**")
     cols[0].markdown("Value Iteration on known MDP with slippery cells.")
     cols[1].markdown("**Room 2 — Laser Corridor**")
     cols[1].markdown("SARSA learning risk-aware behaviour under slip and traps.")
@@ -1025,7 +1025,7 @@ elif st.session_state.mode == LAB_LABEL:
     cols[2].markdown("Q-Learning with key-collection and locked-exit states.")
     cols[3].markdown("**Room 4 — Momentum Chamber**")
     cols[3].markdown("Continuous state (x,y,vx,vy) with tile coding + linear approx SARSA.")
-    cols[4].markdown("**Room 5 - Dynamic Obstacles**")
+    cols[4].markdown("**Room 5 — Obstacle Lab**")
     cols[4].markdown("Continuous 10m room with 0.5m obstacles and NumPy DQN.")
 
     st.header("Room & Algorithm Summary")
@@ -1162,7 +1162,7 @@ if st.session_state.mode == "Manual Environment":
     if env is not None:
         # Determine room_id for theme
         room_id_map = {
-            "Room 1 — Ice Maze (DP)": "room1",
+            "Room 1 — Frozen Maze (DP)": "room1",
             "Room 2 — Laser Corridor (SARSA)": "room2",
             "Room 3 — Key Vault (Q-Learning)": "room3",
         }
@@ -2336,7 +2336,7 @@ elif st.session_state.mode == ROOM4_LAB_MODE:
 # MODE: Room 5 — Dynamic Obstacles
 # ============================================================
 elif st.session_state.mode == ROOM5_BONUS_MODE:
-    st.header("Room 5 - Dynamic Obstacles")
+    st.header("Room 5 — Obstacle Lab")
     st.caption(
         "Continuous 10x10m escape room with seeded 0.5m square obstacles, "
         "local observation records, replay buffer DQN updates, and separate fixed/random/unseen layout evaluation."

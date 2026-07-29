@@ -26,8 +26,10 @@ from game.hud import render_hud
 from game.episode_replay import build_replay_from_rollout, get_current_step
 from game.explain_panel import render_explain_panel, get_algorithm_explanation
 from game.canvas_renderer import render_policy_grid_canvas
+from game.constants import COMPARISON_MODE
 from game.presentation import (
     final_summary_success,
+    go_to_mode,
     render_assignment_proof,
     render_grid_stage_summary,
     render_model_provenance,
@@ -220,6 +222,9 @@ def render_room3_game():
             "Position alone is not enough in this room. The same physical cell has different "
             "meaning before and after the key, so the state must include `has_key`."
         )
+
+    if st.button("📊 Compare SARSA vs Q-Learning →", key="r3g_compare_link"):
+        go_to_mode(COMPARISON_MODE, view="comparison")
 
     # Current step data
     current_step_data = get_current_step(replay) if replay else None

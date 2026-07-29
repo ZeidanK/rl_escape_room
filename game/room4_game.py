@@ -470,6 +470,16 @@ def render_room4_game():
         evaluation_success=final_summary_success("Room 4") if selected_stage == "Final" else None,
     )
 
+    with st.container(border=True):
+        st.markdown("#### Tile Coding & Function Approximation")
+        st.markdown(
+            "A Q-table cannot scale to continuous (x, y, vx, vy) states — there are infinitely "
+            "many possible positions. Tile coding overlays multiple grids at different offsets and "
+            "maps each state to a small set of active features. The Q-function is then a simple "
+            "linear dot product over those features, letting the agent generalize between nearby "
+            "positions without storing a separate value for every exact coordinate."
+        )
+
     from game.hud import render_hud
     render_html(render_hud(
         room_name="\U0001f300 Room 4: The Momentum Chamber",

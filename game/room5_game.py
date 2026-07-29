@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import glob
 import os
+import time
 
 import streamlit as st
 
@@ -135,7 +136,7 @@ def _make_room5_env(
     )
 
 
-def _render_room5_svg(env: Room5Obstacles, rollout=None) -> str:
+def _render_room5_svg(env: Room5Obstacles, rollout=None, frame_index: int | None = None) -> str:
     state = env.render()
     margin = 24.0
     canvas = 520.0
@@ -147,8 +148,9 @@ def _render_room5_svg(env: Room5Obstacles, rollout=None) -> str:
         return margin + x * sx, canvas - margin - y * sy
 
     if rollout is not None:
-        points = [rollout.start_state[:2]]
-        points.extend(step.next_raw_state[:2] for step in rollout.trajectory)
+        all_pts = [rollout.start_state[:2]]
+        all_pts.extend(step.next_raw_state[:2] for step in rollout.trajectory)
+        points = all_pts if frame_index is None else all_pts[:frame_index + 1]
     else:
         points = list(state.trajectory)
     path_points = " ".join(f"{pt(x, y)[0]:.1f},{pt(x, y)[1]:.1f}" for x, y in points)
@@ -239,8 +241,35 @@ def render_room5_game() -> None:
             st.session_state[key] = None
     if "r5g_autoload_disabled" not in st.session_state:
         st.session_state.r5g_autoload_disabled = False
+    if "r5g_play_index" not in st.session_state:
+        st.session_state.r5g_play_index = None
+    if "r5g_playing" not in st.session_state:
+        st.session_state.r5g_playing = False
+    if "r5g_last_advance" not in st.session_state:
+        st.session_state.r5g_last_advance = None
+    if "r5g_speed" not in st.session_state:
+        st.session_state.r5g_speed = 1.0
 
     _autoload_room5_game_model()
+
+    # Non-blocking auto-advance for step-by-step replay
+    _r5_rollout_adv = st.session_state.r5g_rollout
+    if (
+        st.session_state.get("r5g_playing")
+        and _r5_rollout_adv is not None
+        and st.session_state.get("r5g_play_index") is not None
+    ):
+        _r5_max = len(_r5_rollout_adv.trajectory)
+        if int(st.session_state.r5g_play_index) < _r5_max:
+            _r5_now = time.time()
+            _r5_last = st.session_state.r5g_last_advance
+            _r5_delay = 0.4 / float(st.session_state.get("r5g_speed", 1.0))
+            if _r5_last is None or _r5_now - _r5_last >= _r5_delay:
+                st.session_state.r5g_last_advance = _r5_now
+                st.session_state.r5g_play_index = int(st.session_state.r5g_play_index) + 1
+                st.rerun()
+        else:
+            st.session_state.r5g_playing = False
 
     meta = st.session_state.r5g_meta
     config = _dqn_config_from_metadata(meta)
@@ -280,6 +309,8 @@ def render_room5_game() -> None:
         if reset_col.button("Reset Replay", key="r5g_reset"):
             st.session_state.r5g_rollout = None
             st.session_state.r5g_rollout_key = None
+            st.session_state.r5g_play_index = None
+            st.session_state.r5g_playing = False
             st.rerun()
 
     network: DQNNetwork | None = st.session_state.r5g_network
@@ -321,14 +352,26 @@ def render_room5_game() -> None:
                 max_steps=int(max_steps),
             )
             st.session_state.r5g_rollout_key = rollout_key
+            st.session_state.r5g_play_index = len(st.session_state.r5g_rollout.trajectory)
+            st.session_state.r5g_playing = False
 
     rollout = st.session_state.r5g_rollout
     if meta:
         render_model_provenance(
-            title="Room 5 - Dynamic Obstacles",
+            title="Room 5 — Obstacle Lab",
             model_stem=st.session_state.r5g_model_stem,
             metadata=meta,
             evaluation_success=final_summary_success("Room 5"),
+        )
+
+    with st.container(border=True):
+        st.markdown("#### Deep Q-Network (DQN) Lesson")
+        st.markdown(
+            "DQN replaces the Q-table with a neural network Q(s,a;θ). "
+            "A **replay buffer** stores past transitions and samples random mini-batches, "
+            "breaking temporal correlations. A **target network** — a periodic copy of the "
+            "online network — provides stable TD targets. Both are essential for stable "
+            "training in continuous or high-dimensional state spaces."
         )
 
     env = _make_room5_env(
@@ -344,14 +387,14 @@ def render_room5_game() -> None:
         return
 
     status_badges = [
-        '<span class="badge-success">Success</span>' if rollout.success else '<span class="badge-failure">No Escape</span>',
+        '<span class="badge-success">SUCCESS</span>' if rollout.success else '<span class="badge-failure">FAILED</span>',
     ]
     if rollout.obstacle_collisions:
-        status_badges.append('<span class="badge-collision">Obstacle Hit</span>')
+        status_badges.append('<span class="badge-collision">OBSTACLE HIT</span>')
     render_html(
         render_hud(
-            room_name="The Obstacle Lab",
-            algorithm="NumPy DQN",
+            room_name="\U0001f9e0 Room 5: The Obstacle Lab",
+            algorithm=f"NumPy DQN | lr={config.learning_rate:.4f} \u03b3={config.gamma:.2f} | h={config.hidden_units}",
             step=rollout.steps,
             max_steps=int(max_steps),
             state_str=(
@@ -373,9 +416,72 @@ def render_room5_game() -> None:
     c3.metric("Return", f"{rollout.total_reward:.2f}")
     c4.metric("Obstacle Hits", rollout.obstacle_collisions)
 
-    render_html(_render_room5_svg(env, rollout))
+    max_frame = len(rollout.trajectory)
+    if st.session_state.get("r5g_play_index") is None:
+        st.session_state.r5g_play_index = max_frame
+    current_frame = min(int(st.session_state.r5g_play_index), max_frame)
 
-    t1, t2 = st.tabs(["Replay", "Action Values"])
+    render_html(_render_room5_svg(env, rollout, frame_index=current_frame))
+
+    rb_cols = st.columns([1, 1, 1, 1, 1, 2, 1, 1, 1, 1])
+    with rb_cols[0]:
+        if st.button("\u23ee", key="r5g_begin", disabled=current_frame == 0):
+            st.session_state.r5g_play_index = 0
+            st.session_state.r5g_playing = False
+            st.rerun()
+    with rb_cols[1]:
+        if st.button("\u23f4", key="r5g_prev", disabled=current_frame == 0):
+            st.session_state.r5g_play_index = max(0, current_frame - 1)
+            st.session_state.r5g_playing = False
+            st.rerun()
+    with rb_cols[2]:
+        play_lbl = "\u23f8" if st.session_state.get("r5g_playing") else "\u25b6"
+        if st.button(play_lbl, key="r5g_play"):
+            st.session_state.r5g_playing = not bool(st.session_state.get("r5g_playing"))
+            st.rerun()
+    with rb_cols[3]:
+        if st.button("\u23f5", key="r5g_next", disabled=current_frame >= max_frame):
+            st.session_state.r5g_play_index = min(max_frame, current_frame + 1)
+            st.session_state.r5g_playing = False
+            st.rerun()
+    with rb_cols[4]:
+        if st.button("\u23ed", key="r5g_end", disabled=current_frame >= max_frame):
+            st.session_state.r5g_play_index = max_frame
+            st.session_state.r5g_playing = False
+            st.rerun()
+    with rb_cols[5]:
+        st.markdown(f"Step: **{current_frame}** / {max_frame}")
+    with rb_cols[6]:
+        if st.button("0.5x", key="r5g_sp05"):
+            st.session_state.r5g_speed = 0.5
+            st.rerun()
+    with rb_cols[7]:
+        if st.button("1x", key="r5g_sp1"):
+            st.session_state.r5g_speed = 1.0
+            st.rerun()
+    with rb_cols[8]:
+        if st.button("2x", key="r5g_sp2"):
+            st.session_state.r5g_speed = 2.0
+            st.rerun()
+    with rb_cols[9]:
+        if st.button("4x", key="r5g_sp4"):
+            st.session_state.r5g_speed = 4.0
+            st.rerun()
+
+    if 0 < current_frame <= len(rollout.trajectory):
+        step_data = rollout.trajectory[current_frame - 1]
+        cs1, cs2, cs3, cs4, cs5 = st.columns(5)
+        cs1.metric("Action", step_data.requested_action.name)
+        cs2.metric("Reward", f"{step_data.reward:.2f}")
+        cs3.metric("Cumulative", f"{step_data.cumulative_reward:.2f}")
+        cs4.metric("Visible Obs.", str(step_data.visible_obstacle_count))
+        cs5.metric("Dist. to Exit", f"{step_data.distance_to_exit_m:.2f}m")
+        if step_data.event:
+            st.caption(f"Event: {step_data.event}")
+        if step_data.collision:
+            st.caption(f"Collision: {step_data.collision}")
+
+    t1, t2 = st.tabs(["Rollout Table", "Action Values"])
     with t1:
         st.dataframe(_rollout_rows(rollout), width="stretch", hide_index=True)
     with t2:

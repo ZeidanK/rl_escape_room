@@ -148,6 +148,25 @@ def render_room1_game():
         # Learning Laboratory state in app.py.
         if key not in st.session_state:
             st.session_state[key] = None
+    if "r1g_autoload_disabled" not in st.session_state:
+        st.session_state.r1g_autoload_disabled = False
+
+    # Auto-solve on first load so the policy is visible immediately, matching
+    # the auto-load behaviour of Rooms 2–5.
+    if st.session_state.r1g_vi_result is None and not st.session_state.r1g_autoload_disabled and slip_valid:
+        env_al = Room1DP(slip_config=SlipConfig(), max_steps=200, seed=42)
+        cfg_al = ValueIterationConfig(gamma=0.95, tolerance=1e-6, max_iterations=10000)
+        agent_al = ValueIterationAgent(env_al, cfg_al)
+        vi_al = agent_al.solve()
+        st.session_state.r1g_env = env_al
+        st.session_state.r1g_vi_result = vi_al
+        roll_al = rollout_policy(env_al, vi_al.policy, seed=42)
+        st.session_state.r1g_replay = build_replay_from_rollout(roll_al, "room1", stage_label="Final")
+        frames_al = _compute_vi_frames(agent_al)
+        st.session_state.r1g_anim_frames = frames_al
+        st.session_state.r1g_anim_iter = 0
+        st.session_state.r1g_anim_playing = False
+        st.rerun()
 
     # Non-blocking auto-advance replay
     replay = st.session_state.r1g_replay
@@ -204,6 +223,7 @@ def render_room1_game():
         for key in ["r1g_env", "r1g_vi_result", "r1g_replay", "r1g_anim_frames",
                      "r1g_q_explain", "r1g_last_action"]:
             st.session_state[key] = None
+        st.session_state.r1g_autoload_disabled = True
         st.rerun()
 
     vi_result = st.session_state.r1g_vi_result
@@ -228,7 +248,7 @@ def render_room1_game():
                     st.session_state.r1g_anim_playing = False
                     st.rerun()
             with anim_cols[1]:
-                if st.button("\u25c0", key="r1g_anim_prev", disabled=anim_iter <= 0):
+                if st.button("\u23f4", key="r1g_anim_prev", disabled=anim_iter <= 0):
                     st.session_state.r1g_anim_iter = max(0, anim_iter - 1)
                     st.session_state.r1g_anim_playing = False
                     st.rerun()

@@ -23,8 +23,10 @@ from agents.sarsa import extract_greedy_policy, load_model, rollout_sarsa_policy
 from game.hud import render_hud
 from game.episode_replay import build_replay_from_rollout, get_current_step
 from game.explain_panel import render_explain_panel, get_algorithm_explanation
+from game.constants import COMPARISON_MODE
 from game.presentation import (
     final_summary_success,
+    go_to_mode,
     render_assignment_proof,
     render_grid_stage_summary,
     render_model_provenance,
@@ -198,6 +200,9 @@ def render_room2_game():
             "epsilon-greedy behavior policy. In a trap corridor, this makes exploration risk "
             "part of what the learned policy evaluates."
         )
+
+    if st.button("📊 Compare SARSA vs Q-Learning →", key="r2g_compare_link"):
+        go_to_mode(COMPARISON_MODE, view="comparison")
 
     # Extract the greedy policy from loaded Q-values for arrows on the grid.
     greedy_policy = extract_greedy_policy(q_vals)
