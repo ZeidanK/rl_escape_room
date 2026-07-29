@@ -2605,7 +2605,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
         dqn_lr = st.slider("Learning Rate", 0.0001, 0.05, 0.001, step=0.0001,
                            format="%.4f", key="dqn_lr")
         dqn_gamma = st.slider("Gamma", 0.50, 0.99, 0.99, step=0.01, key="dqn_gamma")
-        dqn_max_steps = st.number_input("Max Steps", min_value=50, max_value=1500, value=260, step=10,
+        dqn_max_steps = st.number_input("Max Steps", min_value=50, max_value=5000, value=260, step=10,
                                         key="dqn_max_steps")
 
         st.markdown("**Epsilon Schedule**")
