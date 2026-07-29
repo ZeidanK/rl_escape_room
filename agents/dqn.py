@@ -507,6 +507,20 @@ def _freeze_weights(weights: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
     return frozen
 
 
+def make_dqn_result_session_safe(result: DQNTrainingResult) -> DQNTrainingResult:
+    """Return a DQN result copy without MappingProxyType session-state wrappers."""
+    return DQNTrainingResult(
+        config=result.config,
+        weights=dict(result.weights),
+        metrics=tuple(result.metrics),
+        snapshots=dict(result.snapshots),
+        final_epsilon=result.final_epsilon,
+        training_seed=result.training_seed,
+        input_dim=result.input_dim,
+        action_count=result.action_count,
+    )
+
+
 def _weights_sha256(path: str) -> str:
     sha = hashlib.sha256()
     with open(path, "rb") as f:

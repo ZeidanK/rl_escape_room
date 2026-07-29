@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pickle
 from dataclasses import FrozenInstanceError
 from types import SimpleNamespace
 
@@ -14,6 +15,7 @@ from agents.dqn import (
     ReplayBuffer,
     evaluate_dqn_policy,
     load_dqn_model,
+    make_dqn_result_session_safe,
     rollout_dqn_policy,
     save_dqn_model,
 )
@@ -192,6 +194,35 @@ class TestDQNMechanics:
         for key in first.weights:
             assert np.all(np.isfinite(first.weights[key]))
             assert np.allclose(first.weights[key], second.weights[key])
+
+    def test_session_safe_result_pickles_and_keeps_training_data(self):
+        factory = _empty_fast_factory(max_steps=3)
+        cfg = DQNConfig(
+            episodes=3,
+            learning_rate=0.005,
+            gamma=0.95,
+            max_steps=3,
+            seed=11,
+            epsilon=EpsilonScheduleConfig(start=0.2, minimum=0.05, decay=0.8),
+            replay_capacity=32,
+            batch_size=4,
+            warmup_steps=4,
+            target_update_interval=2,
+            hidden_units=8,
+            snapshot_episodes=(1, 3),
+        )
+        result = DQNAgent(factory, cfg).train()
+
+        safe = make_dqn_result_session_safe(result)
+        restored = pickle.loads(pickle.dumps(safe))
+
+        assert isinstance(safe.weights, dict)
+        assert isinstance(safe.snapshots, dict)
+        assert len(restored.metrics) == len(result.metrics)
+        assert set(restored.weights) == set(result.weights)
+        assert set(restored.snapshots) == set(result.snapshots)
+        assert np.allclose(restored.weights["W1"], result.weights["W1"])
+        assert restored.metrics[-1].total_reward == pytest.approx(result.metrics[-1].total_reward)
 
     def test_save_load_roundtrip_validates_metadata(self, tmp_path):
         factory = _empty_fast_factory()

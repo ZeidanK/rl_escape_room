@@ -86,6 +86,7 @@ from agents.dqn import (
     evaluate_dqn_policy,
     extract_dqn_action_values,
     load_dqn_model,
+    make_dqn_result_session_safe,
     rollout_dqn_policy,
     save_dqn_model,
 )
@@ -450,6 +451,7 @@ def _load_room5_model_into_state(filepath_stem: str, dqn_config: DQNConfig) -> N
     st.session_state.dqn_result = _loaded_dqn_result(network, meta, dqn_config)
     st.session_state.dqn_train_key = ("loaded", filepath_stem)
     st.session_state.dqn_model_stem = filepath_stem
+    st.session_state.dqn_result_source = "loaded"
     st.session_state.dqn_autoload_error = None
     st.session_state.dqn_autoload_disabled = False
     _clear_room5_outputs()
@@ -671,7 +673,7 @@ for key in [
     "dqn_result", "dqn_network", "dqn_meta", "dqn_train_key",
     "dqn_eval_fixed", "dqn_eval_random", "dqn_eval_unseen",
     "dqn_rollout", "dqn_rollout_key",
-    "dqn_model_stem", "dqn_autoload_error",
+    "dqn_model_stem", "dqn_autoload_error", "dqn_result_source",
     "game_mode", "game_room", "show_lab",
 ]:
     if key not in st.session_state:
@@ -2426,7 +2428,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                 for key in [
                     "dqn_result", "dqn_network", "dqn_meta", "dqn_eval_fixed",
                     "dqn_eval_random", "dqn_eval_unseen", "dqn_rollout",
-                    "dqn_model_stem", "dqn_autoload_error",
+                    "dqn_model_stem", "dqn_autoload_error", "dqn_result_source",
                 ]:
                     st.session_state[key] = None
                 st.session_state.dqn_autoload_disabled = True
@@ -2488,14 +2490,37 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                     )
 
             result = agent.train(progress_callback=_dqn_cb, progress_every=1)
-            st.session_state.dqn_result = result
-            st.session_state.dqn_network = DQNNetwork.from_weights(dict(result.weights))
+            safe_result = make_dqn_result_session_safe(result)
+            st.session_state.dqn_result = safe_result
+            st.session_state.dqn_network = DQNNetwork.from_weights(dict(safe_result.weights))
             st.session_state.dqn_meta = None
             st.session_state.dqn_train_key = (
-                dqn_episodes, dqn_lr, dqn_gamma, dqn_max_steps, dqn_train_seed,
-                dqn_min_obs, obstacle_max, dqn_obs_dist, dqn_layout_seed, dqn_fixed_layout,
+                int(dqn_episodes),
+                float(dqn_lr),
+                float(dqn_gamma),
+                int(dqn_max_steps),
+                (
+                    dqn_eps_kind,
+                    float(dqn_eps_start),
+                    float(dqn_eps_min),
+                    float(dqn_eps_decay),
+                    int(dqn_linear_decay),
+                ),
+                int(dqn_replay_capacity),
+                int(dqn_batch_size),
+                int(dqn_warmup),
+                int(dqn_target_update),
+                int(dqn_hidden_units),
+                int(dqn_train_seed),
+                int(dqn_min_obs),
+                int(obstacle_max),
+                float(dqn_obs_dist),
+                int(dqn_layout_seed),
+                bool(dqn_fixed_layout),
+                float(dqn_progress_scale),
             )
             st.session_state.dqn_model_stem = None
+            st.session_state.dqn_result_source = "live"
             st.session_state.dqn_autoload_disabled = False
             _clear_room5_outputs()
             progress_bar.empty()
@@ -2587,7 +2612,11 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
             save_dqn_model(dqn_result, stem, environment_factory=lambda: make_room5_env())
             st.success(f"Model saved to {stem}")
 
-        if (
+        should_auto_prepare_dqn_outputs = (
+            st.session_state.get("dqn_result_source") == "loaded"
+            or not dqn_result.metrics
+        )
+        if should_auto_prepare_dqn_outputs and (
             st.session_state.dqn_eval_fixed is None
             or st.session_state.dqn_eval_random is None
             or st.session_state.dqn_eval_unseen is None
@@ -2668,13 +2697,18 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
         ]:
             if summary is None:
                 continue
+            eval_source = (
+                "live evaluation"
+                if st.session_state.get("dqn_result_source") == "live"
+                else "saved model evaluation"
+            )
             eval_rows.append(
                 {
                     "Evaluation": label,
                     "Success Rate": f"{summary.success_rate:.1%}",
                     "Mean Return": f"{summary.mean_return:.2f}",
                     "Mean Steps": f"{summary.mean_steps:.1f}",
-                    "Source": "saved model evaluation",
+                    "Source": eval_source,
                 }
             )
         if eval_rows:
@@ -2703,6 +2737,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
             collisions = np.array([row["obstacle_collisions"] for row in rows], dtype=float)
             epsilons = np.array([row["epsilon"] for row in rows], dtype=float)
             losses = np.array([row["mean_loss"] for row in rows], dtype=float)
+            steps = np.array([row["steps"] for row in rows], dtype=float)
             window = min(50, max(1, len(rows)))
             recent = rows[-window:]
             c1, c2, c3, c4 = st.columns(4)
@@ -2710,8 +2745,10 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
             c2.metric(f"Recent Success ({window})", f"{sum(r['success'] for r in recent) / window:.1%}")
             c3.metric("Final Epsilon", f"{dqn_result.final_epsilon:.4f}")
             c4.metric("Recent Obstacle Rate", f"{sum(r['obstacle_collisions'] for r in recent) / window:.1%}")
-            st.subheader("Reward")
+            st.subheader("Reward per Episode")
             st.line_chart({"total_reward": rewards})
+            st.subheader("Steps per Episode")
+            st.line_chart({"steps": steps})
             st.subheader("Success and Obstacle Collisions")
             st.line_chart({"success": successes, "obstacle_collision": collisions})
             st.subheader("Epsilon and Loss")

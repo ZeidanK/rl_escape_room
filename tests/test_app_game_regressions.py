@@ -350,6 +350,7 @@ def test_room5_analysis_mode_auto_loads_showcase_outputs():
 
     assert len(at.exception) == 0
     assert at.session_state["dqn_result"] is not None
+    assert at.session_state["dqn_result_source"] == "loaded"
     assert at.session_state["dqn_network"] is not None
     assert at.session_state["dqn_eval_fixed"] is not None
     assert at.session_state["dqn_eval_random"] is not None
@@ -415,6 +416,27 @@ def test_room5_tiny_training_evaluation_and_replay():
     at = _click_button_by_label(at, "Train DQN")
     assert len(at.exception) == 0
     assert at.session_state["dqn_result"] is not None
+    assert at.session_state["dqn_result_source"] == "live"
+    assert len(at.session_state["dqn_result"].metrics) == 10
+    assert at.session_state["dqn_eval_fixed"] is None
+    assert at.session_state["dqn_eval_random"] is None
+    assert at.session_state["dqn_eval_unseen"] is None
+    assert at.session_state["dqn_rollout"] is None
+
+    metric_labels = [metric.label for metric in at.metric]
+    assert "Episodes" in metric_labels
+    assert "Recent Success (10)" in metric_labels
+    assert "Final Epsilon" in metric_labels
+    assert "Recent Obstacle Rate" in metric_labels
+    subheaders = [subheader.value for subheader in at.subheader]
+    for label in [
+        "Reward per Episode",
+        "Steps per Episode",
+        "Success and Obstacle Collisions",
+        "Epsilon and Loss",
+    ]:
+        assert label in subheaders
+    assert len(at.dataframe) >= 1
 
     at = _click_button_by_label(at, "Evaluate Fixed Layout")
     assert len(at.exception) == 0
