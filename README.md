@@ -339,6 +339,9 @@ See `docs/DEFENSE_PREP.md` for detailed answers covering Bellman equations,
 Value Iteration, SARSA, Q-Learning, tile coding, semi-gradient updates,
 hyperparameters, reproducibility, and comparison methodology.
 
+For a rehearsal-ready professor Q&A script for a 30-minute call, see
+`docs/PROFESSOR_QA_PREP.md`.
+
 ## Deployment
 
 ```text

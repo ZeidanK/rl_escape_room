@@ -28,6 +28,7 @@ from core.types import (
 )
 from features.tile_coding import TileCoder, TileCodingConfig
 from agents.tabular_utils import epsilon_for_episode, default_snapshot_episodes
+from training.result_persistence import serialize_approximate_metrics
 
 
 # Room 4 cannot store a table for every possible continuous state, so this
@@ -593,6 +594,8 @@ def _build_metadata(
         "feature_count": result.weights.shape[1],
         "action_count": result.weights.shape[0],
         "training_seed": result.config.seed,
+        "final_epsilon": result.final_epsilon,
+        "training_metrics": serialize_approximate_metrics(result.metrics),
     }
 
 

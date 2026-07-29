@@ -25,6 +25,7 @@ from core.types import (
     Room5TrajectoryStep,
     VelocityAction,
 )
+from training.result_persistence import serialize_dqn_metrics
 
 
 class DQNNetwork:
@@ -578,6 +579,8 @@ def _metadata_for_result(result: DQNTrainingResult, env_sample) -> dict:
             "observation_distance_m": env_sample.obstacle_config.observation_distance_m,
             "nearest_obstacles": env_sample.obstacle_config.nearest_obstacles,
         },
+        "final_epsilon": result.final_epsilon,
+        "training_metrics": serialize_dqn_metrics(result.metrics),
     }
 
 

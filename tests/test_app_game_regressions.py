@@ -1,5 +1,6 @@
 """Regression tests for Streamlit app wiring and game-view behavior."""
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -278,6 +279,43 @@ def test_room2_analysis_mode_auto_loads_showcase_outputs():
     _assert_no_placeholder_messages(at)
     _assert_no_code_blocks(at)
     _assert_markdown_contains(at, "policy-grid-canvas")
+
+
+def test_room2_saved_run_picker_loads_selected_older_metrics(tmp_path, monkeypatch):
+    _prepare_storage(tmp_path, monkeypatch)
+    model_dir = tmp_path / "storage" / "models" / "room2_sarsa"
+    model_dir.mkdir()
+
+    old_result = SarsaAgent(
+        lambda: Room2SARSA(max_steps=20),
+        SarsaConfig(episodes=2, max_steps=20, seed=1),
+    ).train()
+    new_result = SarsaAgent(
+        lambda: Room2SARSA(max_steps=20),
+        SarsaConfig(episodes=3, max_steps=20, seed=2),
+    ).train()
+    save_model(old_result, str(model_dir / "sarsa_old"), slip_config=Room2SARSA().slip_config, map_grid=ROOM2_GRID)
+    save_model(new_result, str(model_dir / "sarsa_new"), slip_config=Room2SARSA().slip_config, map_grid=ROOM2_GRID)
+    for suffix in (".json", ".npz"):
+        os.utime(model_dir / f"sarsa_old{suffix}", (1_000, 1_000))
+        os.utime(model_dir / f"sarsa_new{suffix}", (2_000, 2_000))
+
+    at = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    at.run()
+    at.sidebar.radio[0].set_value("Learning Laboratory").run()
+    lab_select = next(selectbox for selectbox in at.sidebar.selectbox if selectbox.label == "Learning Laboratory Room")
+    room2_option = next(option for option in lab_select.options if "Room 2" in option)
+    at = lab_select.set_value(room2_option).run()
+
+    assert at.session_state["sarsa_model_stem"].endswith("sarsa_new")
+    saved_runs = next(selectbox for selectbox in at.sidebar.selectbox if selectbox.label == "Saved Runs")
+    old_label = next(option for option in saved_runs.options if "sarsa_old" in option)
+    at = saved_runs.set_value(old_label).run()
+    at = _click_button_by_label(at, "Load Saved Run")
+
+    assert len(at.exception) == 0
+    assert at.session_state["sarsa_model_stem"].endswith("sarsa_old")
+    assert len(at.session_state["sarsa_result"].metrics) == 2
 
 
 def test_room2_game_stage_selector_loads_stage_artifacts():

@@ -28,6 +28,7 @@ from core.types import (
     TrajectoryStep,
 )
 from environments.grid_environment import GridEnvironment
+from training.result_persistence import serialize_q_learning_metrics
 
 # Q-Learning is off-policy: it may explore during training, but each update
 # assumes the next state will follow the greedy best action.
@@ -431,6 +432,7 @@ def _build_metadata(
         "final_mean_reward": float(np.mean([m.total_reward for m in recent_metrics])) if recent_metrics else 0.0,
         "final_success_rate": float(np.mean([1.0 if m.success else 0.0 for m in recent_metrics])) if recent_metrics else 0.0,
         "snapshot_episodes": sorted(result.snapshots.keys()),
+        "training_metrics": serialize_q_learning_metrics(result.metrics),
     }
 
 

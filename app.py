@@ -1,6 +1,7 @@
 """Streamlit entry point for the reinforcement-learning escape room app."""
 
 from pathlib import Path
+import os
 
 import streamlit as st
 
@@ -100,6 +101,35 @@ from training.approximate_sarsa_experiments import (
     run_confirmation_experiments as run_approx_confirmation,
     run_screening_stage_a,
 )
+from training.result_persistence import (
+    SAVED_OUTPUTS_KEY,
+    deserialize_approximate_evaluation,
+    deserialize_approximate_metrics,
+    deserialize_continuous_rollout,
+    deserialize_dqn_evaluation,
+    deserialize_dqn_metrics,
+    deserialize_grid_rollout,
+    deserialize_policy_evaluation,
+    deserialize_q_learning_evaluation,
+    deserialize_q_learning_metrics,
+    deserialize_room5_rollout,
+    deserialize_sarsa_evaluation,
+    deserialize_sarsa_metrics,
+    format_saved_run_label,
+    list_saved_runs,
+    load_room1_run,
+    save_room1_run,
+    serialize_approximate_evaluation,
+    serialize_continuous_rollout,
+    serialize_dqn_evaluation,
+    serialize_grid_rollout,
+    serialize_policy_evaluation,
+    serialize_q_learning_evaluation,
+    serialize_room5_rollout,
+    serialize_sarsa_evaluation,
+    timestamp_slug,
+    update_saved_outputs,
+)
 
 ROOM_CLASSES = {
     # Manual-play mode lets the user choose one of the grid rooms directly.
@@ -150,8 +180,8 @@ def _loaded_sarsa_result(
     fallback_config: SarsaConfig,
 ) -> SarsaTrainingResult:
     # Reconstruct just enough of a training result for the UI from saved
-    # Q-values.  Loaded showcase models do not include every training metric.
-    cfg = metadata.get("training_config", {})
+    # Q-values and any persisted training history.
+    cfg = metadata.get("training_config") or metadata.get("config", {})
     epsilon = _epsilon_config_from_metadata(cfg.get("epsilon", {}), fallback_config.epsilon)
     config = SarsaConfig(
         episodes=int(cfg.get("episodes", fallback_config.episodes)),
@@ -165,7 +195,7 @@ def _loaded_sarsa_result(
     return SarsaTrainingResult(
         config=config,
         q_values=q_values,
-        metrics=(),
+        metrics=deserialize_sarsa_metrics(metadata.get("training_metrics")),
         snapshots={},
         final_epsilon=float(training.get("final_epsilon", epsilon.minimum)),
         training_seed=config.seed,
@@ -191,7 +221,7 @@ def _loaded_q_learning_result(
     return QLearningTrainingResult(
         config=config,
         q_values=q_values,
-        metrics=(),
+        metrics=deserialize_q_learning_metrics(metadata.get("training_metrics")),
         snapshots={},
         final_epsilon=float(metadata.get("final_epsilon", epsilon.minimum)),
         training_seed=int(metadata.get("training_seed", config.seed)),
@@ -225,9 +255,9 @@ def _loaded_approximate_result(
     return ApproximateSarsaTrainingResult(
         config=config,
         weights=weights,
-        metrics=(),
+        metrics=deserialize_approximate_metrics(metadata.get("training_metrics")),
         snapshots={},
-        final_epsilon=epsilon.minimum,
+        final_epsilon=float(metadata.get("final_epsilon", epsilon.minimum)),
         training_seed=int(metadata.get("training_seed", config.seed)),
     )
 
@@ -257,9 +287,9 @@ def _loaded_dqn_result(
     return DQNTrainingResult(
         config=config,
         weights=network.weights,
-        metrics=(),
+        metrics=deserialize_dqn_metrics(metadata.get("training_metrics")),
         snapshots={},
-        final_epsilon=epsilon.minimum,
+        final_epsilon=float(metadata.get("final_epsilon", epsilon.minimum)),
         training_seed=config.seed,
         input_dim=int(metadata.get("input_dim", network.input_dim)),
         action_count=int(metadata.get("action_count", network.action_count)),
@@ -281,6 +311,149 @@ def _preferred_model_stem(model_dir: str, showcase_stem: str) -> str | None:
         return None
     latest = max(files, key=os.path.getmtime)
     return latest.replace(".json", "")
+
+
+def _preferred_saved_run_stem(model_dir: str, *, requires_npz: bool) -> str | None:
+    runs = list_saved_runs(model_dir, requires_npz=requires_npz)
+    return runs[0]["stem"] if runs else None
+
+
+def _auto_run_stem(model_dir: str, prefix: str) -> str:
+    os.makedirs(model_dir, exist_ok=True)
+    return os.path.join(model_dir, f"{prefix}_{timestamp_slug()}")
+
+
+def _saved_run_selector(room_key: str, model_dir: str, *, requires_npz: bool) -> str | None:
+    runs = list_saved_runs(model_dir, requires_npz=requires_npz)
+    if not runs:
+        st.caption("No saved runs found yet.")
+        return None
+    labels = [format_saved_run_label(run) for run in runs]
+    selected = st.selectbox("Saved Runs", options=labels, key=f"{room_key}_saved_runs")
+    return runs[labels.index(selected)]["stem"]
+
+
+def _is_mutable_saved_run(filepath_stem: str | None) -> bool:
+    if not filepath_stem:
+        return False
+    return not os.path.basename(filepath_stem).startswith("showcase")
+
+
+def _restore_room1_outputs_from_metadata(metadata: dict) -> None:
+    outputs = metadata.get(SAVED_OUTPUTS_KEY, {})
+    st.session_state.vi_rollout_result = deserialize_grid_rollout(outputs.get("rollout"))
+    st.session_state.vi_eval_summary = deserialize_policy_evaluation(outputs.get("evaluation_summary"))
+    st.session_state.vi_rollout_key = ("saved", metadata.get("saved_at"))
+    st.session_state.vi_eval_key = ("saved", metadata.get("saved_at"))
+
+
+def _restore_room2_outputs_from_metadata(metadata: dict) -> None:
+    outputs = metadata.get(SAVED_OUTPUTS_KEY, {})
+    st.session_state.sarsa_eval_summary = deserialize_sarsa_evaluation(outputs.get("evaluation_summary"))
+    st.session_state.sarsa_rollout = deserialize_grid_rollout(outputs.get("rollout"))
+    st.session_state.sarsa_eval_key = ("saved", metadata.get("saved_at"))
+    st.session_state.sarsa_rollout_key = ("saved", metadata.get("saved_at"))
+
+
+def _restore_room3_outputs_from_metadata(metadata: dict) -> None:
+    outputs = metadata.get(SAVED_OUTPUTS_KEY, {})
+    st.session_state.ql_eval_summary = deserialize_q_learning_evaluation(outputs.get("evaluation_summary"))
+    st.session_state.ql_rollout = deserialize_grid_rollout(outputs.get("rollout"))
+    st.session_state.ql_eval_key = ("saved", metadata.get("saved_at"))
+    st.session_state.ql_rollout_key = ("saved", metadata.get("saved_at"))
+
+
+def _restore_room4_outputs_from_metadata(metadata: dict) -> None:
+    outputs = metadata.get(SAVED_OUTPUTS_KEY, {})
+    st.session_state.approx_eval_fixed = deserialize_approximate_evaluation(outputs.get("eval_fixed"))
+    st.session_state.approx_eval_gen = deserialize_approximate_evaluation(outputs.get("eval_gen"))
+    st.session_state.approx_rollout = deserialize_continuous_rollout(outputs.get("rollout"))
+    st.session_state.approx_eval_fixed_key = ("saved", metadata.get("saved_at"), "fixed")
+    st.session_state.approx_eval_gen_key = ("saved", metadata.get("saved_at"), "gen")
+    st.session_state.approx_rollout_key = ("saved", metadata.get("saved_at"))
+
+
+def _restore_room5_outputs_from_metadata(metadata: dict) -> None:
+    outputs = metadata.get(SAVED_OUTPUTS_KEY, {})
+    st.session_state.dqn_eval_fixed = deserialize_dqn_evaluation(outputs.get("eval_fixed"))
+    st.session_state.dqn_eval_random = deserialize_dqn_evaluation(outputs.get("eval_random"))
+    st.session_state.dqn_eval_unseen = deserialize_dqn_evaluation(outputs.get("eval_unseen"))
+    st.session_state.dqn_rollout = deserialize_room5_rollout(outputs.get("rollout"))
+    st.session_state.dqn_rollout_key = ("saved", metadata.get("saved_at"))
+
+
+def _persist_room1_outputs_if_saved() -> None:
+    stem = st.session_state.get("vi_model_stem")
+    result = st.session_state.get("vi_result")
+    env = st.session_state.get("dp_env")
+    config = st.session_state.get("vi_config")
+    slip_cfg = st.session_state.get("vi_slip_config")
+    if not (_is_mutable_saved_run(stem) and result is not None and env is not None and config is not None and slip_cfg is not None):
+        return
+    save_room1_run(
+        result,
+        stem,
+        config=config,
+        slip_config=slip_cfg,
+        map_grid=env.grid,
+        rollout=st.session_state.get("vi_rollout_result"),
+        evaluation=st.session_state.get("vi_eval_summary"),
+    )
+
+
+def _persist_room2_outputs_if_saved() -> None:
+    stem = st.session_state.get("sarsa_model_stem")
+    if not _is_mutable_saved_run(stem):
+        return
+    update_saved_outputs(
+        stem,
+        {
+            "evaluation_summary": serialize_sarsa_evaluation(st.session_state.get("sarsa_eval_summary")),
+            "rollout": serialize_grid_rollout(st.session_state.get("sarsa_rollout")),
+        },
+    )
+
+
+def _persist_room3_outputs_if_saved() -> None:
+    stem = st.session_state.get("ql_model_stem")
+    if not _is_mutable_saved_run(stem):
+        return
+    update_saved_outputs(
+        stem,
+        {
+            "evaluation_summary": serialize_q_learning_evaluation(st.session_state.get("ql_eval_summary")),
+            "rollout": serialize_grid_rollout(st.session_state.get("ql_rollout")),
+        },
+    )
+
+
+def _persist_room4_outputs_if_saved() -> None:
+    stem = st.session_state.get("approx_model_stem")
+    if not _is_mutable_saved_run(stem):
+        return
+    update_saved_outputs(
+        stem,
+        {
+            "eval_fixed": serialize_approximate_evaluation(st.session_state.get("approx_eval_fixed")),
+            "eval_gen": serialize_approximate_evaluation(st.session_state.get("approx_eval_gen")),
+            "rollout": serialize_continuous_rollout(st.session_state.get("approx_rollout")),
+        },
+    )
+
+
+def _persist_room5_outputs_if_saved() -> None:
+    stem = st.session_state.get("dqn_model_stem")
+    if not _is_mutable_saved_run(stem):
+        return
+    update_saved_outputs(
+        stem,
+        {
+            "eval_fixed": serialize_dqn_evaluation(st.session_state.get("dqn_eval_fixed")),
+            "eval_random": serialize_dqn_evaluation(st.session_state.get("dqn_eval_random")),
+            "eval_unseen": serialize_dqn_evaluation(st.session_state.get("dqn_eval_unseen")),
+            "rollout": serialize_room5_rollout(st.session_state.get("dqn_rollout")),
+        },
+    )
 
 
 def _room5_training_rows(metrics) -> list[dict]:
@@ -306,14 +479,62 @@ def _clear_sarsa_outputs() -> None:
         st.session_state[key] = None
 
 
+def _clear_room1_outputs() -> None:
+    for key in ["vi_rollout_result", "vi_rollout_key", "vi_eval_summary", "vi_eval_key"]:
+        st.session_state[key] = None
+
+
+def _load_room1_run_into_state(filepath_stem: str) -> None:
+    result, meta = load_room1_run(filepath_stem, map_grid=Room1DP().grid)
+    cfg = meta.get("config", {})
+    slip = meta.get("slip_config", {})
+    slip_cfg = SlipConfig(
+        float(slip.get("intended_probability", 0.8)),
+        float(slip.get("left_probability", 0.1)),
+        float(slip.get("right_probability", 0.1)),
+    )
+    config = ValueIterationConfig(
+        gamma=float(cfg.get("gamma", 0.95)),
+        tolerance=float(cfg.get("tolerance", 1e-6)),
+        max_iterations=int(cfg.get("max_iterations", 10_000)),
+        tie_tolerance=float(cfg.get("tie_tolerance", 1e-12)),
+    )
+    st.session_state.dp_env = Room1DP(slip_config=slip_cfg, max_steps=200, seed=42)
+    st.session_state.vi_result = result
+    st.session_state.vi_config = config
+    st.session_state.vi_slip_config = slip_cfg
+    st.session_state.vi_solve_key = ("loaded", filepath_stem)
+    st.session_state.vi_model_stem = filepath_stem
+    st.session_state.vi_autoload_error = None
+    st.session_state.vi_autoload_disabled = False
+    _clear_room1_outputs()
+    _restore_room1_outputs_from_metadata(meta)
+
+
+def _autoload_room1_saved_run() -> bool:
+    if st.session_state.vi_result is not None or st.session_state.get("vi_autoload_disabled"):
+        return False
+    model_dir = os.path.join("storage", "models", "room1_value_iteration")
+    stem = _preferred_saved_run_stem(model_dir, requires_npz=False)
+    if stem is None:
+        return False
+    try:
+        _load_room1_run_into_state(stem)
+    except ValueError as e:
+        st.session_state.vi_autoload_error = str(e)
+        return False
+    return True
+
+
 def _load_room2_sarsa_model_into_state(filepath_stem: str, sarsa_config: SarsaConfig) -> None:
     q_vals, meta = load_model(filepath_stem, map_grid=ROOM2_GRID)
+    _clear_sarsa_outputs()
     st.session_state.sarsa_result = _loaded_sarsa_result(q_vals, meta, sarsa_config)
     st.session_state.sarsa_train_key = ("loaded", filepath_stem)
     st.session_state.sarsa_model_stem = filepath_stem
     st.session_state.sarsa_autoload_error = None
     st.session_state.sarsa_autoload_disabled = False
-    _clear_sarsa_outputs()
+    _restore_room2_outputs_from_metadata(meta)
 
 
 def _autoload_room2_sarsa_showcase(sarsa_config: SarsaConfig) -> bool:
@@ -323,7 +544,7 @@ def _autoload_room2_sarsa_showcase(sarsa_config: SarsaConfig) -> bool:
     import os
 
     model_dir = os.path.join("storage", "models", "room2_sarsa")
-    stem = _preferred_model_stem(model_dir, "showcase_sarsa")
+    stem = _preferred_saved_run_stem(model_dir, requires_npz=True)
     if stem is None:
         return False
 
@@ -342,12 +563,13 @@ def _clear_q_learning_outputs() -> None:
 
 def _load_room3_q_model_into_state(filepath_stem: str, ql_config: QLearningConfig) -> None:
     q_vals, meta = load_q_model(filepath_stem, map_grid=ROOM3_GRID)
+    _clear_q_learning_outputs()
     st.session_state.ql_result = _loaded_q_learning_result(q_vals, meta, ql_config)
     st.session_state.ql_train_key = ("loaded", filepath_stem)
     st.session_state.ql_model_stem = filepath_stem
     st.session_state.ql_autoload_error = None
     st.session_state.ql_autoload_disabled = False
-    _clear_q_learning_outputs()
+    _restore_room3_outputs_from_metadata(meta)
 
 
 def _autoload_room3_q_showcase(ql_config: QLearningConfig) -> bool:
@@ -357,7 +579,7 @@ def _autoload_room3_q_showcase(ql_config: QLearningConfig) -> bool:
     import os
 
     model_dir = os.path.join("storage", "models", "room3_q_learning")
-    stem = _preferred_model_stem(model_dir, "showcase_ql")
+    stem = _preferred_saved_run_stem(model_dir, requires_npz=True)
     if stem is None:
         return False
 
@@ -388,12 +610,13 @@ def _load_room4_model_into_state(
 ) -> None:
     weights, meta = load_approximate_model(filepath_stem)
     loaded_tc_cfg = _tile_coding_config_from_metadata(meta, tile_coding_config)
+    _clear_room4_outputs()
     st.session_state.approx_result = _loaded_approximate_result(weights, meta, approx_config, loaded_tc_cfg)
     st.session_state.approx_train_key = ("loaded", filepath_stem)
     st.session_state.approx_model_stem = filepath_stem
     st.session_state.approx_autoload_error = None
     st.session_state.approx_autoload_disabled = False
-    _clear_room4_outputs()
+    _restore_room4_outputs_from_metadata(meta)
 
 
 def _autoload_room4_showcase(
@@ -406,7 +629,7 @@ def _autoload_room4_showcase(
     import os
 
     model_dir = os.path.join("storage", "models", "room4_approximate_sarsa")
-    stem = _preferred_model_stem(model_dir, "showcase_approx")
+    stem = _preferred_saved_run_stem(model_dir, requires_npz=True)
     if stem is None:
         return False
 
@@ -446,6 +669,7 @@ def _clear_room5_outputs() -> None:
 
 def _load_room5_model_into_state(filepath_stem: str, dqn_config: DQNConfig) -> None:
     network, meta = load_dqn_model(filepath_stem)
+    _clear_room5_outputs()
     st.session_state.dqn_network = network
     st.session_state.dqn_meta = meta
     st.session_state.dqn_result = _loaded_dqn_result(network, meta, dqn_config)
@@ -454,7 +678,7 @@ def _load_room5_model_into_state(filepath_stem: str, dqn_config: DQNConfig) -> N
     st.session_state.dqn_result_source = "loaded"
     st.session_state.dqn_autoload_error = None
     st.session_state.dqn_autoload_disabled = False
-    _clear_room5_outputs()
+    _restore_room5_outputs_from_metadata(meta)
 
 
 def _autoload_room5_showcase(dqn_config: DQNConfig) -> bool:
@@ -464,7 +688,7 @@ def _autoload_room5_showcase(dqn_config: DQNConfig) -> bool:
     import os
 
     model_dir = os.path.join("storage", "models", "room5_dqn")
-    stem = _preferred_model_stem(model_dir, "showcase_dqn")
+    stem = _preferred_saved_run_stem(model_dir, requires_npz=True)
     if stem is None:
         return False
 
@@ -656,7 +880,8 @@ st.title("RL Escape Room")
 for key in [
     "env", "last_result", "room_key", "manual_total_reward", "manual_agent_comparison", "manual_compare_key",
     "vi_result", "vi_solve_key", "vi_rollout_result", "vi_rollout_key",
-    "vi_eval_summary", "vi_eval_key", "dp_env",
+    "vi_eval_summary", "vi_eval_key", "vi_model_stem", "vi_autoload_error",
+    "vi_config", "vi_slip_config", "dp_env",
     "sarsa_result", "sarsa_train_key", "sarsa_eval_summary", "sarsa_eval_key",
     "sarsa_rollout", "sarsa_rollout_key", "sarsa_env_factory",
     "sarsa_model_stem", "sarsa_autoload_error",
@@ -686,6 +911,8 @@ if "sarsa_autoload_disabled" not in st.session_state:
     st.session_state.sarsa_autoload_disabled = False
 if "ql_autoload_disabled" not in st.session_state:
     st.session_state.ql_autoload_disabled = False
+if "vi_autoload_disabled" not in st.session_state:
+    st.session_state.vi_autoload_disabled = False
 if "mode" not in st.session_state:
     st.session_state.mode = "Escape Room Showcase"
 
@@ -1231,6 +1458,13 @@ elif st.session_state.mode == ROOM1_LAB_MODE:
         solve_params = (gamma, tolerance, max_it, p_int, p_left, p_right)
         roll_params = solve_params + (rollout_seed,)
         ev_params = solve_params + (eval_ep,)
+        st.markdown("**Saved Runs**")
+        selected_vi_stem = _saved_run_selector(
+            "room1",
+            os.path.join("storage", "models", "room1_value_iteration"),
+            requires_npz=False,
+        )
+        load_clicked = st.button("Load Saved Run", disabled=selected_vi_stem is None)
         col1, col2 = st.columns(2)
         solve_clicked = col1.button("Solve", type="primary", disabled=not slip_valid)
         if st.session_state.get("vi_confirm_reset"):
@@ -1239,6 +1473,9 @@ elif st.session_state.mode == ROOM1_LAB_MODE:
                 st.session_state.vi_result = None
                 st.session_state.vi_rollout_result = None
                 st.session_state.vi_eval_summary = None
+                st.session_state.vi_model_stem = None
+                st.session_state.vi_autoload_error = None
+                st.session_state.vi_autoload_disabled = True
                 st.session_state.vi_confirm_reset = False
                 st.rerun()
             if st.button("Cancel", key="vi_cancel_reset"):
@@ -1249,6 +1486,17 @@ elif st.session_state.mode == ROOM1_LAB_MODE:
             st.rerun()
         rollout_clicked = st.button("Run Rollout", disabled=st.session_state.vi_result is None or not slip_valid)
         eval_clicked = st.button("Evaluate Policy", disabled=st.session_state.vi_result is None or not slip_valid)
+
+    if load_clicked and selected_vi_stem:
+        try:
+            _load_room1_run_into_state(selected_vi_stem)
+            st.success(f"Loaded saved run from {selected_vi_stem}")
+            st.rerun()
+        except ValueError as e:
+            st.error(f"Load failed: {e}")
+
+    if slip_valid:
+        _autoload_room1_saved_run()
 
     auto_solve = (
         slip_valid
@@ -1261,8 +1509,18 @@ elif st.session_state.mode == ROOM1_LAB_MODE:
             st.session_state.dp_env = env
             config = ValueIterationConfig(gamma=gamma, tolerance=tolerance, max_iterations=max_it)
             vi_r = ValueIterationAgent(env, config).solve()
+            stem = _auto_run_stem(
+                os.path.join("storage", "models", "room1_value_iteration"),
+                "vi_auto",
+            )
+            save_room1_run(vi_r, stem, config=config, slip_config=slip_cfg, map_grid=env.grid)
             st.session_state.vi_result = vi_r
+            st.session_state.vi_config = config
+            st.session_state.vi_slip_config = slip_cfg
             st.session_state.vi_solve_key = solve_params
+            st.session_state.vi_model_stem = stem
+            st.session_state.vi_autoload_error = None
+            st.session_state.vi_autoload_disabled = False
             st.session_state.vi_rollout_result = None
             st.session_state.vi_eval_summary = None
             st.rerun()
@@ -1270,20 +1528,23 @@ elif st.session_state.mode == ROOM1_LAB_MODE:
     vi_result = st.session_state.vi_result
     if vi_result is not None:
         env = st.session_state.dp_env
-        if st.session_state.vi_rollout_key != roll_params:
+        if st.session_state.vi_rollout_result is None and st.session_state.vi_rollout_key != roll_params:
             if not solve_clicked:
                 with st.spinner("Running rollout..."):
                     st.session_state.vi_rollout_result = rollout_policy(env, vi_result.policy, seed=rollout_seed)
                     st.session_state.vi_rollout_key = roll_params
+                    _persist_room1_outputs_if_saved()
         if rollout_clicked:
             with st.spinner("Running rollout..."):
                 st.session_state.vi_rollout_result = rollout_policy(env, vi_result.policy, seed=rollout_seed)
                 st.session_state.vi_rollout_key = roll_params
+                _persist_room1_outputs_if_saved()
                 st.rerun()
         if eval_clicked:
             with st.spinner(f"Evaluating {eval_ep} episodes..."):
                 st.session_state.vi_eval_summary = evaluate_policy(env, vi_result.policy, n_episodes=eval_ep)
                 st.session_state.vi_eval_key = ev_params
+                _persist_room1_outputs_if_saved()
                 st.rerun()
 
         roll_r = st.session_state.vi_rollout_result
@@ -1389,6 +1650,12 @@ elif st.session_state.mode == ROOM2_LAB_MODE:
         if slip_valid:
             _autoload_room2_sarsa_showcase(sarsa_config)
 
+        st.markdown("**Saved Runs**")
+        selected_sarsa_stem = _saved_run_selector(
+            "room2",
+            os.path.join("storage", "models", "room2_sarsa"),
+            requires_npz=True,
+        )
         col1, col2 = st.columns(2)
         train_clicked = col1.button("Train SARSA", type="primary", disabled=not slip_valid)
         if st.session_state.get("sarsa_confirm_reset"):
@@ -1409,7 +1676,7 @@ elif st.session_state.mode == ROOM2_LAB_MODE:
             st.rerun()
         eval_clicked = st.button("Evaluate Policy", disabled=st.session_state.sarsa_result is None or not slip_valid)
         save_clicked = st.button("Save Model", disabled=st.session_state.sarsa_result is None)
-        load_clicked = st.button("Load Model")
+        load_clicked = st.button("Load Saved Run", disabled=selected_sarsa_stem is None)
 
     # Factory
     def make_env():
@@ -1434,9 +1701,11 @@ elif st.session_state.mode == ROOM2_LAB_MODE:
                     )
 
             result = agent.train(progress_callback=_cb, progress_every=1)
+            stem = _auto_run_stem(os.path.join("storage", "models", "room2_sarsa"), "sarsa_auto")
+            save_model(result, stem, reward_config=None, slip_config=slip_cfg, map_grid=ROOM2_GRID)
             st.session_state.sarsa_result = result
             st.session_state.sarsa_train_key = train_key
-            st.session_state.sarsa_model_stem = None
+            st.session_state.sarsa_model_stem = stem
             st.session_state.sarsa_autoload_error = None
             st.session_state.sarsa_autoload_disabled = False
             _clear_sarsa_outputs()
@@ -1448,13 +1717,10 @@ elif st.session_state.mode == ROOM2_LAB_MODE:
 
     # --- Load ---
     if load_clicked:
-        import os
-        model_dir = os.path.join("storage", "models", "room2_sarsa")
-        latest = _preferred_model_stem(model_dir, "showcase_sarsa")
-        if latest:
+        if selected_sarsa_stem:
             try:
-                _load_room2_sarsa_model_into_state(latest, sarsa_config)
-                st.success(f"Loaded model from {latest}")
+                _load_room2_sarsa_model_into_state(selected_sarsa_stem, sarsa_config)
+                st.success(f"Loaded saved run from {selected_sarsa_stem}")
                 st.rerun()
             except ValueError as e:
                 st.error(f"Load failed: {e}")
@@ -1468,6 +1734,7 @@ elif st.session_state.mode == ROOM2_LAB_MODE:
                 summary = evaluate_sarsa_policy(make_env, sarsa_result.q_values, n_episodes=eval_ep)
                 st.session_state.sarsa_eval_summary = summary
                 st.session_state.sarsa_eval_key = eval_key
+                _persist_room2_outputs_if_saved()
                 st.rerun()
 
         # --- Save ---
@@ -1477,6 +1744,8 @@ elif st.session_state.mode == ROOM2_LAB_MODE:
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             stem = os.path.join("storage", "models", "room2_sarsa", f"sarsa_{ts}")
             save_model(sarsa_result, stem, reward_config=None, slip_config=slip_cfg, map_grid=ROOM2_GRID)
+            st.session_state.sarsa_model_stem = stem
+            _persist_room2_outputs_if_saved()
             st.success(f"Model saved to {stem}")
 
         if st.session_state.sarsa_eval_summary is None:
@@ -1488,6 +1757,7 @@ elif st.session_state.mode == ROOM2_LAB_MODE:
                     n_episodes=auto_eval_ep,
                 )
                 st.session_state.sarsa_eval_key = ("auto", train_key, auto_eval_ep)
+                _persist_room2_outputs_if_saved()
         if st.session_state.sarsa_rollout is None:
             with st.spinner("Preparing Room 2 greedy replay..."):
                 st.session_state.sarsa_rollout = rollout_sarsa_policy(
@@ -1497,6 +1767,7 @@ elif st.session_state.mode == ROOM2_LAB_MODE:
                     max_steps=int(max_steps),
                 )
                 st.session_state.sarsa_rollout_key = ("auto", train_key, int(train_seed), int(max_steps))
+                _persist_room2_outputs_if_saved()
 
         # --- Greedy policy ---
         greedy_policy = extract_greedy_policy(sarsa_result.q_values)
@@ -1684,6 +1955,12 @@ elif st.session_state.mode == ROOM3_LAB_MODE:
         if slip_valid:
             _autoload_room3_q_showcase(ql_config)
 
+        st.markdown("**Saved Runs**")
+        selected_ql_stem = _saved_run_selector(
+            "room3",
+            os.path.join("storage", "models", "room3_q_learning"),
+            requires_npz=True,
+        )
         col1, col2 = st.columns(2)
         train_clicked = col1.button("Train Q-Learning", type="primary", disabled=not slip_valid)
         if st.session_state.get("ql_confirm_reset"):
@@ -1706,7 +1983,7 @@ elif st.session_state.mode == ROOM3_LAB_MODE:
                                   disabled=st.session_state.ql_result is None or not slip_valid)
         save_clicked = st.button("Save Model", key="ql_save_btn",
                                   disabled=st.session_state.ql_result is None)
-        load_clicked = st.button("Load Model", key="ql_load_btn")
+        load_clicked = st.button("Load Saved Run", key="ql_load_btn", disabled=selected_ql_stem is None)
 
     def make_ql_env():
         return Room3QLearning(max_steps=max_steps, slip_config=slip_cfg)
@@ -1729,9 +2006,11 @@ elif st.session_state.mode == ROOM3_LAB_MODE:
                     )
 
             result = agent.train(progress_callback=_ql_cb, progress_every=1)
+            stem = _auto_run_stem(os.path.join("storage", "models", "room3_q_learning"), "ql_auto")
+            save_q_model(result, stem, reward_config=None, slip_config=slip_cfg, map_grid=ROOM3_GRID)
             st.session_state.ql_result = result
             st.session_state.ql_train_key = train_key
-            st.session_state.ql_model_stem = None
+            st.session_state.ql_model_stem = stem
             st.session_state.ql_autoload_error = None
             st.session_state.ql_autoload_disabled = False
             _clear_q_learning_outputs()
@@ -1742,13 +2021,10 @@ elif st.session_state.mode == ROOM3_LAB_MODE:
     ql_result = st.session_state.ql_result
 
     if load_clicked:
-        import os
-        model_dir = os.path.join("storage", "models", "room3_q_learning")
-        latest = _preferred_model_stem(model_dir, "showcase_ql")
-        if latest:
+        if selected_ql_stem:
             try:
-                _load_room3_q_model_into_state(latest, ql_config)
-                st.success(f"Loaded model from {latest}")
+                _load_room3_q_model_into_state(selected_ql_stem, ql_config)
+                st.success(f"Loaded saved run from {selected_ql_stem}")
                 st.rerun()
             except ValueError as e:
                 st.error(f"Load failed: {e}")
@@ -1762,6 +2038,7 @@ elif st.session_state.mode == ROOM3_LAB_MODE:
                 summary = evaluate_q_learning_policy(make_ql_env, ql_result.q_values, n_episodes=eval_ep)
                 st.session_state.ql_eval_summary = summary
                 st.session_state.ql_eval_key = eval_key
+                _persist_room3_outputs_if_saved()
                 st.rerun()
 
         if save_clicked:
@@ -1770,6 +2047,8 @@ elif st.session_state.mode == ROOM3_LAB_MODE:
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             stem = os.path.join("storage", "models", "room3_q_learning", f"ql_{ts}")
             save_q_model(ql_result, stem, reward_config=None, slip_config=slip_cfg, map_grid=ROOM3_GRID)
+            st.session_state.ql_model_stem = stem
+            _persist_room3_outputs_if_saved()
             st.success(f"Model saved to {stem}")
 
         if st.session_state.ql_eval_summary is None:
@@ -1781,6 +2060,7 @@ elif st.session_state.mode == ROOM3_LAB_MODE:
                     n_episodes=auto_eval_ep,
                 )
                 st.session_state.ql_eval_key = ("auto", train_key, auto_eval_ep)
+                _persist_room3_outputs_if_saved()
         if st.session_state.ql_rollout is None:
             with st.spinner("Preparing Room 3 greedy replay..."):
                 st.session_state.ql_rollout = rollout_q_learning_policy(
@@ -1790,6 +2070,7 @@ elif st.session_state.mode == ROOM3_LAB_MODE:
                     max_steps=int(max_steps),
                 )
                 st.session_state.ql_rollout_key = ("auto", train_key, int(train_seed), int(max_steps))
+                _persist_room3_outputs_if_saved()
 
         from agents.tabular_utils import extract_deterministic_greedy_policy
         policy_no_key = extract_deterministic_greedy_policy(
@@ -1997,6 +2278,12 @@ elif st.session_state.mode == ROOM4_LAB_MODE:
         )
         _autoload_room4_showcase(approx_config, tc_cfg)
 
+        st.markdown("**Saved Runs**")
+        selected_approx_stem = _saved_run_selector(
+            "room4",
+            os.path.join("storage", "models", "room4_approximate_sarsa"),
+            requires_npz=True,
+        )
         col1, col2 = st.columns(2)
         train_clicked = col1.button("Train Approx SARSA", type="primary")
         if st.session_state.get("approx_confirm_reset"):
@@ -2022,7 +2309,7 @@ elif st.session_state.mode == ROOM4_LAB_MODE:
                                      disabled=st.session_state.approx_result is None)
         save_clicked = st.button("Save Model", key="approx_save_btn",
                                  disabled=st.session_state.approx_result is None)
-        load_clicked = st.button("Load Model", key="approx_load_btn")
+        load_clicked = st.button("Load Saved Run", key="approx_load_btn", disabled=selected_approx_stem is None)
 
     def make_approx_env(start_mode=None, max_steps=None):
         sm = start_mode if start_mode is not None else StartMode(approx_start_mode)
@@ -2053,9 +2340,20 @@ elif st.session_state.mode == ROOM4_LAB_MODE:
                     )
 
             result = agent.train(progress_callback=_approx_cb, progress_every=1)
+            stem = _auto_run_stem(
+                os.path.join("storage", "models", "room4_approximate_sarsa"),
+                "approx_auto",
+            )
+            save_approximate_model(
+                result,
+                stem,
+                tile_coding_config=tc_cfg,
+                motion_config=Room4MotionConfig(),
+                reward_config=ContinuousRewardConfig(distance_progress_scale=approx_progress_scale),
+            )
             st.session_state.approx_result = result
             st.session_state.approx_train_key = train_key
-            st.session_state.approx_model_stem = None
+            st.session_state.approx_model_stem = stem
             st.session_state.approx_autoload_error = None
             st.session_state.approx_autoload_disabled = False
             _clear_room4_outputs()
@@ -2066,13 +2364,10 @@ elif st.session_state.mode == ROOM4_LAB_MODE:
     approx_result = st.session_state.approx_result
 
     if load_clicked:
-        import os
-        model_dir = os.path.join("storage", "models", "room4_approximate_sarsa")
-        latest = _preferred_model_stem(model_dir, "showcase_approx")
-        if latest:
+        if selected_approx_stem:
             try:
-                _load_room4_model_into_state(latest, approx_config, tc_cfg)
-                st.success(f"Loaded model from {latest}")
+                _load_room4_model_into_state(selected_approx_stem, approx_config, tc_cfg)
+                st.success(f"Loaded saved run from {selected_approx_stem}")
                 st.rerun()
             except ValueError as e:
                 st.error(f"Load failed: {e}")
@@ -2093,6 +2388,7 @@ elif st.session_state.mode == ROOM4_LAB_MODE:
                 )
                 st.session_state.approx_eval_fixed = ev
                 st.session_state.approx_eval_fixed_key = eval_key_fixed
+                _persist_room4_outputs_if_saved()
                 st.rerun()
 
         # --- Eval generalization ---
@@ -2105,6 +2401,7 @@ elif st.session_state.mode == ROOM4_LAB_MODE:
                 )
                 st.session_state.approx_eval_gen = ev_gen
                 st.session_state.approx_eval_gen_key = eval_key_gen
+                _persist_room4_outputs_if_saved()
                 st.rerun()
 
         # --- Save ---
@@ -2116,6 +2413,8 @@ elif st.session_state.mode == ROOM4_LAB_MODE:
             save_approximate_model(approx_result, stem, tile_coding_config=tc_cfg,
                                    motion_config=Room4MotionConfig(),
                                    reward_config=ContinuousRewardConfig(distance_progress_scale=approx_progress_scale))
+            st.session_state.approx_model_stem = stem
+            _persist_room4_outputs_if_saved()
             st.success(f"Model saved to {stem}")
 
         if (
@@ -2138,6 +2437,7 @@ elif st.session_state.mode == ROOM4_LAB_MODE:
                         max_steps=auto_max_steps,
                     )
                     st.session_state.approx_eval_fixed_key = ("auto", train_key, auto_eval_ep, "fixed")
+                    _persist_room4_outputs_if_saved()
                 if st.session_state.approx_eval_gen is None:
                     st.session_state.approx_eval_gen = evaluate_approximate_policy(
                         lambda: make_approx_env(start_mode=StartMode.RANDOM_LOWER_LEFT, max_steps=auto_max_steps),
@@ -2149,6 +2449,7 @@ elif st.session_state.mode == ROOM4_LAB_MODE:
                         max_steps=auto_max_steps,
                     )
                     st.session_state.approx_eval_gen_key = ("auto", train_key, auto_eval_ep, "gen")
+                    _persist_room4_outputs_if_saved()
                 if st.session_state.approx_rollout is None:
                     q_func = _approx_q_function_from_weights(approx_result.weights, effective_tc_cfg, auto_motion_cfg)
                     st.session_state.approx_rollout = rollout_approximate_policy(
@@ -2158,6 +2459,7 @@ elif st.session_state.mode == ROOM4_LAB_MODE:
                         max_steps=auto_max_steps,
                     )
                     st.session_state.approx_rollout_key = ("auto", train_key, int(train_seed), auto_max_steps)
+                    _persist_room4_outputs_if_saved()
 
         # --- Tabs ---
         t1, t2, t3, t4, t5, t6, t7 = st.tabs([
@@ -2420,6 +2722,12 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
         )
         _autoload_room5_showcase(dqn_config)
 
+        st.markdown("**Saved Runs**")
+        selected_dqn_stem = _saved_run_selector(
+            "room5",
+            os.path.join("storage", "models", "room5_dqn"),
+            requires_npz=True,
+        )
         col1, col2 = st.columns(2)
         dqn_train_clicked = col1.button("Train DQN", type="primary", key="dqn_train_btn")
         if st.session_state.get("dqn_confirm_reset"):
@@ -2451,7 +2759,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                                         disabled=st.session_state.dqn_result is None)
         dqn_save_clicked = st.button("Save Model", key="dqn_save_btn",
                                      disabled=st.session_state.dqn_result is None)
-        dqn_load_clicked = st.button("Load Showcase/Latest Model", key="dqn_load_btn")
+        dqn_load_clicked = st.button("Load Saved Run", key="dqn_load_btn", disabled=selected_dqn_stem is None)
 
     obstacle_max = max(int(dqn_min_obs), int(dqn_max_obs))
     dqn_reward_cfg = Room5RewardConfig(distance_progress_scale=float(dqn_progress_scale))
@@ -2491,6 +2799,8 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
 
             result = agent.train(progress_callback=_dqn_cb, progress_every=1)
             safe_result = make_dqn_result_session_safe(result)
+            stem = _auto_run_stem(os.path.join("storage", "models", "room5_dqn"), "dqn_auto")
+            save_dqn_model(safe_result, stem, environment_factory=lambda: make_room5_env())
             st.session_state.dqn_result = safe_result
             st.session_state.dqn_network = DQNNetwork.from_weights(dict(safe_result.weights))
             st.session_state.dqn_meta = None
@@ -2519,7 +2829,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                 bool(dqn_fixed_layout),
                 float(dqn_progress_scale),
             )
-            st.session_state.dqn_model_stem = None
+            st.session_state.dqn_model_stem = stem
             st.session_state.dqn_result_source = "live"
             st.session_state.dqn_autoload_disabled = False
             _clear_room5_outputs()
@@ -2528,16 +2838,12 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
             st.rerun()
 
     if dqn_load_clicked:
-        import os
-
-        model_dir = os.path.join("storage", "models", "room5_dqn")
-        stem = _preferred_model_stem(model_dir, "showcase_dqn")
-        if stem is None:
+        if selected_dqn_stem is None:
             st.info("No Bonus Room model found. Run training here or use tools/generate_local_models.py --showcase.")
         else:
             try:
-                _load_room5_model_into_state(stem, dqn_config)
-                st.success(f"Loaded model from {stem}")
+                _load_room5_model_into_state(selected_dqn_stem, dqn_config)
+                st.success(f"Loaded saved run from {selected_dqn_stem}")
                 st.rerun()
             except ValueError as e:
                 st.error(f"Load failed: {e}")
@@ -2561,6 +2867,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                     max_steps=int(dqn_max_steps),
                     category="fixed_validation_layout",
                 )
+                _persist_room5_outputs_if_saved()
                 st.rerun()
 
         if dqn_eval_random_clicked:
@@ -2574,6 +2881,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                     max_steps=int(dqn_max_steps),
                     category="seeded_random_layouts",
                 )
+                _persist_room5_outputs_if_saved()
                 st.rerun()
 
         if dqn_eval_unseen_clicked:
@@ -2587,6 +2895,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                     max_steps=int(dqn_max_steps),
                     category="unseen_random_layouts",
                 )
+                _persist_room5_outputs_if_saved()
                 st.rerun()
 
         if dqn_rollout_clicked:
@@ -2601,6 +2910,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                 st.session_state.dqn_rollout_key = (
                     int(dqn_rollout_seed), int(dqn_rollout_layout_seed), dqn_fixed_layout,
                 )
+                _persist_room5_outputs_if_saved()
                 st.rerun()
 
         if dqn_save_clicked:
@@ -2610,6 +2920,8 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             stem = os.path.join("storage", "models", "room5_dqn", f"dqn_{ts}")
             save_dqn_model(dqn_result, stem, environment_factory=lambda: make_room5_env())
+            st.session_state.dqn_model_stem = stem
+            _persist_room5_outputs_if_saved()
             st.success(f"Model saved to {stem}")
 
         should_auto_prepare_dqn_outputs = (
@@ -2634,6 +2946,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                         max_steps=int(dqn_max_steps),
                         category="fixed_validation_layout",
                     )
+                    _persist_room5_outputs_if_saved()
                 if st.session_state.dqn_eval_random is None:
                     st.session_state.dqn_eval_random = evaluate_dqn_policy(
                         lambda: make_room5_env(fixed_layout=False),
@@ -2644,6 +2957,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                         max_steps=int(dqn_max_steps),
                         category="seeded_random_layouts",
                     )
+                    _persist_room5_outputs_if_saved()
                 if st.session_state.dqn_eval_unseen is None:
                     st.session_state.dqn_eval_unseen = evaluate_dqn_policy(
                         lambda: make_room5_env(fixed_layout=False),
@@ -2654,6 +2968,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                         max_steps=int(dqn_max_steps),
                         category="unseen_random_layouts",
                     )
+                    _persist_room5_outputs_if_saved()
                 if st.session_state.dqn_rollout is None:
                     st.session_state.dqn_rollout = rollout_dqn_policy(
                         lambda: make_room5_env(fixed_layout=dqn_fixed_layout),
@@ -2665,6 +2980,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                     st.session_state.dqn_rollout_key = (
                         int(dqn_rollout_seed), int(dqn_rollout_layout_seed), dqn_fixed_layout,
                     )
+                    _persist_room5_outputs_if_saved()
 
     dqn_meta = st.session_state.get("dqn_meta")
     if dqn_meta:

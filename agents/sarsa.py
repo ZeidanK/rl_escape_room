@@ -26,6 +26,7 @@ from core.types import (
     TrajectoryStep,
     TrainingEpisodeMetrics,
 )
+from training.result_persistence import serialize_sarsa_metrics
 
 # Backward-compatible aliases
 select_action = select_epsilon_greedy_action
@@ -392,6 +393,7 @@ def _build_metadata(
             "final_success_rate": float(np.mean([1.0 if m.success else 0.0 for m in recent_metrics])) if recent_metrics else 0.0,
             "snapshot_episodes": sorted(result.snapshots.keys()),
         },
+        "training_metrics": serialize_sarsa_metrics(result.metrics),
     }
 
 
