@@ -697,6 +697,7 @@ from game.room1_game import render_room1_game
 from game.room2_game import render_room2_game
 from game.room3_game import render_room3_game
 from game.room4_game import render_room4_game
+from game.room5_game import render_room5_game
 from game.theme import render_global_styles
 from game.achievements import AchievementTracker
 from game.canvas_renderer import (
@@ -713,18 +714,20 @@ from game.constants import (
     MANUAL_MODE_LABEL,
     MODE_SELECTOR_KEY,
     PENDING_MODE_SELECTOR_KEY,
+    PENDING_SHOWCASE_ROOM_SELECTOR_KEY,
     ROOM1_LAB_MODE,
     ROOM2_LAB_MODE,
     ROOM3_LAB_MODE,
     ROOM4_LAB_MODE,
     ROOM5_BONUS_MODE,
     SHOWCASE_MODE,
+    SHOWCASE_ROOM_SELECTOR_KEY,
 )
 from game.presentation import (
     apply_query_params_once,
     final_summary_success,
+    go_to_showcase_room,
     render_assignment_proof,
-    render_campaign_results,
     render_model_provenance,
     render_public_project_links,
     read_json,
@@ -787,6 +790,11 @@ if PENDING_MODE_SELECTOR_KEY in st.session_state:
         if MODE_SELECTOR_KEY in st.session_state:
             del st.session_state[MODE_SELECTOR_KEY]
 
+if PENDING_SHOWCASE_ROOM_SELECTOR_KEY in st.session_state:
+    del st.session_state[PENDING_SHOWCASE_ROOM_SELECTOR_KEY]
+    if SHOWCASE_ROOM_SELECTOR_KEY in st.session_state:
+        del st.session_state[SHOWCASE_ROOM_SELECTOR_KEY]
+
 # Custom sidebar with categorized radio buttons
 render_html(
     '<div style="font-size:0.75em;color:#616161;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Navigation</div>',
@@ -841,6 +849,43 @@ if sidebar_effective != mode and not (sidebar_effective == LAB_LABEL and mode in
 
 mode = st.session_state.mode
 
+if mode == GAME_LABEL:
+    showcase_labels = [
+        "Overview",
+        "Room 1 - DP",
+        "Room 2 - SARSA",
+        "Room 3 - Q-Learning",
+        "Room 4 - Function Approximation",
+        "Room 5 - Dynamic Obstacles",
+    ]
+    showcase_targets = {
+        "Overview": None,
+        "Room 1 - DP": "room1",
+        "Room 2 - SARSA": "room2",
+        "Room 3 - Q-Learning": "room3",
+        "Room 4 - Function Approximation": "room4",
+        "Room 5 - Dynamic Obstacles": "room5",
+    }
+    valid_showcase_rooms = {room for room in showcase_targets.values() if room is not None}
+    current_game_room = st.session_state.get("game_room")
+    if current_game_room not in valid_showcase_rooms:
+        st.session_state.game_room = None
+        current_game_room = None
+    current_showcase_label = next(
+        (label for label, target in showcase_targets.items() if target == current_game_room),
+        "Overview",
+    )
+    showcase_selection = st.sidebar.selectbox(
+        "Showcase Room",
+        showcase_labels,
+        index=showcase_labels.index(current_showcase_label),
+        key=SHOWCASE_ROOM_SELECTOR_KEY,
+    )
+    showcase_target = showcase_targets[showcase_selection]
+    if showcase_target != current_game_room:
+        go_to_showcase_room(showcase_target)
+    mode = st.session_state.mode
+
 if mode in LAB_SECTION_MODES:
     lab_labels = [
         "Overview",
@@ -848,7 +893,7 @@ if mode in LAB_SECTION_MODES:
         "Room 2 - SARSA",
         "Room 3 - Q-Learning",
         "Room 4 - Function Approximation",
-        "Bonus Room 5 - Dynamic Obstacles",
+        "Room 5 - Dynamic Obstacles",
     ]
     lab_targets = {
         "Overview": LAB_LABEL,
@@ -856,7 +901,7 @@ if mode in LAB_SECTION_MODES:
         "Room 2 - SARSA": ROOM2_LAB_MODE,
         "Room 3 - Q-Learning": ROOM3_LAB_MODE,
         "Room 4 - Function Approximation": ROOM4_LAB_MODE,
-        "Bonus Room 5 - Dynamic Obstacles": ROOM5_BONUS_MODE,
+        "Room 5 - Dynamic Obstacles": ROOM5_BONUS_MODE,
     }
     current_lab_label = next(
         (label for label, target in lab_targets.items() if target == mode),
@@ -882,8 +927,8 @@ AchievementTracker.from_session_state()
 # MODE: Escape Room Showcase
 # ============================================================
 if st.session_state.mode == GAME_LABEL:
-    # Campaign-style showcase: route to a room-specific game view, or the home
-    # selection screen when no room is active.
+    # Direct showcase routing: render a selected room, or the room-selection
+    # screen when no room is active.
     render_html(render_global_styles())
     game_room = st.session_state.get("game_room")
     if game_room == "room1":
@@ -894,12 +939,8 @@ if st.session_state.mode == GAME_LABEL:
         render_room3_game()
     elif game_room == "room4":
         render_room4_game()
-    elif game_room == "campaign_results":
-        render_campaign_results()
     elif game_room == "room5":
-        st.session_state.game_room = None
-        st.session_state.mode = ROOM5_BONUS_MODE
-        st.rerun()
+        render_room5_game()
     else:
         render_home_page()
 
@@ -922,7 +963,7 @@ elif st.session_state.mode == ABOUT_LABEL:
     | 4 — Momentum Chamber | Approximate SARSA | Linear function approximation with tile coding |
     | 5 - Dynamic Obstacles | NumPy DQN | Replay buffer + target network in continuous space |
 
-    The **Escape Room Showcase** presents the agents as a campaign-style game with animated
+    The **Escape Room Showcase** presents each room as a direct animated
     replay, while the **Learning Laboratory** provides full analysis tools including training
     curves, policy visualization, Q-value inspection, and algorithm comparison.
     """)
@@ -933,7 +974,7 @@ elif st.session_state.mode == ABOUT_LABEL:
     # Screenshots
     st.markdown("### Screenshots")
     screenshots = [
-        ("docs/screenshots/home.png", "Home / Campaign Selection"),
+        ("docs/screenshots/home.png", "Home / Room Selection"),
         ("docs/screenshots/room1_value_policy.png", "Room 1 - Value Iteration Convergence & Policy"),
         ("docs/screenshots/room2_training.png", "Room 2 - SARSA Training Progress"),
         ("docs/screenshots/room3_policy_no_key.png", "Room 3 - Q-Learning Policy (No Key)"),
@@ -2295,7 +2336,7 @@ elif st.session_state.mode == ROOM4_LAB_MODE:
 # MODE: Room 5 — Dynamic Obstacles
 # ============================================================
 elif st.session_state.mode == ROOM5_BONUS_MODE:
-    st.header("Bonus Room - Dynamic Obstacles")
+    st.header("Room 5 - Dynamic Obstacles")
     st.caption(
         "Continuous 10x10m escape room with seeded 0.5m square obstacles, "
         "local observation records, replay buffer DQN updates, and separate fixed/random/unseen layout evaluation."

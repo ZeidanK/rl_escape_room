@@ -18,11 +18,8 @@ from game.canvas_renderer import render_grid_canvas, render_vi_animation_frame
 from game.hud import render_hud
 from game.episode_replay import build_replay_from_rollout, render_replay_bar, get_current_step
 from game.explain_panel import render_explain_panel, get_algorithm_explanation
-from game.models import RoomTransition
-from game.home_page import ROOM_DEFS
-from game.achievements import AchievementTracker
-from game.room_transitions import render_transition_content
-from game.presentation import go_to_showcase_room, render_assignment_proof, render_open_lab_button
+from game.game_view_common import check_and_unlock_achievements, render_back_button, render_room_transition
+from game.presentation import render_assignment_proof, render_open_lab_button
 
 
 def _compute_vi_frames(agent: ValueIterationAgent, max_frames: int = 20) -> list[dict[str, object]]:
@@ -105,13 +102,9 @@ def render_room1_game():
     )
     render_assignment_proof("room1")
     render_open_lab_button("room1", key="r1g_open_lab")
+    render_back_button("r1g_back")
 
     with st.sidebar:
-        if st.button("\u2190 Back to Room Selection", key="r1g_back", width="stretch"):
-            st.session_state.game_room = None
-            st.session_state.mode = "\U0001f3ae Escape Room Showcase"
-            st.rerun()
-
         st.header("Room 1 Controls")
         gamma = st.slider("Discount (\u03b3)", 0.50, 0.99, 0.95, step=0.01, key="r1g_gamma",
                           help="How much future rewards are valued vs immediate rewards. Higher = more far-sighted.")
@@ -433,61 +426,10 @@ def render_room1_game():
                 st.rerun()
 
     # Room Transition Overlay — show when replay completes successfully
-    if replay and replay.success and replay.current_index >= len(replay.steps) - 1:
-        # Unlock achievements based on replay data
-        tracker = AchievementTracker.from_session_state()
-        newly_unlocked: list = []
-
-        # FIRST_ESCAPE
-        ach = tracker.try_unlock_first_escape()
-        if ach:
-            newly_unlocked.append(ach)
-
-        # ICE_MASTER - no unintended slips
-        slip_count = sum(1 for s in replay.steps if s.slipped)
-        ach = tracker.try_unlock_ice_master(slip_count)
-        if ach:
-            newly_unlocked.append(ach)
-
-        # SPEED_RUNNER - new best time
-        # Check if this is a new best for room1
-        room_status = None
-        for room_def in ROOM_DEFS:
-            if room_def.room_id == "room1":
-                room_status = room_def.status
-                break
-        is_new_best = room_status is not None and (
-            room_status.best_steps is None or replay.total_steps < room_status.best_steps
-        )
-        ach = tracker.try_unlock_speed_runner(is_new_best)
-        if ach:
-            newly_unlocked.append(ach)
-
-        # Show achievement toasts using Streamlit's native toast
-        for ach in newly_unlocked:
-            st.toast(f"{ach.emoji} {ach.name}: {ach.description}")
-
-        # Build and render transition
-        transition = RoomTransition(
-            room_id="room1",
-            success=True,
-            steps=replay.total_steps,
-            total_reward=replay.total_reward,
-            new_best=is_new_best,
-            message="The frozen maze shatters behind you. The path forward clears.",
-            achievements_unlocked=tuple(newly_unlocked),
-        )
-        theme = get_theme("room1")
-        transition_html, _ = render_transition_content(transition, theme.primary)
-        render_html(f'<div class="transition-overlay">{transition_html}</div>')
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Continue to Laser Corridor", key="r1g_continue", type="primary"):
-                go_to_showcase_room("room2")
-        with col2:
-            if st.button("Return to Room Selection", key="r1g_return"):
-                go_to_showcase_room(None)
+    achievements = check_and_unlock_achievements("room1", replay)
+    for ach in achievements:
+        st.toast(f"{ach.emoji} {ach.name}: {ach.description}")
+    render_room_transition("room1", replay, achievements)
 
     render_html("""
     <div class="game-legend">

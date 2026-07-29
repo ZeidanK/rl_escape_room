@@ -74,7 +74,7 @@ class RoomUnlockStatus:
 
 @dataclass(frozen=True)
 class GameRoomState:
-    # Metadata shown on the campaign home cards.
+    # Metadata shown on the showcase room cards.
     room_id: str
     room_name: str
     room_index: int

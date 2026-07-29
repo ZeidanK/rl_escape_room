@@ -144,6 +144,32 @@ ROOM_THEMES: dict[str, RoomTheme] = {
 .room4-agent { filter: drop-shadow(0 0 6px #7c4dff); }
 """,
     ),
+    "room5": RoomTheme(
+        room_id="room5",
+        name="Obstacle Lab",
+        primary="#14b8a6",
+        secondary="#0f766e",
+        accent="#ccfbf1",
+        bg_dark="#042f2e",
+        bg_medium="#0f3f3c",
+        bg_light="#115e59",
+        text="#e0f2f1",
+        text_muted="#99f6e4",
+        cell_empty="#0f172a",
+        cell_wall="#475569",
+        cell_start="#38bdf8",
+        cell_exit="#22c55e",
+        cell_slippery="#14b8a6",
+        cell_trap="#f97316",
+        cell_key="#facc15",
+        cell_locked="#ef4444",
+        agent_color="#67e8f9",
+        success_color="#86efac",
+        failure_color="#fb7185",
+        css_custom="""
+.room5-obstacle { filter: drop-shadow(0 0 5px rgba(20,184,166,0.45)); }
+""",
+    ),
 }
 
 

@@ -12,7 +12,7 @@ from game.achievements import AchievementTracker
 from game.room_transitions import render_transition_content
 from game.home_page import ROOM_DEFS
 from game.constants import SHOWCASE_MODE
-from game.presentation import go_to_showcase_room
+from game.presentation import go_to_lab, go_to_showcase_room
 
 
 def _iter_replay_steps(replay) -> Sequence:
@@ -33,9 +33,12 @@ def _replay_step_count(replay) -> int:
 def render_back_button(key: str, target_mode: str = SHOWCASE_MODE, target_room: str | None = None):
     """Render a back button to exit the game view."""
     if st.button("\u2190 Back to Room Selection", key=key, width="stretch"):
-        st.session_state.game_room = target_room
-        st.session_state.mode = target_mode
-        st.rerun()
+        if target_mode == SHOWCASE_MODE:
+            go_to_showcase_room(target_room)
+        else:
+            st.session_state.game_room = target_room
+            st.session_state.mode = target_mode
+            st.rerun()
 
 
 def check_and_unlock_achievements(room_id: str, replay) -> list:
@@ -134,20 +137,13 @@ def render_room_transition(room_id: str, replay, achievements: list):
     transition_html, _ = render_transition_content(transition, theme.primary)
     render_html(f'<div class="transition-overlay">{transition_html}</div>')
     
-    next_rooms = {
-        "room1": ("room2", "Continue to Laser Corridor"),
-        "room2": ("room3", "Continue to Key Vault"),
-        "room3": ("room4", "Continue to Momentum Chamber"),
-        "room4": ("campaign_results", "View Campaign Results"),
-    }
-    next_room, next_label = next_rooms.get(room_id, (None, "Return to Room Selection"))
     col1, col2 = st.columns(2)
     with col1:
-        if st.button(next_label, key=f"{room_id}_continue", type="primary"):
-            go_to_showcase_room(next_room)
-    with col2:
-        if st.button("Return to Room Selection", key=f"{room_id}_return"):
+        if st.button("Back to Room Selection", key=f"{room_id}_return", type="primary"):
             go_to_showcase_room(None)
+    with col2:
+        if st.button("Open Lab Analysis", key=f"{room_id}_transition_lab"):
+            go_to_lab(room_id)
     
     return True
 

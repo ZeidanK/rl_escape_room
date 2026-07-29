@@ -20,6 +20,7 @@ LAB_ROOM_MODES = {
     "room2": ROOM2_LAB_MODE,
     "room3": ROOM3_LAB_MODE,
     "room4": ROOM4_LAB_MODE,
+    "room5": ROOM5_BONUS_MODE,
 }
 
 # Grid constants
@@ -37,6 +38,8 @@ MIN_REPLAY_SPEED = 0.5
 # UI constants
 MODE_SELECTOR_KEY = "mode_selector"
 PENDING_MODE_SELECTOR_KEY = "pending_mode_selector"
+SHOWCASE_ROOM_SELECTOR_KEY = "showcase_room_selector"
+PENDING_SHOWCASE_ROOM_SELECTOR_KEY = "pending_showcase_room_selector"
 DEFAULT_GAMMA = 0.95
 DEFAULT_TOLERANCE = 1e-6
 DEFAULT_MAX_ITERATIONS = 10000

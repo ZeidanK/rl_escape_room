@@ -1,18 +1,17 @@
-"""Game-style home page with room cards and campaign progression."""
+"""Game-style home page with direct room selection."""
 
 import html as html_mod
 
 import streamlit as st
-from game.constants import ROOM5_BONUS_MODE
 from game.html_rendering import normalize_html, render_html
 from game.theme import difficulty_badge
 from game.models import GameRoomState, RoomUnlockStatus, AchievementId
 from game.achievements import AchievementTracker, ALL_ACHIEVEMENTS
-from game.presentation import go_to_lab, go_to_mode, go_to_showcase_room
+from game.presentation import go_to_lab, go_to_showcase_room
 
 
-# Campaign-card metadata.  The rooms are currently all unlocked, but the status
-# structure allows progression rules or best-run stats to be added later.
+# Room-card metadata. The rooms are currently all unlocked, but the status
+# structure allows best-run stats to be added later.
 ROOM_DEFS = [
     GameRoomState(
         room_id="room1",
@@ -147,7 +146,7 @@ def render_home_page():
     render_html("""
     <div class="home-title">
         <h1>RL ESCAPE ROOM</h1>
-        <p>Can five learning agents escape five increasingly difficult chambers?</p>
+        <p>Five rooms, five agents, one direct showcase.</p>
     </div>
     """)
 
@@ -157,27 +156,8 @@ def render_home_page():
     </div>
     """)
 
-    render_html("""
-    <div style="display:flex;justify-content:center;gap:8px;margin-bottom:24px;">
-        <span style="background:#1b5e20;color:#76ff03;padding:2px 12px;border-radius:12px;font-size:0.75em;">Room 1</span>
-        <span style="color:#444;">\u2192</span>
-        <span style="background:#e65100;color:#ffd740;padding:2px 12px;border-radius:12px;font-size:0.75em;">Room 2</span>
-        <span style="color:#444;">\u2192</span>
-        <span style="background:#b71c1c;color:#ff5252;padding:2px 12px;border-radius:12px;font-size:0.75em;">Room 3</span>
-        <span style="color:#444;">\u2192</span>
-        <span style="background:#4a148c;color:#ea80fc;padding:2px 12px;border-radius:12px;font-size:0.75em;">Room 4</span>
-        <span style="color:#444;">\u2192</span>
-        <span style="background:#0f766e;color:#5eead4;padding:2px 12px;border-radius:12px;font-size:0.75em;">Bonus</span>
-    </div>
-    """)
-
-    nav_col1, nav_col2 = st.columns([1, 1])
-    with nav_col1:
-        if st.button("Start Campaign", width="stretch", type="primary"):
-            go_to_showcase_room("room1")
-    with nav_col2:
-        if st.button("Open Learning Laboratory", width="stretch"):
-            go_to_lab(None)
+    if st.button("Open Learning Laboratory", width="stretch"):
+        go_to_lab(None)
 
     render_html("<hr style='border-color:#333;margin:24px 0;'>")
 
@@ -186,9 +166,9 @@ def render_home_page():
     unlocked_list = tracker.get_unlocked()
     unlocked_ids = {a.id for a in unlocked_list}
 
-    st.markdown("### Required Campaign")
+    st.markdown("### Rooms")
     cols = st.columns(2)
-    for i, room in enumerate(ROOM_DEFS[:4]):
+    for i, room in enumerate(ROOM_DEFS):
         with cols[i % 2]:
             locked = not room.status.unlocked
             card_class = "room-card" + (" room-card-locked" if locked else "")
@@ -207,18 +187,6 @@ def render_home_page():
             disabled = locked
             if st.button(btn_label, key=f"enter_{room.room_id}", disabled=disabled, width="stretch"):
                 go_to_showcase_room(room.room_id)
-
-    st.markdown("### Bonus Room - Dynamic Obstacles")
-    bonus_room = ROOM_DEFS[4]
-    render_html(_render_room_card_html(
-        bonus_room,
-        card_class="room-card",
-        emoji=_get_room_emoji(bonus_room.room_index),
-        diff_badge=difficulty_badge(bonus_room.difficulty),
-        unlocked_ids=unlocked_ids,
-    ))
-    if st.button("Open Bonus Room", key="enter_bonus_room5", width="stretch"):
-        go_to_mode(ROOM5_BONUS_MODE, view="bonus")
 
     render_html("<hr style='border-color:#333;margin:24px 0;'>")
     st.markdown("### Achievements")

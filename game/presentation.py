@@ -17,6 +17,7 @@ from game.constants import (
     LEGACY_HOME_MODE,
     MANUAL_MODE_LABEL,
     PENDING_MODE_SELECTOR_KEY,
+    PENDING_SHOWCASE_ROOM_SELECTOR_KEY,
     PUBLIC_APP_URL,
     ROOM5_BONUS_MODE,
     SHOWCASE_MODE,
@@ -117,13 +118,13 @@ def apply_query_params_once() -> None:
         view = view.lower()
         if view == "showcase":
             st.session_state.mode = SHOWCASE_MODE
-            st.session_state.game_room = room if room in {"room1", "room2", "room3", "room4"} else None
+            st.session_state.game_room = room if room in {"room1", "room2", "room3", "room4", "room5"} else None
         elif view == "lab":
             st.session_state.mode = LAB_ROOM_MODES.get(room or "", LAB_MODE)
             st.session_state.game_room = None
         elif view == "bonus":
-            st.session_state.mode = ROOM5_BONUS_MODE
-            st.session_state.game_room = None
+            st.session_state.mode = SHOWCASE_MODE
+            st.session_state.game_room = "room5"
         elif view == "comparison":
             st.session_state.mode = COMPARISON_MODE
             st.session_state.game_room = None
@@ -144,6 +145,7 @@ def go_to_showcase_room(room_id: str | None = None) -> None:
     st.session_state.mode = SHOWCASE_MODE
     st.session_state.game_room = room_id
     st.session_state[PENDING_MODE_SELECTOR_KEY] = SHOWCASE_MODE
+    st.session_state[PENDING_SHOWCASE_ROOM_SELECTOR_KEY] = True
     _set_query_params(view="showcase", room=room_id)
     st.rerun()
 
@@ -289,40 +291,6 @@ def final_summary_success(room_name: str) -> float | None:
 def render_public_project_links() -> None:
     st.markdown(f"**Public Streamlit app:** {PUBLIC_APP_URL}")
     st.markdown(f"**GitHub:** {GITHUB_URL}")
-
-
-def render_campaign_results() -> None:
-    st.header("Required Campaign Results")
-    st.caption("Rooms 1-4 are the required assignment path. Room 5 is kept separate as optional bonus work.")
-    render_public_project_links()
-
-    rows = [r for r in load_final_summary_rows() if r.get("room") in {"Room 1", "Room 2", "Room 3", "Room 4"}]
-    if rows:
-        table = [
-            {
-                "Room": r.get("room"),
-                "Algorithm": r.get("algorithm"),
-                "Best Config": r.get("best_config_id"),
-                "Success Rate": f"{float(r.get('success_rate_mean', 0.0)):.1%}",
-                "Mean Return": r.get("mean_return") or "N/A",
-                "Mean Steps": r.get("mean_successful_steps") or "N/A",
-            }
-            for r in rows
-        ]
-        st.dataframe(table, width="stretch", hide_index=True)
-    else:
-        st.info("Final summary data is not available.")
-
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        if st.button("Return to Room Selection", key="campaign_results_return"):
-            go_to_showcase_room(None)
-    with c2:
-        if st.button("Open Algorithm Comparison", key="campaign_results_comparison"):
-            go_to_mode(COMPARISON_MODE, view="comparison")
-    with c3:
-        if st.button("Open Learning Laboratory", key="campaign_results_lab"):
-            go_to_lab(None)
 
 
 def read_json(path: str | os.PathLike[str]) -> dict[str, Any] | None:

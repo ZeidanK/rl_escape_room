@@ -35,6 +35,14 @@ def _select_lab_room(at: AppTest, label: str) -> AppTest:
     raise AssertionError("Learning Laboratory Room selectbox not found")
 
 
+def _select_showcase_room(at: AppTest, label: str) -> AppTest:
+    at.sidebar.radio[0].set_value("Escape Room Showcase").run()
+    for selectbox in at.sidebar.selectbox:
+        if selectbox.label == "Showcase Room":
+            return selectbox.set_value(label).run()
+    raise AssertionError("Showcase Room selectbox not found")
+
+
 def _render_room2_game():
     from game.room2_game import render_room2_game
     render_room2_game()
@@ -74,6 +82,13 @@ def _click_button_by_label(at: AppTest, label: str) -> AppTest:
         if button.label == label:
             return button.click().run()
     raise AssertionError(f"button not found: {label}")
+
+
+def _click_button_by_key(at: AppTest, key: str) -> AppTest:
+    for button in at.button:
+        if getattr(button, "key", None) == key:
+            return button.click().run()
+    raise AssertionError(f"button not found: {key}")
 
 
 def _set_number_by_label(at: AppTest, label: str, value) -> AppTest:
@@ -200,19 +215,54 @@ def test_home_learning_laboratory_button_opens_lab_view():
     assert at.session_state["mode_selector"] == "Learning Laboratory"
 
 
-def test_start_campaign_opens_room1_and_bonus_is_separate():
+def test_home_page_uses_uniform_room_selection_without_start_campaign():
     at = AppTest.from_file(str(APP_PATH), default_timeout=60)
     at.run()
 
-    _assert_markdown_contains(at, "Required Campaign")
-    _assert_markdown_contains(at, "Bonus Room - Dynamic Obstacles")
-    assert any(button.label == "Open Bonus Room" for button in at.button)
+    _assert_markdown_contains(at, "Rooms")
+    assert not any(button.label == "Start Campaign" for button in at.button)
+    assert not any(button.label == "Open Bonus Room" for button in at.button)
+    assert sum(1 for button in at.button if button.label == "Enter Room") == 5
 
-    at = _click_button_by_label(at, "Start Campaign")
+    at = _click_button_by_key(at, "enter_room5")
 
     assert len(at.exception) == 0
     assert at.session_state["mode"] == "Escape Room Showcase"
-    assert at.session_state["game_room"] == "room1"
+    assert at.session_state["game_room"] == "room5"
+
+
+def test_showcase_sidebar_selects_each_room_without_lab_redirect():
+    room_cases = [
+        ("Overview", None),
+        ("Room 1 - DP", "room1"),
+        ("Room 2 - SARSA", "room2"),
+        ("Room 3 - Q-Learning", "room3"),
+        ("Room 4 - Function Approximation", "room4"),
+        ("Room 5 - Dynamic Obstacles", "room5"),
+    ]
+    for label, room_id in room_cases:
+        at = AppTest.from_file(str(APP_PATH), default_timeout=90)
+        at.run()
+        at = _select_showcase_room(at, label)
+
+        assert len(at.exception) == 0
+        assert at.session_state["mode"] == "Escape Room Showcase"
+        assert at.session_state["game_room"] == room_id
+        assert at.session_state["mode_selector"] == "Escape Room Showcase"
+
+
+def test_room1_back_button_returns_to_showcase_overview():
+    at = AppTest.from_file(str(APP_PATH), default_timeout=60)
+    at.session_state["mode"] = "Escape Room Showcase"
+    at.session_state["game_room"] = "room1"
+    at.run()
+
+    at = _click_button_by_label(at, "\u2190 Back to Room Selection")
+
+    assert len(at.exception) == 0
+    assert at.session_state["mode"] == "Escape Room Showcase"
+    assert at.session_state["game_room"] is None
+    assert at.session_state["mode_selector"] == "Escape Room Showcase"
 
 
 def test_room2_analysis_mode_auto_loads_showcase_outputs():
@@ -296,7 +346,7 @@ def test_room4_game_stage_selector_and_continuous_state_labels():
 def test_room5_analysis_mode_auto_loads_showcase_outputs():
     at = AppTest.from_file(str(APP_PATH), default_timeout=60)
     at.run()
-    at = _select_lab_room(at, "Bonus Room 5 - Dynamic Obstacles")
+    at = _select_lab_room(at, "Room 5 - Dynamic Obstacles")
 
     assert len(at.exception) == 0
     assert at.session_state["dqn_result"] is not None
@@ -348,7 +398,7 @@ def test_about_page_resolves_screenshots_from_app_directory(tmp_path, monkeypatc
 def test_room5_tiny_training_evaluation_and_replay():
     at = AppTest.from_file(str(APP_PATH), default_timeout=90)
     at.run()
-    at = _select_lab_room(at, "Bonus Room 5 - Dynamic Obstacles")
+    at = _select_lab_room(at, "Room 5 - Dynamic Obstacles")
 
     for label, value in [
         ("Episodes", 10),
