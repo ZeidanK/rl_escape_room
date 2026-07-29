@@ -6,7 +6,6 @@ import numpy as np
 import streamlit as st
 
 from core.types import Action, CellType, QLearningEpisodeMetrics, Room3State
-from environments.grid_environment import CELL_TO_CHAR
 from visualization.sarsa_visualization import (
     ARROW_SYMBOLS,
     render_sarsa_trajectory_overlay,

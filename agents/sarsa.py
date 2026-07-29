@@ -15,8 +15,6 @@ from agents.tabular_utils import (
 )
 from core.types import (
     Action,
-    EpsilonDecayKind,
-    EpsilonScheduleConfig,
     Position,
     ProgressCallback,
     RolloutResult,
@@ -28,7 +26,6 @@ from core.types import (
     TrajectoryStep,
     TrainingEpisodeMetrics,
 )
-from environments.grid_environment import GridEnvironment
 
 # Backward-compatible aliases
 select_action = select_epsilon_greedy_action

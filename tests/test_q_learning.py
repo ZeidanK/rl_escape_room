@@ -1,7 +1,5 @@
 """Phase 5 tests: Q-Learning for Room 3."""
 
-from types import MappingProxyType
-
 import numpy as np
 import pytest
 
@@ -10,29 +8,23 @@ from core.types import (
     CellType,
     EpsilonDecayKind,
     EpsilonScheduleConfig,
-    Position,
     QLearningConfig,
-    QLearningEpisodeMetrics,
     RolloutResult,
     Room3State,
     SlipConfig,
-    TrajectoryStep,
 )
 from environments.grid_environment import KnownModelGridEnvironment, parse_grid_map
-from environments.room3_qlearning import ROOM3_GRID, ROOM3_MAP, Room3QLearning
+from environments.room3_qlearning import ROOM3_GRID, Room3QLearning
 from agents.q_learning import (
     QLearningAgent,
     evaluate_q_learning_policy,
     load_q_model,
-    rollout_q_learning_policy,
     save_q_model,
 )
 from agents.tabular_utils import extract_deterministic_greedy_policy
 from visualization.q_learning_visualization import (
     build_q_learning_training_dataframe,
     build_room3_policy_symbols,
-    build_room3_q_value_table,
-    render_q_learning_trajectory_overlay,
 )
 
 
@@ -512,7 +504,6 @@ class TestLearningSanity:
         # Custom environment class for the simple task
         class SimpleKeyEnv(KnownModelGridEnvironment):
             def __init__(self, **kwargs):
-                import copy
                 g = grid.copy()
                 super().__init__(g, max_steps=50, slip_config=SlipConfig(1.0, 0.0, 0.0), **kwargs)
                 self._key_collected = False

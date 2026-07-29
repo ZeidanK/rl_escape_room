@@ -2,8 +2,6 @@
 
 from typing import Any
 
-import numpy as np
-
 from core.types import CellType, Position, RewardConfig, SlipConfig
 from environments.grid_environment import parse_grid_map, GridEnvironment
 

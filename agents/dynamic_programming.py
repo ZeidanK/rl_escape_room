@@ -2,10 +2,7 @@
 
 from types import MappingProxyType
 
-import numpy as np
-
 from core.types import (
-    ACTION_DELTAS,
     Action,
     PolicyEvaluationSummary,
     Position,

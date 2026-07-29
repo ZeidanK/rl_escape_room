@@ -8,7 +8,7 @@ from datetime import datetime
 import numpy as np
 
 from core.types import EpsilonScheduleConfig, SarsaConfig, SlipConfig
-from environments.room2_sarsa import ROOM2_MAP, Room2SARSA
+from environments.room2_sarsa import Room2SARSA
 from agents.sarsa import SarsaAgent, evaluate_sarsa_policy
 
 

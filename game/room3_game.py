@@ -9,29 +9,22 @@ from game.html_rendering import render_html
 from game.theme import get_theme
 from game.game_view_common import (
     render_back_button,
-    render_parameter_sliders,
     render_game_grid,
     render_step_info,
-    render_hud_panel,
-    render_vi_animation,
     render_room_transition,
     check_and_unlock_achievements,
+    render_game_legend,
 )
 
 from core.types import (
-    Action, CellType, SlipConfig, QLearningConfig, Position,
+    Action, SlipConfig,
 )
 from environments.room3_qlearning import ROOM3_GRID, Room3QLearning
-from agents.q_learning import QLearningAgent, load_q_model, rollout_q_learning_policy
+from agents.q_learning import load_q_model, rollout_q_learning_policy
 from agents.tabular_utils import extract_deterministic_greedy_policy
-from game.canvas_renderer import render_grid_canvas
 from game.hud import render_hud
 from game.episode_replay import build_replay_from_rollout, get_current_step
 from game.explain_panel import render_explain_panel, get_algorithm_explanation
-from game.models import ReplayState
-from game.achievements import AchievementTracker
-from game.room_transitions import render_transition_content
-from game.home_page import ROOM_DEFS
 from game.canvas_renderer import render_policy_grid_canvas
 from game.presentation import (
     final_summary_success,
@@ -431,5 +424,4 @@ def render_room3_game():
     render_room_transition("room3", replay, achievements)
 
     # Legend
-    from game.game_view_common import render_game_legend
     render_game_legend("room3")

@@ -2,34 +2,26 @@
 
 import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
 from agents.q_learning import (
     QLearningAgent,
     evaluate_q_learning_policy,
-    rollout_q_learning_policy,
 )
 from agents.sarsa import (
     SarsaAgent,
     evaluate_sarsa_policy,
-    rollout_sarsa_policy,
-)
-from agents.tabular_utils import (
-    epsilon_for_episode,
-    extract_deterministic_greedy_policy,
 )
 from core.types import (
     EpsilonScheduleConfig,
     QLearningConfig,
-    QLearningEvaluationSummary,
     RewardConfig,
     SarsaConfig,
-    SarsaEvaluationSummary,
     SlipConfig,
 )
-from environments.room2_sarsa import ROOM2_GRID, Room2SARSA
+from environments.room2_sarsa import Room2SARSA
 
 
 @dataclass(frozen=True)

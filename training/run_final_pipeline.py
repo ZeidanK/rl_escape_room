@@ -14,9 +14,6 @@ from training.experiment_utils import (
     git_commit,
     load_completed_results,
     make_base_metadata,
-    now_iso,
-    package_versions,
-    python_version,
     rank_room4,
     rank_sarsa,
     rank_q_learning,
@@ -119,7 +116,7 @@ def _run_sarsa_screening():
     # Room 2 screening: one seed per hyperparameter combination.
     from agents.sarsa import SarsaAgent, evaluate_sarsa_policy
     from core.types import EpsilonScheduleConfig, SarsaConfig
-    from environments.room2_sarsa import ROOM2_GRID, Room2SARSA
+    from environments.room2_sarsa import Room2SARSA
 
     ALPHA_VALUES = [0.05, 0.10, 0.30, 0.50]
     GAMMA_VALUES = [0.90, 0.95, 0.99]
@@ -1061,8 +1058,6 @@ def run_comparison():
         max_steps=200,
     )
 
-    # Save to final
-    from training.algorithm_comparison import save_comparison
     save_comparison_to_final(matched, tuned)
 
     # Print summary

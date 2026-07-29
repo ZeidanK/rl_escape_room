@@ -13,7 +13,7 @@ from core.types import (
     VELOCITY_BY_ACTION,
     VelocityAction,
 )
-from game.theme import RoomTheme, get_theme, GLOBAL_CSS, ROOM_THEMES
+from game.theme import RoomTheme, get_theme
 
 # Shared SVG symbols for grid policies and cell labels.
 ARROW_CHARS: dict[Action, str] = {
@@ -67,10 +67,6 @@ def _coerce_velocity(action: Any) -> tuple[int, int]:
     except (TypeError, ValueError):
         return (0, 0)
     return VELOCITY_BY_ACTION[action_enum]
-
-
-def _velocity_arrow(vx: int, vy: int) -> str:
-    return VELOCITY_ARROW_CHARS.get((int(vx), int(vy)), "\u25cf")
 
 
 def _room_point(

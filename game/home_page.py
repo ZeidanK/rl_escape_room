@@ -6,7 +6,7 @@ import streamlit as st
 from game.constants import ROOM5_BONUS_MODE
 from game.html_rendering import normalize_html, render_html
 from game.theme import difficulty_badge
-from game.models import GameRoomState, RoomUnlockStatus, Achievement, AchievementId
+from game.models import GameRoomState, RoomUnlockStatus, AchievementId
 from game.achievements import AchievementTracker, ALL_ACHIEVEMENTS
 from game.presentation import go_to_lab, go_to_mode, go_to_showcase_room
 

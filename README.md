@@ -138,7 +138,7 @@ rl_escape_room/
 ├── training/              # Experiment pipelines, comparisons, utilities
 ├── visualization/         # Policy arrows, Q-tables, training curves, action fields
 ├── storage/               # Saved models, experiment results, metrics
-├── tests/                 # 291 tests across all components
+├── tests/                 # 336 tests across all components
 ├── docs/                  # Design docs, defence prep, screenshots
 └── tools/                 # Screenshot capture, result extraction
 ```
@@ -161,7 +161,7 @@ streamlit run app.py
 pytest -v
 ```
 
-**Exact test count: 308 tests (current local result).**
+**Exact test count: 336 tests (current local result).**
 
 ## Generating Local Showcase Models
 

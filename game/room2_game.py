@@ -3,34 +3,26 @@
 from dataclasses import replace
 
 import streamlit as st
-import numpy as np
 
 from game.html_rendering import render_html
 from game.theme import get_theme
 from game.game_view_common import (
     render_back_button,
-    render_parameter_sliders,
     render_game_grid,
     render_step_info,
-    render_hud_panel,
-    render_vi_animation,
     render_room_transition,
     check_and_unlock_achievements,
+    render_game_legend,
 )
 
 from core.types import (
-    Action, CellType, SlipConfig, SarsaConfig, Position,
+    Action, SlipConfig,
 )
 from environments.room2_sarsa import ROOM2_GRID, Room2SARSA
-from agents.sarsa import SarsaAgent, extract_greedy_policy, load_model, rollout_sarsa_policy
-from game.canvas_renderer import render_grid_canvas
+from agents.sarsa import extract_greedy_policy, load_model, rollout_sarsa_policy
 from game.hud import render_hud
 from game.episode_replay import build_replay_from_rollout, get_current_step
 from game.explain_panel import render_explain_panel, get_algorithm_explanation
-from game.models import ReplayState
-from game.achievements import AchievementTracker
-from game.room_transitions import render_transition_content
-from game.home_page import ROOM_DEFS
 from game.presentation import (
     final_summary_success,
     render_assignment_proof,
@@ -362,22 +354,4 @@ def render_room2_game():
     render_room_transition("room2", replay, achievements)
 
     # Legend
-    from game.game_view_common import render_game_legend
     render_game_legend("room2")
-
-
-def render_game_legend(room_id: str):
-    """Render the legend bar for a room."""
-    theme = get_theme(room_id)
-    render_html(f"""
-    <div class="game-legend">
-        <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_empty};"></span> Empty</span>
-        <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_wall};"></span> Wall</span>
-        <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_start};"></span> Start</span>
-        <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_exit};"></span> Exit</span>
-        <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_slippery};"></span> Slippery</span>
-        <span class="legend-item"><span class="legend-swatch" style="background:{theme.cell_trap};"></span> Trap</span>
-        <span class="legend-item"><span class="legend-swatch" style="background:{theme.agent_color};"></span> Agent</span>
-        <span class="legend-item">\u2191\u2192\u2193\u2190 Policy</span>
-    </div>
-    """)

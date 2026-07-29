@@ -1,6 +1,6 @@
 """Streamlit visualization helpers for Room 2 SARSA outputs."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 
 import numpy as np
 import streamlit as st

@@ -1,7 +1,5 @@
 """Phase 4 tests: SARSA for Room 2."""
 
-from types import MappingProxyType
-
 import numpy as np
 import pytest
 
@@ -10,29 +8,24 @@ from core.types import (
     CellType,
     EpsilonDecayKind,
     EpsilonScheduleConfig,
-    Position,
     RolloutResult,
     SarsaConfig,
     SlipConfig,
-    TrajectoryStep,
 )
 from environments.grid_environment import KnownModelGridEnvironment, parse_grid_map
-from environments.room2_sarsa import ROOM2_GRID, ROOM2_MAP, Room2SARSA
+from environments.room2_sarsa import ROOM2_GRID, Room2SARSA
 from agents.sarsa import (
     SarsaAgent,
     epsilon_for_episode,
     evaluate_sarsa_policy,
     extract_greedy_policy,
     load_model,
-    rollout_sarsa_policy,
     save_model,
     select_action,
 )
 from visualization.sarsa_visualization import (
     build_greedy_policy_symbols,
-    build_q_value_tables,
     build_training_dataframe,
-    render_sarsa_trajectory_overlay,
 )
 
 

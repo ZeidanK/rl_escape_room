@@ -4,22 +4,18 @@ import numpy as np
 import pytest
 
 from core.types import (
-    ACTION_DELTAS,
     Action,
     CellType,
-    Position,
-    RewardConfig,
     SlipConfig,
-    StepResult,
 )
 from environments.grid_environment import (
     GridEnvironment,
     KnownModelGridEnvironment,
     parse_grid_map,
 )
-from environments.room1_dp import Room1DP, ROOM1_MAP
-from environments.room2_sarsa import Room2SARSA, ROOM2_MAP
-from environments.room3_qlearning import Room3QLearning, ROOM3_MAP
+from environments.room1_dp import Room1DP
+from environments.room2_sarsa import Room2SARSA
+from environments.room3_qlearning import Room3QLearning
 
 # ============================================================
 # Map parsing and validation

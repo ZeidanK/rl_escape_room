@@ -1,32 +1,23 @@
 """Phase 3 tests: Value Iteration (DP) for Room 1."""
 
-from types import MappingProxyType
-
 import numpy as np
 import pytest
 
 from core.types import (
     Action,
     CellType,
-    Position,
-    RewardConfig,
-    RolloutResult,
     SlipConfig,
-    TrajectoryStep,
     ValueIterationConfig,
-    ValueIterationResult,
 )
 from environments.grid_environment import KnownModelGridEnvironment, parse_grid_map
 from environments.room1_dp import Room1DP
 from agents.dynamic_programming import (
     ValueIterationAgent,
-    evaluate_policy,
     rollout_policy,
 )
 from visualization.dp_visualization import (
     build_policy_symbols,
     build_value_matrix,
-    render_trajectory_overlay,
 )
 
 # ============================================================

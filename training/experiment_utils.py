@@ -1,23 +1,14 @@
 """Shared resumable experiment framework with reproducibility metadata."""
 
-import hashlib
-import hmac
 import json
 import os
 import sys
 import time
-from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import Any
 
 import numpy as np
 
 from agents.tabular_utils import map_signature as _grid_signature
-from core.types import (
-    ApproximateEvaluationSummary,
-    ValueIterationConfig,
-)
-from environments.room1_dp import Room1DP
 from environments.room2_sarsa import ROOM2_GRID
 from environments.room3_qlearning import ROOM3_GRID
 from environments.room4_continuous import Room4Continuous
@@ -58,10 +49,6 @@ def _pkg_installed(name: str) -> bool:
 
 def now_iso() -> str:
     return datetime.utcnow().isoformat() + "Z"
-
-
-def room1_map_signature() -> str:
-    return _grid_signature(Room1DP().grid)
 
 
 def room2_map_signature() -> str:

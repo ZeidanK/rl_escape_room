@@ -3,7 +3,6 @@
 from collections.abc import Mapping
 
 import numpy as np
-import streamlit as st
 
 from core.types import Action, CellType, Position
 from environments.grid_environment import GridEnvironment
@@ -66,43 +65,3 @@ def build_policy_symbols(
                 row_symbols.append(sym)
         symbols.append(row_symbols)
     return symbols
-
-
-def render_trajectory_overlay(
-    env: GridEnvironment,
-    trajectory: tuple[Position, ...],
-) -> np.ndarray:
-    # Overlay one rollout path on top of the static map.
-    rows, cols = env.grid_shape
-    overlay = np.full((rows, cols), "", dtype=object)
-    for r in range(rows):
-        for c in range(cols):
-            cell = CellType(int(env.grid[r, c]))
-            if cell == CellType.WALL:
-                overlay[r, c] = "#"
-            elif cell == CellType.START:
-                overlay[r, c] = "S"
-            elif env.is_terminal_state((r, c)):
-                overlay[r, c] = "E"
-            else:
-                overlay[r, c] = "·"
-    # Mark start of trajectory
-    if trajectory:
-        first = trajectory[0]
-        if first != env.start_position:
-            overlay[first] = "●"
-        last = trajectory[-1]
-        if env.is_terminal_state(last):
-            overlay[last] = "★"
-    # Mark visited cells
-    visited_counts: dict[Position, int] = {}
-    for pos in trajectory:
-        visited_counts[pos] = visited_counts.get(pos, 0) + 1
-    for pos, count in visited_counts.items():
-        if count > 1 and pos != first:
-            overlay[pos] = str(count)
-        elif count == 1 and pos != first and pos != last:
-            cell = CellType(int(env.grid[pos]))
-            if not env.is_terminal_state(pos) and cell != CellType.START:
-                overlay[pos] = "○"
-    return overlay

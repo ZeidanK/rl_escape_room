@@ -1,12 +1,12 @@
 """Shared epsilon schedules, action selection, and Q-table utilities."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Any
 
 import numpy as np
 
-from core.types import Action, EpsilonDecayKind, EpsilonScheduleConfig, Position
+from core.types import Action, EpsilonDecayKind, EpsilonScheduleConfig
 
 
 # Shared helpers for tabular agents.  SARSA and Q-Learning both use epsilon
@@ -66,28 +66,6 @@ def freeze_q_table(
         s: tuple(float(v) for v in arr)
         for s, arr in q_table.items()
     })
-
-
-def validate_q_table(
-    q_values: Mapping[Any, tuple[float, ...]],
-    *,
-    expected_states: set[Any] | None = None,
-    expected_action_count: int = 4,
-) -> None:
-    for state, vals in q_values.items():
-        if len(vals) != expected_action_count:
-            raise ValueError(
-                f"State {state} has {len(vals)} actions; expected {expected_action_count}"
-            )
-        if not all(np.isfinite(vals)):
-            raise ValueError(f"Non-finite Q-values at state {state}")
-    if expected_states is not None:
-        missing = expected_states - set(q_values.keys())
-        if missing:
-            raise ValueError(f"Missing states in Q-table: {missing}")
-        extra = set(q_values.keys()) - expected_states
-        if extra:
-            raise ValueError(f"Unexpected states in Q-table: {extra}")
 
 
 def default_snapshot_episodes(total: int) -> tuple[int, ...]:

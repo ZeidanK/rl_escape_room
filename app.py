@@ -30,7 +30,7 @@ from core.types import (
     ValueIterationConfig,
 )
 from environments.room1_dp import Room1DP
-from environments.room2_sarsa import ROOM2_GRID, ROOM2_MAP, Room2SARSA
+from environments.room2_sarsa import ROOM2_GRID, Room2SARSA
 from environments.room3_qlearning import ROOM3_GRID, Room3QLearning
 from agents.dynamic_programming import (
     ValueIterationAgent,
@@ -66,7 +66,6 @@ from visualization.q_learning_visualization import (
     render_q_learning_trajectory_overlay,
 )
 from training.algorithm_comparison import (
-    print_summary as print_comparison_summary,
     run_matched_comparison,
     run_tuned_comparison,
     save_comparison,
@@ -99,7 +98,6 @@ from visualization.approximate_sarsa_visualization import (
 from training.approximate_sarsa_experiments import (
     run_confirmation_experiments as run_approx_confirmation,
     run_screening_stage_a,
-    run_screening_stage_b,
 )
 
 ROOM_CLASSES = {
@@ -694,12 +692,11 @@ if "mode" not in st.session_state:
 # ============================================================
 # Imported after page setup because these modules render Streamlit content and
 # depend on the app-wide theme/session state.
-from game.home_page import render_home_page, ROOM_DEFS, ROOM_NARRATIVES
+from game.home_page import render_home_page
 from game.room1_game import render_room1_game
 from game.room2_game import render_room2_game
 from game.room3_game import render_room3_game
 from game.room4_game import render_room4_game
-from game.comparison_theater import render_comparison_theater
 from game.theme import render_global_styles
 from game.achievements import AchievementTracker
 from game.canvas_renderer import (
@@ -712,12 +709,10 @@ from game.constants import (
     ABOUT_MODE,
     COMPARISON_MODE,
     LAB_MODE,
-    LAB_ROOM_MODES,
     LEGACY_HOME_MODE,
     MANUAL_MODE_LABEL,
     MODE_SELECTOR_KEY,
     PENDING_MODE_SELECTOR_KEY,
-    PUBLIC_APP_URL,
     ROOM1_LAB_MODE,
     ROOM2_LAB_MODE,
     ROOM3_LAB_MODE,
@@ -728,8 +723,6 @@ from game.constants import (
 from game.presentation import (
     apply_query_params_once,
     final_summary_success,
-    go_to_lab,
-    go_to_mode,
     render_assignment_proof,
     render_campaign_results,
     render_model_provenance,

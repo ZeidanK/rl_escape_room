@@ -3,8 +3,6 @@
 import numpy as np
 
 from core.types import (
-    SlipConfig,
-    ValueIterationConfig,
     Action,
     CellType,
     ContinuousRolloutResult,
@@ -28,7 +26,7 @@ from game.episode_replay import build_replay_from_rollout, render_replay_bar, ge
 from game.explain_panel import render_explain_panel, get_algorithm_explanation
 from game.html_rendering import normalize_html
 from game.theme import render_global_styles, get_theme, ROOM_THEMES
-from game.models import ReplayState, ReplayStep, Achievement, AchievementId, RoomTransition
+from game.models import ReplayState, ReplayStep, AchievementId, RoomTransition
 from game.achievements import AchievementTracker, ALL_ACHIEVEMENTS
 from game.room_transitions import render_transition_content
 from game.room1_game import _compute_vi_frames, _extract_q_from_values

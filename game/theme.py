@@ -1,6 +1,6 @@
 """Room themes and global Streamlit CSS for the showcase UI."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)

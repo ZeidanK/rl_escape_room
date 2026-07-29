@@ -14,16 +14,14 @@ from core.types import (
 )
 from environments.room1_dp import Room1DP
 from agents.dynamic_programming import ValueIterationAgent, rollout_policy
-from game.theme import get_theme
 from game.canvas_renderer import render_grid_canvas, render_vi_animation_frame
 from game.hud import render_hud
 from game.episode_replay import build_replay_from_rollout, render_replay_bar, get_current_step
 from game.explain_panel import render_explain_panel, get_algorithm_explanation
-from game.models import ReplayState, RoomTransition
-from game.home_page import render_home_page, ROOM_DEFS
-from game.achievements import AchievementTracker, AchievementId
+from game.models import RoomTransition
+from game.home_page import ROOM_DEFS
+from game.achievements import AchievementTracker
 from game.room_transitions import render_transition_content
-from game.constants import SHOWCASE_MODE
 from game.presentation import go_to_showcase_room, render_assignment_proof, render_open_lab_button
 
 

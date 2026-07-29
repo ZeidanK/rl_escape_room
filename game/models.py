@@ -1,10 +1,10 @@
 """Presentation-layer dataclasses and enums for the game-style UI."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any
 
-from core.types import Action, Position
+from core.types import Action
 
 
 # Dataclasses for the game-style UI layer.  These are separate from core/types

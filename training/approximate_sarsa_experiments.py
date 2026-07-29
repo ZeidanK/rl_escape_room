@@ -1,13 +1,10 @@
 """Experiment runners for Room 4 approximate SARSA sweeps and confirmations."""
 
-import json
-import os
 from collections.abc import Sequence
 
 import numpy as np
 
 from core.types import (
-    ApproximateEvaluationSummary,
     ApproximateSarsaConfig,
     EpsilonScheduleConfig,
     StartMode,
@@ -113,72 +110,6 @@ def run_screening_stage_a(
     return results
 
 
-def run_screening_stage_b(
-    stage_a_results: list[dict],
-    *,
-    n_episodes: int = 1000,
-    eval_episodes: int = 50,
-) -> list[dict]:
-    """
-    Stage B: Combine best 2 values per factor based on Stage A fixed-start SR.
-    """
-    # Stage B narrows the search to combinations of the strongest Stage A
-    # values, reducing total training time.
-    best_of = {}
-    for param in ["num_tilings", "tiles_xy", "alpha", "progress_scale", "epsilon_decay"]:
-        scored = {}
-        for r in stage_a_results:
-            key = r["config"][param]
-            if key not in scored:
-                scored[key] = []
-            scored[key].append(r["fixed_sr"])
-        means = {k: np.mean(v) for k, v in scored.items()}
-        sorted_params = sorted(means.keys(), key=lambda k: means[k], reverse=True)
-        best_of[param] = sorted_params[:2]
-
-    results = []
-    vals = list(best_of.values())
-    from itertools import product
-    for combo in product(*vals):
-        nt, tx, alp, ps, ed = combo
-        ty = tx
-        config = ApproximateSarsaConfig(
-            episodes=n_episodes,
-            alpha=alp,
-            gamma=0.99,
-            max_steps=750,
-            seed=42,
-            epsilon=EpsilonScheduleConfig(start=1.0, minimum=0.02, decay=ed),
-            tile_coding=TileCodingConfig(num_tilings=nt, tiles_x=tx, tiles_y=ty, include_velocity=True),
-            start_mode=StartMode.RANDOM_LOWER_LEFT,
-        )
-        factory = _make_env_factory(distance_progress_scale=ps)
-        agent = ApproximateSarsaAgent(factory, config)
-        result = agent.train()
-        eval_fixed = evaluate_approximate_policy(
-            factory, result.weights, config.tile_coding, Room4MotionConfig(),
-            n_episodes=eval_episodes, start_mode=StartMode.FIXED,
-        )
-        eval_random = evaluate_approximate_policy(
-            factory, result.weights, config.tile_coding, Room4MotionConfig(),
-            n_episodes=eval_episodes, start_mode=StartMode.RANDOM_LOWER_LEFT,
-        )
-        results.append({
-            "config": {
-                "num_tilings": nt, "tiles_xy": tx, "alpha": alp,
-                "progress_scale": ps, "epsilon_decay": ed,
-            },
-            "fixed_sr": eval_fixed.success_rate,
-            "random_sr": eval_random.success_rate,
-            "fixed_return": eval_fixed.mean_return,
-            "random_return": eval_random.mean_return,
-            "fixed_steps": eval_fixed.mean_steps,
-            "truncated": eval_fixed.truncated_count + eval_random.truncated_count,
-        })
-
-    return results
-
-
 def run_confirmation_experiments(
     configs: Sequence[dict],
     *,
@@ -208,12 +139,6 @@ def run_confirmation_experiments(
             factory = _make_env_factory(distance_progress_scale=cfg.get("progress_scale", 1.0))
             agent = ApproximateSarsaAgent(factory, config)
             result = agent.train()
-            for scat in ["fixed", "unseen", "random"]:
-                sm = StartMode.FIXED if scat == "fixed" else (
-                    StartMode.FIXED if scat == "unseen" else StartMode.RANDOM_LOWER_LEFT
-                )
-                # We can use FIXED with different start positions for unseen
-                # For simplicity, use FIXED for fixed, RANDOM_LOWER_LEFT for random
             eval_fixed = evaluate_approximate_policy(
                 factory, result.weights, config.tile_coding, Room4MotionConfig(),
                 n_episodes=eval_episodes, start_mode=StartMode.FIXED,
@@ -239,10 +164,3 @@ def run_confirmation_experiments(
         })
 
     return results
-
-
-def save_experiments(data, filepath: str) -> str:
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    with open(filepath, "w") as f:
-        json.dump(data, f, indent=2, default=str)
-    return filepath

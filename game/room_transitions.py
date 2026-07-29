@@ -3,7 +3,7 @@
 import html as html_mod
 
 from game.html_rendering import normalize_html
-from game.models import RoomTransition, Achievement
+from game.models import RoomTransition
 
 
 def render_transition_content(transition: RoomTransition, theme_color: str = "#4fc3f7") -> tuple[str, bool]:
@@ -51,14 +51,3 @@ def render_transition_content(transition: RoomTransition, theme_color: str = "#4
         f'</div>'
     )
     return html, is_success
-
-
-def render_achievement_toast(achievement: Achievement) -> str:
-    # Small standalone HTML snippet for newly unlocked achievements.
-    return normalize_html(
-        f'<div class="achievement-toast">'
-        f'<div style="font-size:1.5em;">{achievement.emoji}</div>'
-        f'<div style="font-weight:700;color:#ffd740;">{html_mod.escape(achievement.name)}</div>'
-        f'<div style="font-size:0.85em;color:#b0bec5;">{html_mod.escape(achievement.description)}</div>'
-        f'</div>'
-    )

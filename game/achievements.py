@@ -1,7 +1,6 @@
 """Achievement system — tracks real episode metrics and unlocks achievements."""
 
 import json
-import os
 from pathlib import Path
 
 from game.models import Achievement, AchievementId

@@ -21,12 +21,9 @@ from core.types import (
     ContinuousRolloutResult,
     ContinuousState,
     ContinuousTrajectoryStep,
-    EpsilonDecayKind,
-    EpsilonScheduleConfig,
     FIXED_UNSEEN_STARTS,
     Room4Factory,
     StartMode,
-    VELOCITY_BY_ACTION,
     VelocityAction,
 )
 from features.tile_coding import TileCoder, TileCodingConfig

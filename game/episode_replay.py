@@ -1,6 +1,6 @@
 """Episode playback — builds replay data from rollout results."""
 
-from core.types import Action, RolloutResult
+from core.types import RolloutResult
 from game.html_rendering import normalize_html
 from game.models import ReplayStep, ReplayState
 

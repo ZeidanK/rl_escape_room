@@ -1,18 +1,12 @@
 """Streamlit visualization helpers for Room 4 continuous policies."""
 
-import math
-
 import numpy as np
 import streamlit as st
 
 from agents.approximate_sarsa import LinearTileQFunction
 from core.types import (
     ApproximateEpisodeMetrics,
-    ApproximateSarsaTrainingResult,
-    ContinuousRolloutResult,
     ContinuousState,
-    VELOCITY_BY_ACTION,
-    VelocityAction,
 )
 from features.tile_coding import TileCoder, TileCodingConfig
 
@@ -52,89 +46,6 @@ def build_training_dataframe(
         arr["mean_abs_td_error"][i] = m.mean_abs_td_error
         arr["max_abs_td_error"][i] = m.max_abs_td_error
     return arr
-
-
-def render_continuous_trajectory(
-    env,
-    rollout: ContinuousRolloutResult,
-    *,
-    max_arrows: int = 30,
-) -> dict:
-    # Discretize a continuous rollout into a small text grid for quick display.
-    room_w = env.motion.room_width_m
-    room_h = env.motion.room_height_m
-    grid_size = 20
-    cell_w = room_w / grid_size
-    cell_h = room_h / grid_size
-
-    grid = [["." for _ in range(grid_size)] for _ in range(grid_size)]
-
-    # Mark exit
-    ex, ey = env.motion.exit_center
-    er = env.motion.exit_radius_m
-    for row in range(grid_size):
-        for col in range(grid_size):
-            cx = (col + 0.5) * cell_w
-            cy = (row + 0.5) * cell_h
-            if (cx - ex) ** 2 + (cy - ey) ** 2 <= er ** 2:
-                grid[row][col] = "E"
-
-    # Mark start
-    sx, sy = rollout.start_state[0], rollout.start_state[1]
-    sr = int(sy / cell_h)
-    sc = int(sx / cell_w)
-    if 0 <= sr < grid_size and 0 <= sc < grid_size:
-        grid[sr][sc] = "S"
-
-    # Trajectory path
-    for step in rollout.trajectory:
-        x, y, _, _ = step.state
-        r = int(y / cell_h)
-        c = int(x / cell_w)
-        if 0 <= r < grid_size and 0 <= c < grid_size:
-            if grid[r][c] in (".", "S"):
-                grid[r][c] = "*"
-
-    # Direction arrows at sampled intervals
-    arrow_interval = max(1, len(rollout.trajectory) // max_arrows)
-    for idx, step in enumerate(rollout.trajectory):
-        if idx % arrow_interval == 0:
-            x, y, vx, vy = step.state
-            r = int(y / cell_h)
-            c = int(x / cell_w)
-            if 0 <= r < grid_size and 0 <= c < grid_size:
-                grid[r][c] = _arrow_symbol(vx, vy)
-
-    # Mark collisions
-    for step in rollout.trajectory:
-        if step.collision:
-            x, y, _, _ = step.state
-            r = int(y / cell_h)
-            c = int(x / cell_w)
-            if 0 <= r < grid_size and 0 <= c < grid_size:
-                grid[r][c] = "X"
-
-    return {"grid": grid, "width": grid_size, "height": grid_size}
-
-
-def _arrow_symbol(vx: int, vy: int) -> str:
-    if vy == 1 and vx == 0:
-        return "\u2191"
-    elif vy == -1 and vx == 0:
-        return "\u2193"
-    elif vx == 1 and vy == 0:
-        return "\u2192"
-    elif vx == -1 and vy == 0:
-        return "\u2190"
-    elif vx == 1 and vy == 1:
-        return "\u2197"
-    elif vx == 1 and vy == -1:
-        return "\u2198"
-    elif vx == -1 and vy == 1:
-        return "\u2196"
-    elif vx == -1 and vy == -1:
-        return "\u2199"
-    return "*"
 
 
 def build_action_field(
@@ -186,4 +97,3 @@ def build_value_surface(
             av = q_func.action_values(state)
             surface[row, col] = float(np.max(av))
     return surface
-

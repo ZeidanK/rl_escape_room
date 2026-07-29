@@ -23,7 +23,6 @@ from core.types import (
 )
 from environments.room4_continuous import Room4Continuous
 from agents.approximate_sarsa import (
-    ApproximateSarsaAgent,
     LinearTileQFunction,
     load_approximate_model,
     rollout_approximate_policy,

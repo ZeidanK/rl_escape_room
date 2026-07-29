@@ -1,8 +1,6 @@
 """Tests for Room 4 approximate SARSA, tile coding, and persistence."""
 
 import hashlib
-import hmac
-import math
 
 import numpy as np
 import pytest
@@ -11,15 +9,11 @@ from core.types import (
     ApproximateSarsaConfig,
     ContinuousRenderState,
     ContinuousRewardConfig,
-    ContinuousRolloutResult,
-    ContinuousState,
-    ContinuousTrajectoryStep,
     EpsilonScheduleConfig,
     FIXED_UNSEEN_STARTS,
     Room4MotionConfig,
     StartMode,
     TileCodingConfig,
-    VELOCITY_BY_ACTION,
     VelocityAction,
 )
 from environments.room4_continuous import Room4Continuous
@@ -30,7 +24,6 @@ from agents.approximate_sarsa import (
     evaluate_approximate_policy,
     evaluate_approximate_policy_all_categories,
     load_approximate_model,
-    rollout_approximate_policy,
     save_approximate_model,
 )
 

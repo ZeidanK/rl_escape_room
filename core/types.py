@@ -1,6 +1,6 @@
 """Shared dataclasses, enums, and result types used throughout the project."""
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
 from typing import Any
@@ -55,14 +55,6 @@ class CellType(IntEnum):
     TRAP = 5
     KEY = 6
     LOCKED_EXIT = 7
-
-
-class RoomKind(IntEnum):
-    GRID_KNOWN = 1
-    GRID_UNKNOWN_STOCHASTIC = 2
-    GRID_UNKNOWN = 3
-    CONTINUOUS = 4
-    CONTINUOUS_OBSTACLES = 5
 
 
 @dataclass(frozen=True)
@@ -128,25 +120,6 @@ class GridRenderState:
     step_count: int
     terminated: bool
     truncated: bool
-
-
-@dataclass(frozen=True)
-class RoomSpec:
-    # Metadata used by docs and UI to describe each room without constructing
-    # the environment itself.
-    room_id: str
-    name: str
-    kind: RoomKind
-    algorithm: str
-    state_description: str
-    action_description: str
-    grid_size: tuple[int, int] | None
-    is_continuous: bool
-    continuous_size: tuple[float, float] | None
-    dt: float | None
-    velocity_values: tuple[int, ...] | None
-    rewards: RewardConfig = field(default_factory=RewardConfig)
-    description: str = ""
 
 
 # ============================================================
