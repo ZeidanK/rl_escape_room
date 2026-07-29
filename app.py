@@ -97,6 +97,7 @@ from visualization.approximate_sarsa_visualization import (
     build_training_dataframe as build_approx_training_dataframe,
     build_value_surface as build_approx_value_surface,
 )
+from visualization.room5_visualization import render_room5_svg as render_room5_obstacle_svg
 from training.approximate_sarsa_experiments import (
     run_confirmation_experiments as run_approx_confirmation,
     run_screening_stage_a,
@@ -379,6 +380,7 @@ def _restore_room5_outputs_from_metadata(metadata: dict) -> None:
     st.session_state.dqn_eval_random = deserialize_dqn_evaluation(outputs.get("eval_random"))
     st.session_state.dqn_eval_unseen = deserialize_dqn_evaluation(outputs.get("eval_unseen"))
     st.session_state.dqn_rollout = deserialize_room5_rollout(outputs.get("rollout"))
+    st.session_state.dqn_rollout_fixed_layout = outputs.get("rollout_fixed_layout")
     st.session_state.dqn_rollout_key = ("saved", metadata.get("saved_at"))
 
 
@@ -452,6 +454,7 @@ def _persist_room5_outputs_if_saved() -> None:
             "eval_random": serialize_dqn_evaluation(st.session_state.get("dqn_eval_random")),
             "eval_unseen": serialize_dqn_evaluation(st.session_state.get("dqn_eval_unseen")),
             "rollout": serialize_room5_rollout(st.session_state.get("dqn_rollout")),
+            "rollout_fixed_layout": st.session_state.get("dqn_rollout_fixed_layout"),
         },
     )
 
@@ -663,6 +666,7 @@ def _clear_room5_outputs() -> None:
         "dqn_eval_unseen",
         "dqn_rollout",
         "dqn_rollout_key",
+        "dqn_rollout_fixed_layout",
     ]:
         st.session_state[key] = None
 
@@ -703,68 +707,15 @@ def _autoload_room5_showcase(dqn_config: DQNConfig) -> bool:
 def _render_room5_svg(env: Room5Obstacles, rollout=None) -> str:
     # Room 5 uses a custom SVG because its continuous obstacle layout does not
     # fit the grid renderer used by Rooms 1-3.
-    state = env.render()
-    margin = 24.0
-    canvas = 520.0
-    span = canvas - 2 * margin
-    sx = span / env.motion.room_width_m
-    sy = span / env.motion.room_height_m
+    return render_room5_obstacle_svg(env, rollout)
 
-    def pt(x: float, y: float) -> tuple[float, float]:
-        return margin + x * sx, canvas - margin - y * sy
 
-    if rollout is not None:
-        points = [rollout.start_state[:2]]
-        points.extend(step.next_raw_state[:2] for step in rollout.trajectory)
-    else:
-        points = list(state.trajectory)
-    path_points = " ".join(f"{pt(x, y)[0]:.1f},{pt(x, y)[1]:.1f}" for x, y in points)
-    visible = {(round(o.center_x, 6), round(o.center_y, 6)) for o in state.visible_obstacles}
-
-    parts = [
-        f'<svg viewBox="0 0 {canvas:.0f} {canvas:.0f}" width="100%" '
-        'style="max-width:620px;background:#111827;border:1px solid #334155;border-radius:8px;">',
-        '<rect x="24" y="24" width="472" height="472" fill="#0f172a" stroke="#475569" stroke-width="2"/>',
-    ]
-    for i in range(11):
-        x = margin + i * span / 10
-        y = margin + i * span / 10
-        parts.append(f'<line x1="{x:.1f}" y1="24" x2="{x:.1f}" y2="496" stroke="#1e293b" stroke-width="1"/>')
-        parts.append(f'<line x1="24" y1="{y:.1f}" x2="496" y2="{y:.1f}" stroke="#1e293b" stroke-width="1"/>')
-
-    ex, ey = pt(*state.exit_center)
-    parts.append(
-        f'<circle cx="{ex:.1f}" cy="{ey:.1f}" r="{state.exit_radius_m * sx:.1f}" '
-        'fill="#22c55e" fill-opacity="0.28" stroke="#86efac" stroke-width="2"/>'
-    )
-    if points:
-        ox, oy = pt(*points[0])
-        parts.append(
-            f'<circle cx="{ox:.1f}" cy="{oy:.1f}" r="{state.observation_distance_m * sx:.1f}" '
-            'fill="#38bdf8" fill-opacity="0.08" stroke="#38bdf8" stroke-opacity="0.5" stroke-dasharray="5 5"/>'
-        )
-
-    for obstacle in state.obstacles:
-        cx, cy = pt(obstacle.center_x, obstacle.center_y)
-        size = obstacle.width_m * sx
-        stroke = "#facc15" if (round(obstacle.center_x, 6), round(obstacle.center_y, 6)) in visible else "#f97316"
-        parts.append(
-            f'<rect x="{cx - size / 2:.1f}" y="{cy - size / 2:.1f}" width="{size:.1f}" height="{size:.1f}" '
-            f'fill="#7f1d1d" stroke="{stroke}" stroke-width="2"/>'
-        )
-
-    if len(points) >= 2:
-        parts.append(
-            f'<polyline points="{path_points}" fill="none" stroke="#67e8f9" stroke-width="3" '
-            'stroke-linecap="round" stroke-linejoin="round"/>'
-        )
-    if points:
-        start_x, start_y = pt(*points[0])
-        end_x, end_y = pt(*points[-1])
-        parts.append(f'<circle cx="{start_x:.1f}" cy="{start_y:.1f}" r="7" fill="#60a5fa"/>')
-        parts.append(f'<circle cx="{end_x:.1f}" cy="{end_y:.1f}" r="8" fill="#f8fafc" stroke="#0f172a" stroke-width="2"/>')
-    parts.append("</svg>")
-    return "".join(parts)
+def _room5_display_env_for_rollout(make_env, rollout, *, fixed_layout: bool) -> Room5Obstacles:
+    # Rebuild the same layout before drawing a rollout recorded during
+    # evaluation or greedy replay.
+    disp_env = make_env(fixed_layout=bool(fixed_layout), layout_seed=int(rollout.layout_seed))
+    disp_env.reset(seed=int(rollout.seed), layout_seed=int(rollout.layout_seed))
+    return disp_env
 
 
 def _load_final_comparison_payload() -> dict | None:
@@ -897,7 +848,7 @@ for key in [
     "approx_model_stem", "approx_autoload_error",
     "dqn_result", "dqn_network", "dqn_meta", "dqn_train_key",
     "dqn_eval_fixed", "dqn_eval_random", "dqn_eval_unseen",
-    "dqn_rollout", "dqn_rollout_key",
+    "dqn_rollout", "dqn_rollout_key", "dqn_rollout_fixed_layout",
     "dqn_model_stem", "dqn_autoload_error", "dqn_result_source",
     "game_mode", "game_room", "show_lab",
 ]:
@@ -2736,7 +2687,8 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                 for key in [
                     "dqn_result", "dqn_network", "dqn_meta", "dqn_eval_fixed",
                     "dqn_eval_random", "dqn_eval_unseen", "dqn_rollout",
-                    "dqn_model_stem", "dqn_autoload_error", "dqn_result_source",
+                    "dqn_rollout_key", "dqn_rollout_fixed_layout", "dqn_model_stem",
+                    "dqn_autoload_error", "dqn_result_source",
                 ]:
                     st.session_state[key] = None
                 st.session_state.dqn_autoload_disabled = True
@@ -2907,6 +2859,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                     layout_seed=int(dqn_rollout_layout_seed),
                     max_steps=int(dqn_max_steps),
                 )
+                st.session_state.dqn_rollout_fixed_layout = bool(dqn_fixed_layout)
                 st.session_state.dqn_rollout_key = (
                     int(dqn_rollout_seed), int(dqn_rollout_layout_seed), dqn_fixed_layout,
                 )
@@ -2924,11 +2877,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
             _persist_room5_outputs_if_saved()
             st.success(f"Model saved to {stem}")
 
-        should_auto_prepare_dqn_outputs = (
-            st.session_state.get("dqn_result_source") == "loaded"
-            or not dqn_result.metrics
-        )
-        if should_auto_prepare_dqn_outputs and (
+        if (
             st.session_state.dqn_eval_fixed is None
             or st.session_state.dqn_eval_random is None
             or st.session_state.dqn_eval_unseen is None
@@ -2977,6 +2926,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                         layout_seed=int(dqn_rollout_layout_seed),
                         max_steps=int(dqn_max_steps),
                     )
+                    st.session_state.dqn_rollout_fixed_layout = bool(dqn_fixed_layout)
                     st.session_state.dqn_rollout_key = (
                         int(dqn_rollout_seed), int(dqn_rollout_layout_seed), dqn_fixed_layout,
                     )
@@ -3089,12 +3039,12 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
 
     with t2:
         summaries = [
-            ("Fixed Validation Layout", st.session_state.dqn_eval_fixed),
-            ("Seeded Random Layouts", st.session_state.dqn_eval_random),
-            ("Unseen Random Layouts", st.session_state.dqn_eval_unseen),
+            ("Fixed Validation Layout", "fixed", True, st.session_state.dqn_eval_fixed),
+            ("Seeded Random Layouts", "random", False, st.session_state.dqn_eval_random),
+            ("Unseen Random Layouts", "unseen", False, st.session_state.dqn_eval_unseen),
         ]
         shown = False
-        for label, summary in summaries:
+        for label, key, fixed_layout, summary in summaries:
             if summary is None:
                 continue
             shown = True
@@ -3104,29 +3054,58 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
             c2.metric("Mean Return", f"{summary.mean_return:.2f}")
             c3.metric("Mean Steps", f"{summary.mean_steps:.1f}")
             c4.metric("Obstacle Hits", summary.obstacle_collision_count)
+            rollout_rows = [
+                {
+                    "episode": i + 1,
+                    "seed": r.seed,
+                    "layout_seed": r.layout_seed,
+                    "success": r.success,
+                    "steps": r.steps,
+                    "return": r.total_reward,
+                    "obstacle_collisions": r.obstacle_collisions,
+                    "boundary_collisions": r.boundary_collisions,
+                }
+                for i, r in enumerate(summary.rollouts)
+            ]
             st.dataframe(
-                [
-                    {
-                        "seed": r.seed,
-                        "layout_seed": r.layout_seed,
-                        "success": r.success,
-                        "steps": r.steps,
-                        "return": r.total_reward,
-                        "obstacle_collisions": r.obstacle_collisions,
-                        "boundary_collisions": r.boundary_collisions,
-                    }
-                    for r in summary.rollouts[:10]
-                ],
+                rollout_rows[:10],
                 width="stretch",
             )
+            if summary.rollouts:
+                rollout_idx = st.selectbox(
+                    "Rendered rollout",
+                    options=list(range(len(summary.rollouts))),
+                    key=f"dqn_eval_rollout_{key}",
+                    format_func=lambda i, rollouts=summary.rollouts: (
+                        f"Episode {i + 1} | seed {rollouts[i].seed} | layout {rollouts[i].layout_seed}"
+                    ),
+                )
+                selected_rollout = summary.rollouts[int(rollout_idx)]
+                disp_env = _room5_display_env_for_rollout(
+                    make_room5_env,
+                    selected_rollout,
+                    fixed_layout=fixed_layout,
+                )
+                render_html(_render_room5_svg(disp_env, selected_rollout))
+            else:
+                st.info("No rollout records were saved for this evaluation.")
         if not shown:
-            pass
+            if dqn_result is None:
+                st.info("Train or load a DQN model to show Room 5 evaluations.")
+            else:
+                st.info("Preparing Room 5 evaluation outputs.")
 
     with t3:
         rollout = st.session_state.dqn_rollout
         if rollout is not None:
-            disp_env = make_room5_env(fixed_layout=dqn_fixed_layout, layout_seed=rollout.layout_seed)
-            disp_env.reset(seed=rollout.seed, layout_seed=rollout.layout_seed)
+            rollout_fixed_layout = st.session_state.get("dqn_rollout_fixed_layout")
+            if rollout_fixed_layout is None:
+                rollout_fixed_layout = bool(dqn_fixed_layout)
+            disp_env = _room5_display_env_for_rollout(
+                make_room5_env,
+                rollout,
+                fixed_layout=bool(rollout_fixed_layout),
+            )
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("Success", "Yes" if rollout.success else "No")
             c2.metric("Steps", rollout.steps)
@@ -3148,6 +3127,10 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                 ],
                 width="stretch",
             )
+        elif dqn_result is None:
+            st.info("Train or load a DQN model to show a greedy replay.")
+        else:
+            st.info("Preparing Room 5 greedy replay output.")
 
     with t4:
         if dqn_network is not None:

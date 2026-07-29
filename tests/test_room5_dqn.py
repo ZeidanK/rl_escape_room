@@ -29,6 +29,7 @@ from core.types import (
     VelocityAction,
 )
 from environments.room5_obstacles import Room5Obstacles
+from visualization.room5_visualization import render_room5_svg
 
 
 def _tiny_dqn_config(seed: int = 7, episodes: int = 4) -> DQNConfig:
@@ -143,6 +144,32 @@ class TestRoom5Environment:
         assert result.info["event"] == "timeout"
         with pytest.raises(FrozenInstanceError):
             render_state.x = 5.0
+
+    def test_room5_svg_renders_rollout_grid_and_path(self):
+        factory = lambda: Room5Obstacles(
+            obstacle_config=Room5ObstacleConfig(fixed_layout=True),
+            max_steps=3,
+        )
+        sample_env = factory()
+        sample_obs = sample_env.reset(seed=1, layout_seed=42)
+        network = DQNNetwork(
+            input_dim=len(sample_obs),
+            hidden_units=8,
+            action_count=len(sample_env.actions),
+            rng=np.random.default_rng(123),
+        )
+        rollout = rollout_dqn_policy(factory, network, seed=2, layout_seed=42, max_steps=3)
+        display_env = factory()
+        display_env.reset(seed=rollout.seed, layout_seed=rollout.layout_seed)
+
+        svg = render_room5_svg(display_env, rollout)
+
+        assert 'aria-label="Room 5 obstacle grid"' in svg
+        assert svg.count("<line") >= 22
+        assert "#7f1d1d" in svg
+        assert "<polyline" in svg
+        assert "#60a5fa" in svg
+        assert "#f8fafc" in svg
 
 
 class TestDQNMechanics:

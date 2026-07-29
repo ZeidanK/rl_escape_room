@@ -456,10 +456,14 @@ def test_room5_tiny_training_evaluation_and_replay():
     assert at.session_state["dqn_result"] is not None
     assert at.session_state["dqn_result_source"] == "live"
     assert len(at.session_state["dqn_result"].metrics) == 10
-    assert at.session_state["dqn_eval_fixed"] is None
-    assert at.session_state["dqn_eval_random"] is None
-    assert at.session_state["dqn_eval_unseen"] is None
-    assert at.session_state["dqn_rollout"] is None
+    assert at.session_state["dqn_eval_fixed"] is not None
+    assert at.session_state["dqn_eval_random"] is not None
+    assert at.session_state["dqn_eval_unseen"] is not None
+    assert at.session_state["dqn_eval_fixed"].n_episodes == 1
+    assert at.session_state["dqn_eval_random"].n_episodes == 1
+    assert at.session_state["dqn_eval_unseen"].n_episodes == 1
+    assert at.session_state["dqn_rollout"] is not None
+    assert at.session_state["dqn_rollout_fixed_layout"] is False
 
     metric_labels = [metric.label for metric in at.metric]
     assert "Episodes" in metric_labels
