@@ -330,7 +330,12 @@ def _saved_run_selector(room_key: str, model_dir: str, *, requires_npz: bool) ->
         st.caption("No saved runs found yet.")
         return None
     labels = [format_saved_run_label(run) for run in runs]
-    selected = st.selectbox("Saved Runs", options=labels, key=f"{room_key}_saved_runs")
+    selected = st.selectbox(
+        "Saved Runs",
+        options=labels,
+        key=f"{room_key}_saved_runs",
+        help="Choose a previously saved training run or showcase model to load.",
+    )
     return runs[labels.index(selected)]["stem"]
 
 
@@ -1784,7 +1789,8 @@ elif st.session_state.mode == ROOM2_LAB_MODE:
             q_tables = build_q_value_tables(sarsa_result.q_values)
             all_states = sorted(q_tables.keys())
             sel_state = st.selectbox("Select State", options=all_states,
-                                     format_func=lambda s: f"({s[0]}, {s[1]})")
+                                     format_func=lambda s: f"({s[0]}, {s[1]})",
+                                     help="Pick a grid state to inspect the learned Q-value for each possible action.")
             if sel_state:
                 vals = q_tables[sel_state]
                 st.table({k: [f"{v:.4f}"] for k, v in vals.items()})
@@ -1794,7 +1800,8 @@ elif st.session_state.mode == ROOM2_LAB_MODE:
             snap_eps = sorted(sarsa_result.snapshots.keys())
             if snap_eps:
                 sel_snap = st.selectbox("Snapshot Episode", options=snap_eps,
-                                        format_func=lambda x: f"Episode {x}")
+                                        format_func=lambda x: f"Episode {x}",
+                                        help="Choose a saved training checkpoint to replay the policy at that episode.")
                 snap = sarsa_result.snapshots[sel_snap]
                 if snap.rollout:
                     st.metric("Rollout Success", "Yes" if snap.rollout.success else "No")
@@ -1876,11 +1883,14 @@ elif st.session_state.mode == ROOM3_LAB_MODE:
         slip_cfg = SlipConfig(p_int, p_left, p_right) if slip_valid else SlipConfig()
 
         train_seed = st.number_input("Training Seed", min_value=0, max_value=2**31 - 1, value=42, step=1,
-                                      key="ql_seed")
+                                      key="ql_seed",
+                                      help="Random seed for training reproducibility.")
         eval_ep = st.number_input("Eval Episodes", min_value=1, max_value=1000, value=100, step=1,
-                                   key="ql_eval_ep")
+                                   key="ql_eval_ep",
+                                   help="Number of episodes for policy evaluation after training.")
         rw = st.number_input("Rolling Window", min_value=10, max_value=5000, value=100, step=10,
-                              key="ql_rw")
+                              key="ql_rw",
+                              help="Window size for rolling averages in training charts.")
 
         import hashlib
         map_sig = hashlib.sha256(ROOM3_GRID.tobytes()).hexdigest()[:16]
@@ -2093,6 +2103,7 @@ elif st.session_state.mode == ROOM3_LAB_MODE:
             sel_state = st.selectbox(
                 "Select State (row, col, has_key)", options=all_states,
                 format_func=lambda s: f"({s[0]}, {s[1]}, key={'Y' if s[2] else 'N'})",
+                help="Pick a Room 3 state, including whether the key has been collected, to inspect Q-values.",
             )
             if sel_state:
                 info = build_room3_q_value_table(env_sample, ql_result.q_values, sel_state[0], sel_state[1], sel_state[2])
@@ -2105,7 +2116,8 @@ elif st.session_state.mode == ROOM3_LAB_MODE:
             snap_eps = sorted(ql_result.snapshots.keys())
             if snap_eps:
                 sel_snap = st.selectbox("Snapshot Episode", options=snap_eps,
-                                        format_func=lambda x: f"Episode {x}")
+                                        format_func=lambda x: f"Episode {x}",
+                                        help="Choose a saved training checkpoint to replay the policy at that episode.")
                 snap = ql_result.snapshots[sel_snap]
                 if snap.rollout:
                     st.metric("Rollout Success", "Yes" if snap.rollout.success else "No")
@@ -2485,7 +2497,8 @@ elif st.session_state.mode == ROOM4_LAB_MODE:
             snap_keys = sorted(approx_result.snapshots.keys())
             if snap_keys:
                 sel_snap = st.selectbox("Snapshot Episode", options=snap_keys,
-                                        format_func=lambda x: f"Episode {x}")
+                                        format_func=lambda x: f"Episode {x}",
+                                        help="Choose a saved training checkpoint to replay the continuous policy at that episode.")
                 snap = approx_result.snapshots[sel_snap]
                 if snap.rollout:
                     st.metric("Rollout Success", "Yes" if snap.rollout.success else "No")
@@ -2512,9 +2525,12 @@ elif st.session_state.mode == ROOM4_LAB_MODE:
 
         # Tab 4: Greedy Action Field
         with t4:
-            vx_choice = st.selectbox("Vx", [-1, 0, 1], index=1, key="af_vx")
-            vy_choice = st.selectbox("Vy", [-1, 0, 1], index=1, key="af_vy")
-            af_size = st.slider("Grid Resolution", 5, 30, 10, key="af_size")
+            vx_choice = st.selectbox("Vx", [-1, 0, 1], index=1, key="af_vx",
+                                     help="Fix the horizontal velocity used when sampling the greedy action field.")
+            vy_choice = st.selectbox("Vy", [-1, 0, 1], index=1, key="af_vy",
+                                     help="Fix the vertical velocity used when sampling the greedy action field.")
+            af_size = st.slider("Grid Resolution", 5, 30, 10, key="af_size",
+                                help="Number of sampled positions per axis for the action-field grid.")
             env_disp = make_approx_env(start_mode=StartMode.FIXED)
             field = build_approx_action_field(env_disp, approx_result.weights, effective_tc_cfg,
                                               fixed_vx=vx_choice, fixed_vy=vy_choice, grid_size=af_size)
@@ -2523,9 +2539,12 @@ elif st.session_state.mode == ROOM4_LAB_MODE:
 
         # Tab 5: Value Surface
         with t5:
-            vs_vx = st.selectbox("Vx", [-1, 0, 1], index=1, key="vs_vx")
-            vs_vy = st.selectbox("Vy", [-1, 0, 1], index=1, key="vs_vy")
-            vs_size = st.slider("Grid Resolution", 5, 40, 20, key="vs_size")
+            vs_vx = st.selectbox("Vx", [-1, 0, 1], index=1, key="vs_vx",
+                                 help="Fix the horizontal velocity used when sampling the value surface.")
+            vs_vy = st.selectbox("Vy", [-1, 0, 1], index=1, key="vs_vy",
+                                 help="Fix the vertical velocity used when sampling the value surface.")
+            vs_size = st.slider("Grid Resolution", 5, 40, 20, key="vs_size",
+                                help="Number of sampled positions per axis for the value-surface grid.")
             env_disp = make_approx_env(start_mode=StartMode.FIXED)
             surface = build_approx_value_surface(env_disp, approx_result.weights, effective_tc_cfg,
                                                  fixed_vx=vs_vx, fixed_vy=vs_vy, grid_size=vs_size)
@@ -2601,55 +2620,79 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
     with st.sidebar:
         st.header("DQN Parameters")
         dqn_episodes = st.number_input("Episodes", min_value=10, max_value=20000, value=600, step=50,
-                                       key="dqn_episodes")
+                                       key="dqn_episodes",
+                                       help="Number of DQN training episodes. More episodes can improve learning but take longer.")
         dqn_lr = st.slider("Learning Rate", 0.0001, 0.05, 0.001, step=0.0001,
-                           format="%.4f", key="dqn_lr")
-        dqn_gamma = st.slider("Gamma", 0.50, 0.99, 0.99, step=0.01, key="dqn_gamma")
+                           format="%.4f", key="dqn_lr",
+                           help="Step size for neural-network weight updates. Larger learns faster but can become unstable.")
+        dqn_gamma = st.slider("Gamma", 0.50, 0.99, 0.99, step=0.01, key="dqn_gamma",
+                              help="Discount factor for future rewards. Higher values make the agent plan farther ahead.")
         dqn_max_steps = st.number_input("Max Steps", min_value=50, max_value=5000, value=260, step=10,
-                                        key="dqn_max_steps")
+                                        key="dqn_max_steps",
+                                        help="Maximum steps per episode before timeout. Higher values allow longer attempts.")
 
         st.markdown("**Epsilon Schedule**")
         dqn_eps_kind = st.selectbox("Decay Kind", ["exponential", "linear", "constant"], index=0,
-                                    key="dqn_eps_kind")
-        dqn_eps_start = st.slider("Epsilon Start", 0.0, 1.0, 1.0, step=0.05, key="dqn_eps_start")
-        dqn_eps_min = st.slider("Epsilon Min", 0.0, 1.0, 0.05, step=0.01, key="dqn_eps_min")
-        dqn_eps_decay = st.slider("Decay Rate", 0.90, 1.0, 0.995, step=0.001, key="dqn_eps_decay")
+                                    key="dqn_eps_kind",
+                                    help="How the exploration rate changes during training.")
+        dqn_eps_start = st.slider("Epsilon Start", 0.0, 1.0, 1.0, step=0.05, key="dqn_eps_start",
+                                  help="Initial exploration probability. 1.0 means actions start fully random.")
+        dqn_eps_min = st.slider("Epsilon Min", 0.0, 1.0, 0.05, step=0.01, key="dqn_eps_min",
+                                help="Lowest exploration probability allowed after decay.")
+        dqn_eps_decay = st.slider("Decay Rate", 0.90, 1.0, 0.995, step=0.001, key="dqn_eps_decay",
+                                  help="Exponential decay multiplier per episode. Closer to 1.0 decays more slowly.")
         dqn_linear_decay = st.number_input("Linear Decay Episodes", min_value=1, max_value=20000, value=500,
-                                           step=50, key="dqn_linear_decay")
+                                           step=50, key="dqn_linear_decay",
+                                           help="Episodes used to linearly reduce epsilon when linear decay is selected.")
 
         st.markdown("**Replay and Network**")
         dqn_replay_capacity = st.number_input("Replay Capacity", min_value=100, max_value=200000, value=20000,
-                                              step=1000, key="dqn_replay_capacity")
+                                              step=1000, key="dqn_replay_capacity",
+                                              help="Maximum number of transitions kept in replay memory.")
         dqn_batch_size = st.number_input("Batch Size", min_value=4, max_value=512, value=64, step=4,
-                                         key="dqn_batch_size")
+                                         key="dqn_batch_size",
+                                         help="Number of replay samples used for each network update.")
         dqn_warmup = st.number_input("Warmup Steps", min_value=0, max_value=10000, value=128, step=16,
-                                     key="dqn_warmup")
+                                     key="dqn_warmup",
+                                     help="Replay samples collected before gradient updates begin.")
         dqn_target_update = st.number_input("Target Update Interval", min_value=1, max_value=5000, value=100,
-                                            step=10, key="dqn_target_update")
+                                            step=10, key="dqn_target_update",
+                                            help="How often the target network copies the online network weights.")
         dqn_hidden_units = st.number_input("Hidden Units", min_value=8, max_value=512, value=64, step=8,
-                                           key="dqn_hidden_units")
+                                           key="dqn_hidden_units",
+                                           help="Width of the DQN hidden layer. Larger networks can model more but train slower.")
 
         st.markdown("**Obstacle Layout**")
         dqn_min_obs = st.number_input("Min Obstacles", min_value=0, max_value=12, value=3, step=1,
-                                      key="dqn_min_obs")
+                                      key="dqn_min_obs",
+                                      help="Minimum number of obstacles in generated Room 5 layouts.")
         dqn_max_obs = st.number_input("Max Obstacles", min_value=int(dqn_min_obs), max_value=12, value=max(5, int(dqn_min_obs)),
-                                      step=1, key="dqn_max_obs")
+                                      step=1, key="dqn_max_obs",
+                                      help="Maximum number of obstacles in generated Room 5 layouts.")
         dqn_obs_dist = st.slider("Observation Distance X (m)", 0.5, 8.0, 2.5, step=0.25,
-                                 key="dqn_obs_dist")
+                                 key="dqn_obs_dist",
+                                 help="Horizontal observation range used for nearby obstacle features.")
         dqn_layout_seed = st.number_input("Layout Seed", min_value=0, max_value=2**31 - 1, value=42, step=1,
-                                          key="dqn_layout_seed")
-        dqn_fixed_layout = st.checkbox("Train on Fixed Layout", value=False, key="dqn_fixed_layout")
+                                          key="dqn_layout_seed",
+                                          help="Seed that recreates generated obstacle positions for training and fixed evaluation.")
+        dqn_fixed_layout = st.checkbox("Train on Fixed Layout", value=False, key="dqn_fixed_layout",
+                                       help="Use the stable showcase obstacle layout instead of generated layouts during training.")
         dqn_progress_scale = st.slider("Progress Reward Scale", 0.0, 5.0, 2.0, step=0.25,
-                                       key="dqn_progress_scale")
+                                       key="dqn_progress_scale",
+                                       help="Reward shaping strength for moving closer to the exit.")
 
         dqn_train_seed = st.number_input("Training Seed", min_value=0, max_value=2**31 - 1, value=42, step=1,
-                                         key="dqn_train_seed")
+                                         key="dqn_train_seed",
+                                         help="Seed controlling reproducible DQN training randomness.")
         dqn_eval_ep = st.number_input("Eval Episodes", min_value=1, max_value=500, value=25, step=1,
-                                      key="dqn_eval_ep")
+                                      key="dqn_eval_ep",
+                                      help="Number of greedy evaluation episodes per layout category.")
         dqn_rollout_seed = st.number_input("Replay Seed", min_value=0, max_value=2**31 - 1, value=7, step=1,
-                                           key="dqn_rollout_seed")
+                                           key="dqn_rollout_seed",
+                                           help="Seed used to reproduce the displayed greedy replay episode.")
         dqn_rollout_layout_seed = st.number_input("Replay Layout Seed", min_value=0, max_value=2**31 - 1,
-                                                  value=1007, step=1, key="dqn_rollout_layout_seed")
+                                                  value=1007, step=1, key="dqn_rollout_layout_seed",
+                                                  help="Seed that determines the obstacle grid shown in the greedy replay.")
 
         dqn_epsilon_cfg = EpsilonScheduleConfig(
             kind=EpsilonDecayKind(dqn_eps_kind),
@@ -3076,6 +3119,7 @@ elif st.session_state.mode == ROOM5_BONUS_MODE:
                     "Rendered rollout",
                     options=list(range(len(summary.rollouts))),
                     key=f"dqn_eval_rollout_{key}",
+                    help="Choose which evaluation episode to draw on the Room 5 obstacle grid.",
                     format_func=lambda i, rollouts=summary.rollouts: (
                         f"Episode {i + 1} | seed {rollouts[i].seed} | layout {rollouts[i].layout_seed}"
                     ),
